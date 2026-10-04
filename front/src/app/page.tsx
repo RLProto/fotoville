@@ -57,17 +57,11 @@ export default async function HomePage() {
           <div className="hidden lg:block" />
           <div className="py-10 lg:py-14 lg:pl-14">
             <h1 className="display max-w-[14ch] text-[2.4rem] sm:text-5xl lg:text-6xl">Revele suas fotos sem sair de casa</h1>
-            <p className="mt-5 max-w-[42ch] text-lg text-ink-2">
-              {lowest !== null && (
-                <>
-                  <strong className="font-semibold text-ink">
-                    Fotos 10x15 {progressive ? "a partir de" : "por"} {formatBRL(lowest)}.
-                  </strong>{" "}
-                  {progressive && "Quanto mais fotos, menor o preço. "}
-                </>
-              )}
-              Você confere cada foto antes de pagar.
-            </p>
+            {lowest !== null && (
+              <p className="mt-5 text-lg text-ink-2">
+                Fotos 10x15 {progressive ? "a partir de" : "por"} {formatBRL(lowest)}.
+              </p>
+            )}
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
               <Link href="/enviar" className="btn btn-accent btn-lg w-full sm:w-auto">
                 Enviar fotos
