@@ -18,7 +18,7 @@ import { LOW_DPI, printDpi } from "@/lib/crop";
 import { formatBRL, plural } from "@/lib/format";
 import { loadImage } from "@/lib/decode-image";
 import { analyzeImage } from "@/lib/photo-render";
-import { nearTier, unitPrice } from "@/lib/pricing";
+import { minCopies, nearTier, unitPrice } from "@/lib/pricing";
 import { fileDetail, reportError } from "@/lib/report-error";
 import { whatsappLink } from "@/lib/site";
 import { FINISH_LABEL, type Adjust, type Crop, type Finish, type PhotoView, type Product } from "@/lib/types";
@@ -101,6 +101,9 @@ export function Uploader({
   const unit = unitPrice(product, copies);
   const subtotal = copies * unit;
   const next = nearTier(product, copies);
+  /** Mínimo de fotos do tamanho (Mini Polaroid: 2). Só cobra depois da primeira foto. */
+  const minimum = minCopies(product);
+  const missing = photos.length ? Math.max(0, minimum - copies) : 0;
 
   /** Acabamento em uso: o de todas as fotos, ou null se estiverem misturados ou não houver fotos. */
   const uniformFinish = photos.length && photos.every((p) => p.finish === photos[0].finish) ? photos[0].finish : null;
@@ -536,6 +539,7 @@ export function Uploader({
                 <p className="mt-3 text-sm text-ink-2">
                   JPG, PNG ou WebP, até 40 MB.<span className="hidden sm:inline"> Ou arraste para cá.</span>
                 </p>
+                {minimum > 1 && <p className="mt-1 text-sm font-semibold">Mínimo de {minimum} fotos.</p>}
                 {progressBar}
               </>
             )}
@@ -714,10 +718,16 @@ export function Uploader({
               {unit < product.price_cents && <>, {formatBRL(unit)} cada</>}
             </p>
             <p className="mt-1 font-display text-2xl font-bold tabular-nums">{formatBRL(subtotal)}</p>
-            {next && (
-              <p className="mt-2 text-sm font-semibold text-success">
-                Com mais {next.min - copies} fotos, {formatBRL(next.price_cents)} cada.
+            {missing > 0 ? (
+              <p className="alert alert-warning mt-3" role="status">
+                Mínimo de {minimum} fotos neste tamanho. Adicione mais {missing}.
               </p>
+            ) : (
+              next && (
+                <p className="mt-2 text-sm font-semibold text-success">
+                  Com mais {next.min - copies} fotos, {formatBRL(next.price_cents)} cada.
+                </p>
+              )
             )}
             <Link
               href="/carrinho"
@@ -751,10 +761,16 @@ export function Uploader({
                 <span className="block truncate text-sm text-ink-2">
                   {plural(copies, "foto", "fotos")} {product.name}
                 </span>
-                {next && (
-                  <span className="block text-sm font-semibold text-success">
-                    Com mais {next.min - copies} fotos, {formatBRL(next.price_cents)} cada
+                {missing > 0 ? (
+                  <span className="block text-sm font-semibold text-warning">
+                    Mínimo {minimum}: adicione mais {missing}
                   </span>
+                ) : (
+                  next && (
+                    <span className="block text-sm font-semibold text-success">
+                      Com mais {next.min - copies} fotos, {formatBRL(next.price_cents)} cada
+                    </span>
+                  )
                 )}
               </p>
               <Link href="/carrinho" aria-disabled={Boolean(progress)} className="btn btn-accent shrink-0" onClick={goToCart}>

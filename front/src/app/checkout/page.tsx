@@ -4,7 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CheckoutForm } from "@/components/checkout-form";
 import { OrderSteps } from "@/components/order-steps";
-import { loadCartPhotos, summarizeCart } from "@/lib/cart";
+import { belowMinimum, loadCartPhotos, summarizeCart } from "@/lib/cart";
 import { getProducts } from "@/lib/catalog";
 import { site } from "@/lib/site";
 import { createClient, getProfile, getUser } from "@/lib/supabase/server";
@@ -21,7 +21,8 @@ export default async function CheckoutPage() {
     getProfile(),
   ]);
   const cart = summarizeCart(photos, products);
-  if (!cart.lines.length) redirect("/carrinho");
+  // Carrinho vazio ou com tamanho abaixo do mínimo: o carrinho mostra o que falta
+  if (!cart.lines.length || belowMinimum(cart.lines).length) redirect("/carrinho");
 
   return (
     <div className="container-page py-8">

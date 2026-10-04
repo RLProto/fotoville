@@ -3,6 +3,7 @@ import Link from "next/link";
 import { OrderSteps } from "@/components/order-steps";
 import { getProducts } from "@/lib/catalog";
 import { formatBRL } from "@/lib/format";
+import { minCopies } from "@/lib/pricing";
 import { SIZE_GROUPS } from "@/lib/size-groups";
 import { FINISH_LABEL, type Product } from "@/lib/types";
 
@@ -12,29 +13,43 @@ export const metadata: Metadata = {
     "Tamanhos de revelação do 10x13 ao 30x60, Polaroid e foto-placa, a partir de R$ 1,99 por foto. Entrega em todo o Brasil ou retirada em Joinville/SC.",
 };
 
+const cmFormat = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
+
 /** Medida no padrão do envelope: "10 × 15", com o sinal mais leve que os números. */
 function Measure({ w, h }: { w: number; h: number }) {
   return (
     <>
-      {w}
+      {cmFormat.format(w)}
       <span className="mx-[0.12em] font-semibold text-ink-3">×</span>
-      {h}
+      {cmFormat.format(h)}
     </>
   );
 }
 
-/** O que vai em destaque no cartão e a linha pequena embaixo, conforme o tipo de produto. */
-function cardText(product: Product) {
-  const onlyFinish =
-    product.finishes.length === 1 ? `Só ${FINISH_LABEL[product.finishes[0]].toLowerCase()}` : null;
+/** O que vai em destaque no cartão e as linhas pequenas embaixo, conforme o tipo de produto. */
+function cardText(product: Product): { main: React.ReactNode; unit: string | null; notes: React.ReactNode[] } {
+  const notes: React.ReactNode[] = [];
+  if (product.finishes.length === 1) notes.push(`Só ${FINISH_LABEL[product.finishes[0]].toLowerCase()}`);
   if (product.kind === "print") {
-    return { main: <Measure w={product.width_cm} h={product.height_cm} />, unit: "cm", note: onlyFinish };
+    return { main: <Measure w={product.width_cm} h={product.height_cm} />, unit: "cm", notes };
   }
   if (product.kind === "placa") {
     // Mesmo padrão dos outros: a medida em destaque, o tipo na linha pequena
-    return { main: <Measure w={product.width_cm} h={product.height_cm} />, unit: "cm", note: "Foto-placa" };
+    return { main: <Measure w={product.width_cm} h={product.height_cm} />, unit: "cm", notes: ["Foto-placa", ...notes] };
   }
-  return { main: product.name, unit: null, note: onlyFinish };
+  // Polaroid e Mini Polaroid: o nome é o que o cliente conhece; a medida vai embaixo
+  const min = minCopies(product);
+  return {
+    main: product.name,
+    unit: null,
+    notes: [
+      <>
+        <Measure w={product.width_cm} h={product.height_cm} /> cm
+      </>,
+      ...(min > 1 ? [`Mínimo de ${min} fotos`] : []),
+      ...notes,
+    ],
+  };
 }
 
 export default async function EscolherTamanhoPage() {
@@ -58,11 +73,11 @@ export default async function EscolherTamanhoPage() {
               {/*
                 Cartões só com medida e preço, como o canhoto do envelope de laboratório.
                 Largura mínima em rem: a grade escolhe sozinha quantas colunas cabem, inclusive com a fonte
-                do sistema aumentada (360 px: duas colunas; desktop: seis).
+                do sistema aumentada (360 px: duas colunas; desktop: sete, os 7 tamanhos de álbum numa linha).
               */}
-              <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2.5 sm:gap-4">
+              <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-2.5 sm:gap-3">
                 {items.map((product) => {
-                  const { main, unit, note } = cardText(product);
+                  const { main, unit, notes } = cardText(product);
                   return (
                     <li key={product.id}>
                       <Link
@@ -74,7 +89,11 @@ export default async function EscolherTamanhoPage() {
                           {main}
                           {unit && <span className="ml-1 text-sm font-semibold tracking-normal text-ink-2">{unit}</span>}
                         </h3>
-                        {note && <p className="mt-1.5 text-sm text-ink-2">{note}</p>}
+                        {notes.map((n, i) => (
+                          <p key={i} className={`text-sm text-ink-2 ${i === 0 ? "mt-1.5" : ""}`}>
+                            {n}
+                          </p>
+                        ))}
 
                         {/* Picote fino entre a medida e o preço; o preço fica sempre no pé do cartão */}
                         <div className="mt-auto pt-5">

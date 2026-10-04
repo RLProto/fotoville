@@ -6,6 +6,7 @@ import { OrderSteps } from "@/components/order-steps";
 import { Uploader } from "@/components/uploader";
 import { getProduct } from "@/lib/catalog";
 import { formatBRL } from "@/lib/format";
+import { minCopies } from "@/lib/pricing";
 import { hasSupabase } from "@/lib/site";
 import { hasStorage, withThumbUrls } from "@/lib/storage";
 import { createClient, getUser } from "@/lib/supabase/server";
@@ -53,6 +54,7 @@ export default async function EnviarPage({ params }: Props) {
           <h1 className="display-md text-3xl sm:text-4xl">Fotos {product.name}</h1>
           <p className="mt-1 text-lg text-ink-2">
             {formatBRL(product.price_cents)} por foto
+            {minCopies(product) > 1 && <>, mínimo de {minCopies(product)} fotos</>}
           </p>
           {product.price_tiers.length > 0 && (
             <ul className="mt-1 flex flex-wrap gap-x-4 text-sm text-ink-2 tabular-nums" aria-label="Desconto progressivo">

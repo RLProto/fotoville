@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { getProducts } from "@/lib/catalog";
 import { formatBRL } from "@/lib/format";
-import { quantityRanges, rangeLabel, unitPrice } from "@/lib/pricing";
+import { minCopies, quantityRanges, rangeLabel, unitPrice } from "@/lib/pricing";
 import { SIZE_GROUPS } from "@/lib/size-groups";
 import { FINISH_LABEL } from "@/lib/types";
 
@@ -41,7 +41,7 @@ export default async function PrecosPage() {
               const items = products.filter(group.match);
               if (!items.length) return null;
               return (
-                <section key={group.title} aria-labelledby={`lista-${g}`} className={g === 1 ? "lg:row-span-2" : undefined}>
+                <section key={group.title} aria-labelledby={`lista-${g}`} className={`min-w-0 ${g === 1 ? "lg:row-span-2" : ""}`}>
                   <h3 id={`lista-${g}`} className="border-b border-rule pb-2 text-lg font-bold">
                     {group.title}
                   </h3>
@@ -58,10 +58,14 @@ export default async function PrecosPage() {
                             className="group flex items-center rounded-control px-2 py-2.5 transition-colors duration-150 hover:bg-ink/[0.04]"
                             aria-label={`${product.name}, ${formatBRL(product.price_cents)} por foto. Enviar fotos neste tamanho`}
                           >
-                            <span className="font-semibold">{product.name}</span>
-                            {onlyFinish && <span className="ml-2 text-sm text-ink-2">só {onlyFinish}</span>}
+                            {/* O nome pode quebrar de linha (fonte grande); o preço fica sempre inteiro à direita */}
+                            <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                              <span className="font-semibold">{product.name}</span>
+                              {onlyFinish && <span className="text-sm text-ink-2">só {onlyFinish}</span>}
+                              {minCopies(product) > 1 && <span className="text-sm text-ink-2">mínimo {minCopies(product)}</span>}
+                            </span>
                             <span className="leader" aria-hidden />
-                            <span className="tabular-nums group-hover:text-action">{formatBRL(product.price_cents)}</span>
+                            <span className="shrink-0 tabular-nums group-hover:text-action">{formatBRL(product.price_cents)}</span>
                           </Link>
                         </li>
                       );

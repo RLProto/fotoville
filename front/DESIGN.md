@@ -174,7 +174,8 @@ sombra.
   em tabela de faixas com etiqueta verde de porcentagem.
 - **Foto desenhada** (`print-shape`): papel branco com fio de 2px (a foto comum sai sem borda; o fio só faz o
   desenho ler como papel) e, dentro, uma foto de exemplo real (a lâmina
-  do logo aparece só enquanto a imagem carrega); Polaroid com borda inferior de 20%. Escala em px por cm, por
+  do logo aparece só enquanto a imagem carrega); Polaroid e Mini Polaroid com a moldura do filme
+  original (`INSTANT_FRAMES` em `src/lib/crop.ts`), a mesma do arquivo de impressão. Escala em px por cm, por
   propriedade ou pela variável `--cm`. Escala real só na régua da home (6 px/cm, 4 no celular), com a mesma foto em
   todos os tamanhos. Não aparece na escolha do tamanho. Origem e licença em `design/IMAGES.md`.
 - **Régua de tamanhos** (`size-board`): fotos alinhadas pela base, celular tracejado de 7,2 x 15 cm como referência,

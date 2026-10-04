@@ -53,7 +53,7 @@ async function api<T = Record<string, unknown>>(method: string, path: string, bo
   return { status: res.status, data: data as T, text };
 }
 
-async function uploadPhoto(name: string, width: number, height: number) {
+async function uploadPhoto(name: string, width: number, height: number, productId = "10x15") {
   const presign = await api<{ uploads: { key: string; thumbKey: string; uploadUrl: string; thumbUploadUrl: string }[] }>(
     "POST",
     "/api/upload/presign",
@@ -71,7 +71,7 @@ async function uploadPhoto(name: string, width: number, height: number) {
   const created = await api<{ photo: { id: string; crop: { width: number; height: number }; thumb_url: string } }>(
     "POST",
     "/api/photos",
-    { product_id: "10x15", storage_key: target.key, thumb_key: target.thumbKey, file_name: name, width_px: width, height_px: height },
+    { product_id: productId, storage_key: target.key, thumb_key: target.thumbKey, file_name: name, width_px: width, height_px: height },
   );
   if (!created.data.photo) throw new Error(`registro da foto falhou: ${created.status} ${created.text.slice(0, 200)}`);
   return created.data.photo;
@@ -203,6 +203,18 @@ try {
     await api("PATCH", `/api/photos/${other.id}`, { quantity: 120 });
     const cartPage = await api("GET", "/carrinho");
     check("desconto progressivo no carrinho", cartPage.status === 200 && cartPage.text.includes("142,80"), `HTTP ${cartPage.status}`);
+
+    // Mini Polaroid: mínimo de 2 fotos. Com 1, o pagamento recusa; com 2 cópias, passa da validação.
+    const mini = await uploadPhoto("mini.jpg", 1200, 1600, "mini-polaroid");
+    const pickup = {
+      customer: { name: "Cliente Teste", cpf: "123.456.789-09", whatsapp: "(47) 99999-0000" },
+      service: "retirada",
+    };
+    const blocked = await api<{ error: string }>("POST", "/api/checkout", pickup);
+    check("mini polaroid abaixo do mínimo é recusada", blocked.status === 422 && /mínimo de 2/.test(blocked.data.error ?? ""), `HTTP ${blocked.status}: ${blocked.data.error}`);
+    await api("PATCH", `/api/photos/${mini.id}`, { quantity: 2 });
+    const allowed = await api<{ orderId?: string; error?: string }>("POST", "/api/checkout", pickup);
+    check("mini polaroid com 2 fotos fecha o pedido", allowed.status === 200 && Boolean(allowed.data.orderId), `HTTP ${allowed.status}: ${allowed.data.error ?? ""}`);
   }
 
   // 8. Cliente comum não entra no painel

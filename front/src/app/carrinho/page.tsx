@@ -8,7 +8,7 @@ import { RemoveGroupButton } from "@/components/remove-group-button";
 import { loadCartPhotos, summarizeCart } from "@/lib/cart";
 import { getProducts } from "@/lib/catalog";
 import { formatBRL, plural } from "@/lib/format";
-import { nearTier, unitPrice } from "@/lib/pricing";
+import { minCopies, nearTier, unitPrice } from "@/lib/pricing";
 import { whatsappLink } from "@/lib/site";
 import { withThumbUrls } from "@/lib/storage";
 import { createClient, getUser } from "@/lib/supabase/server";
@@ -46,6 +46,7 @@ export default async function CarrinhoPage() {
           product,
           files: own.length,
           copies,
+          missing: Math.max(0, minCopies(product) - copies),
           unit: unitPrice(product, copies),
           next: nearTier(product, copies),
           lines: cart.lines.filter((l) => l.product.id === product.id),
@@ -54,6 +55,18 @@ export default async function CarrinhoPage() {
       }),
   );
 
+
+  const blocked = groups.some((g) => g.missing > 0);
+  const finish = (className: string) =>
+    blocked ? (
+      <span aria-disabled="true" className={`${className} cursor-not-allowed opacity-50`}>
+        Finalizar pedido
+      </span>
+    ) : (
+      <Link href="/checkout" className={className}>
+        Finalizar pedido
+      </Link>
+    );
 
   return (
     <div className="container-page pt-8 pb-28 lg:pb-8">
@@ -80,6 +93,11 @@ export default async function CarrinhoPage() {
                 </div>
                 <p className="font-display text-xl font-bold text-ink">{formatBRL(group.copies * group.unit)}</p>
               </div>
+              {group.missing > 0 && (
+                <p className="alert alert-warning mt-3" role="status">
+                  Mínimo de {minCopies(group.product)} fotos neste tamanho. Adicione mais {group.missing}.
+                </p>
+              )}
               {group.next && (
                 <p className="mt-2 text-sm font-semibold text-success">
                   Com mais {group.next.min - group.copies} fotos, cada uma sai por {formatBRL(group.next.price_cents)}.
@@ -139,9 +157,8 @@ export default async function CarrinhoPage() {
             </div>
           </dl>
           <p className="mt-3 text-sm text-ink-2">Frete e cupom na próxima etapa.</p>
-          <Link href="/checkout" className="btn btn-accent btn-lg mt-5 w-full">
-            Finalizar pedido
-          </Link>
+          {finish("btn btn-accent btn-lg mt-5 w-full")}
+          {blocked && <p className="mt-2 text-sm text-warning">Complete o mínimo de fotos para continuar.</p>}
           <p className="mt-4 border-t border-rule pt-3 text-center text-sm">
             Dúvidas?{" "}
             <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="link">
@@ -158,9 +175,7 @@ export default async function CarrinhoPage() {
             <span className="block text-sm text-ink-2">Subtotal</span>
             <span className="font-display text-lg font-bold tabular-nums">{formatBRL(cart.subtotal_cents)}</span>
           </p>
-          <Link href="/checkout" className="btn btn-accent">
-            Finalizar pedido
-          </Link>
+          {finish("btn btn-accent")}
         </div>
       </div>
     </div>

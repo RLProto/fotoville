@@ -6,7 +6,7 @@ import { getPackages, getProducts } from "@/lib/catalog";
 import { site, whatsappLink } from "@/lib/site";
 import type { Product } from "@/lib/types";
 
-const BOARD_SIZES = ["polaroid", "10x15", "13x18", "15x21", "20x30", "30x40"];
+const BOARD_SIZES = ["mini-polaroid", "polaroid", "10x15", "13x18", "15x21", "20x30", "30x40"];
 
 const FAQ = [
   { q: "Quais arquivos posso enviar?", a: "JPG, PNG ou WebP, até 40 MB por foto." },

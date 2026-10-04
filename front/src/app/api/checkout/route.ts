@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { fail, reportServerError, requireUser, serverFail } from "@/lib/api";
-import { loadCartPhotos, summarizeCart } from "@/lib/cart";
+import { belowMinimum, loadCartPhotos, summarizeCart } from "@/lib/cart";
 import { getProducts } from "@/lib/catalog";
 import { previewCoupon } from "@/lib/coupons";
 import { isValidCpf, onlyDigits } from "@/lib/format";
@@ -56,6 +56,10 @@ export async function POST(request: Request) {
   const [photos, products] = await Promise.all([loadCartPhotos(supabase, user.id), getProducts()]);
   const cart = summarizeCart(photos, products);
   if (!cart.lines.length) return fail("Seu carrinho está vazio.");
+  const short = belowMinimum(cart.lines)[0];
+  if (short) {
+    return fail(`${short.product.name}: mínimo de ${short.min} fotos. Adicione mais ${short.min - short.copies}.`, 422);
+  }
 
   const admin = createAdminClient();
   const parcel = estimateParcel(cart.parcelItems);

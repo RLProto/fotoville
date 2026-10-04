@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { paperLayout } from "@/lib/crop";
 import type { Product } from "@/lib/types";
 
 /** As seis lâminas do logo, na ordem do diafragma. */
@@ -45,7 +46,7 @@ export function PrintShape({
   photo,
   className = "",
 }: {
-  product: Pick<Product, "width_cm" | "height_cm" | "kind">;
+  product: Pick<Product, "width_cm" | "height_cm" | "kind"> & { id?: string };
   scale?: number;
   color: string;
   photo?: string;
@@ -55,8 +56,14 @@ export function PrintShape({
   const longCm = Math.max(product.width_cm, product.height_cm);
   const cm = (value: number) => (scale ? `${Math.round(value * scale)}px` : `calc(var(--cm, 6px) * ${value})`);
   const polaroid = product.kind === "polaroid";
-  // Foto comum sai sem borda: o fio branco só faz o desenho ler como papel. A Polaroid tem a moldura dela.
-  const border = polaroid ? `max(2px, ${cm(shortCm * 0.05)})` : "2px";
+  // Foto comum sai sem borda: o fio branco só faz o desenho ler como papel.
+  // Polaroid e Mini Polaroid: a moldura do filme, a mesma do arquivo de impressão (paperLayout).
+  const frame = polaroid ? paperLayout(product, false) : null;
+  const padding = frame
+    ? [frame.window.y, frame.window.x, frame.height - frame.window.y - frame.window.h, frame.window.x]
+        .map((mm) => `max(2px, ${cm(mm / 10)})`)
+        .join(" ")
+    : "2px";
 
   return (
     <div
@@ -65,7 +72,7 @@ export function PrintShape({
       style={{
         width: cm(shortCm),
         height: cm(longCm),
-        padding: polaroid ? `${border} ${border} ${cm(longCm * 0.2)}` : border,
+        padding,
       }}
     >
       <div className="relative size-full overflow-hidden rounded-[1px]" style={{ background: color }}>

@@ -28,7 +28,8 @@ values
   ('30x45', '30x45 cm', 'print', 30, 45, 2099, '[]', '{brilho,fosco}', null, null, 220),
   ('30x50', '30x50 cm', 'print', 30, 50, 2399, '[]', '{brilho,fosco}', null, null, 230),
   ('30x60', '30x60 cm', 'print', 30, 60, 2659, '[]', '{brilho,fosco}', null, null, 240),
-  ('polaroid', 'Polaroid', 'polaroid', 9, 11, 450, '[]', '{brilho,fosco}', null, null, 300),
+  ('mini-polaroid', 'Mini Polaroid', 'polaroid', 5.4, 8.6, 350, '[]', '{brilho,fosco}', null, null, 295),
+  ('polaroid', 'Polaroid', 'polaroid', 8.8, 10.7, 450, '[]', '{brilho,fosco}', null, null, 300),
   ('foto-placa-20x30', 'Foto-placa 20x30 cm', 'placa', 20, 30, 2000, '[]', '{brilho,fosco}', 380, 4, 310)
 on conflict (id) do update set
   name = excluded.name,

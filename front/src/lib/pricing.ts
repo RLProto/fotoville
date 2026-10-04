@@ -2,6 +2,13 @@ import type { PriceTier, Product } from "./types";
 
 type Priced = Pick<Product, "price_cents" | "price_tiers">;
 
+/** Mínimo de fotos por pedido em alguns tamanhos (a Mini Polaroid sai em pares). Conta as cópias. */
+export const MIN_COPIES: Record<string, number> = { "mini-polaroid": 2 };
+
+export function minCopies(product: Pick<Product, "id">) {
+  return MIN_COPIES[product.id] ?? 1;
+}
+
 /** Preço por foto conforme o total de cópias daquele tamanho no pedido. */
 export function unitPrice(product: Priced, quantity: number) {
   let price = product.price_cents;

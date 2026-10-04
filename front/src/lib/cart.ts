@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { unitPrice } from "./pricing";
+import { minCopies, unitPrice } from "./pricing";
 import type { ParcelItem } from "./shipping/parcel";
 import { FINISH_LABEL, type Finish, type Photo, type Product } from "./types";
 
@@ -80,4 +80,17 @@ export function summarizeCart(photos: Photo[], products: Product[]): CartSummary
       quantity: l.quantity,
     })),
   };
+}
+
+/** Tamanhos do carrinho abaixo do mínimo de fotos (a Mini Polaroid pede pelo menos 2). */
+export function belowMinimum(lines: CartLine[]) {
+  const copies = new Map<string, { product: Product; copies: number }>();
+  for (const line of lines) {
+    const entry = copies.get(line.product.id) ?? { product: line.product, copies: 0 };
+    entry.copies += line.quantity;
+    copies.set(line.product.id, entry);
+  }
+  return [...copies.values()]
+    .map(({ product, copies: n }) => ({ product, copies: n, min: minCopies(product) }))
+    .filter((g) => g.copies < g.min);
 }

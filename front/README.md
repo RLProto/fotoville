@@ -168,8 +168,9 @@ sozinhos (`src/instrumentation.ts` e `src/instrumentation-client.ts`).
 ## Pontos para confirmar com a loja
 
 - Prazo de produção (hoje **3 dias úteis**, em `src/lib/site.ts`).
-- Medida real da Polaroid (9×11 cm estimado; a foto entra num quadrado com 5 mm de margem em cima e dos lados,
-  `POLAROID_MARGIN_MM` em `src/lib/crop.ts`) e peso/espessura da foto-placa.
+- Preço da Mini Polaroid (R$ 3,50 provisório). As medidas da Polaroid (8,8 × 10,7 cm) e da Mini Polaroid (5,4 × 8,6 cm)
+  seguem os filmes originais (`INSTANT_FRAMES` em `src/lib/crop.ts`); confirmar se a loja imprime nesses tamanhos.
+  Peso e espessura da foto-placa.
 - Se os pacotes valem para brilho e fosco (hoje valem para os dois; o site antigo citava só fosco).
 - Textos de Termos de uso e Política de privacidade (rascunhos; pedem revisão jurídica).
 - Valores da tabela de frete estimado, caso a loja não tenha contrato com os Correios.

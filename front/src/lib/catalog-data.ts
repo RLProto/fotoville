@@ -69,12 +69,28 @@ export const PRODUCTS: Product[] = [
   print(230, 30, 50, 2399),
   print(240, 30, 60, 2659),
   {
+    // Formato do filme Instax Mini (5,4 x 8,6 cm, imagem 4,6 x 6,2). Pedido mínimo de 2 fotos (MIN_COPIES).
+    // Preço provisório: confirmar com a loja.
+    id: "mini-polaroid",
+    name: "Mini Polaroid",
+    kind: "polaroid",
+    width_cm: 5.4,
+    height_cm: 8.6,
+    price_cents: 350,
+    price_tiers: [],
+    finishes: BOTH,
+    unit_weight_g: null,
+    unit_thickness_mm: null,
+    sort: 295,
+    active: true,
+  },
+  {
+    // Formato do filme Polaroid 600/i-Type (8,8 x 10,7 cm, imagem 7,9 x 7,9).
     id: "polaroid",
     name: "Polaroid",
     kind: "polaroid",
-    // Medida estimada do formato com borda. Confirmar com a loja.
-    width_cm: 9,
-    height_cm: 11,
+    width_cm: 8.8,
+    height_cm: 10.7,
     price_cents: 450,
     price_tiers: [],
     finishes: BOTH,

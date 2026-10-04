@@ -1,11 +1,21 @@
 import { borderHex } from "./adjust";
 import type { Adjust, Crop, Photo, Product } from "./types";
 
-type Size = Pick<Product, "width_cm" | "height_cm" | "kind">;
 type PhotoShape = Pick<Photo, "width_px" | "height_px" | "crop" | "fit" | "adjust">;
 
-/** Margem da Polaroid em mm: igual no topo e nas laterais. A faixa de baixo fica com o resto do papel. */
-export const POLAROID_MARGIN_MM = 5;
+/**
+ * Moldura de cada formato instantâneo, em mm: margem dos lados, margem de cima e a proporção da janela
+ * (altura/largura). A faixa de baixo, onde vai a legenda, fica com o resto do papel.
+ * Medidas dos filmes originais: Polaroid 600/i-Type 88 x 107 com imagem 79 x 79;
+ * Instax Mini 54 x 86 com imagem 46 x 62.
+ */
+export const INSTANT_FRAMES: Record<string, { side: number; top: number; ratio: number }> = {
+  polaroid: { side: 4.5, top: 6, ratio: 1 },
+  "mini-polaroid": { side: 4, top: 6, ratio: 62 / 46 },
+};
+const DEFAULT_FRAME = { side: 5, top: 5, ratio: 1 };
+
+type Size = Pick<Product, "width_cm" | "height_cm" | "kind"> & { id?: string };
 
 export type Rect = { x: number; y: number; w: number; h: number };
 
@@ -22,22 +32,23 @@ export type PaperLayout = {
 };
 
 /**
- * Geometria do papel. Polaroid: sempre em pé, janela quadrada com margens iguais em cima e dos lados.
- * Demais tamanhos: na orientação pedida, com a borda escolhida (ou nenhuma).
+ * Geometria do papel. Polaroid e Mini Polaroid: sempre em pé, com a moldura do filme original (janela em cima,
+ * faixa larga embaixo). Demais tamanhos: na orientação pedida, com a borda escolhida (ou nenhuma).
  */
 export function paperLayout(product: Size, landscape: boolean, adjust: Adjust | null = null): PaperLayout {
   const long = Math.max(product.width_cm, product.height_cm) * 10;
   const short = Math.min(product.width_cm, product.height_cm) * 10;
 
   if (product.kind === "polaroid") {
-    const m = POLAROID_MARGIN_MM;
-    const side = short - 2 * m;
-    const h = Math.min(side, long - 2 * m);
+    const frame = (product.id && INSTANT_FRAMES[product.id]) || DEFAULT_FRAME;
+    const w = short - 2 * frame.side;
+    // A janela segue a proporção do filme, sem engolir a faixa de baixo
+    const h = Math.min(w * frame.ratio, long - frame.top - frame.side);
     return {
       width: short,
       height: long,
-      window: { x: m, y: m, w: side, h },
-      caption: { x: m, y: m + h, w: side, h: long - m - h },
+      window: { x: frame.side, y: frame.top, w, h },
+      caption: { x: frame.side, y: frame.top + h, w, h: long - frame.top - h },
       background: "#ffffff",
     };
   }
