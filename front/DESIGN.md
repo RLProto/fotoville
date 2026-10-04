@@ -125,7 +125,7 @@ Contêiner de 1200px com respiro lateral de 16px (24px a partir de 640px). Seç�
 (96px nas seções principais da home). Topo da home em duas colunas no desktop: foto até a borda esquerda da tela,
 título, botão "Enviar fotos" e link "Ver preços" à direita. O tamanho se escolhe no passo seguinte (`/enviar`), nunca
 antes do botão. Seções com título à esquerda e conteúdo à direita (1fr / 2.2fr) nos campos
-de cor. Escolha do tamanho (`/enviar`) em grade de 2, 3 ou 5 cartões iguais: foto na proporção do papel, todas com a
+de cor; a seção de pacotes da home é a exceção: título em cima e os quatro pacotes numa fileira no desktop. Escolha do tamanho (`/enviar`) em grade de 2, 3 ou 5 cartões iguais: foto na proporção do papel, todas com a
 mesma altura, nome e preço embaixo. Nada que mude a altura de um cartão só (linha extra de desconto, observação). Telas de tarefa (envio,
 carrinho, pagamento, conta) em coluna principal com resumo fixo de 22rem à direita.
 

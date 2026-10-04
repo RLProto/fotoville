@@ -143,7 +143,7 @@ export default async function CarrinhoPage() {
           </dl>
           <p className="mt-3 text-sm text-ink-2">Frete na próxima etapa.</p>
           <Link href="/checkout" className="btn btn-accent btn-lg mt-5 w-full">
-            Fechar pedido
+            Finalizar pedido
           </Link>
         </aside>
       </div>

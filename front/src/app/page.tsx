@@ -114,14 +114,15 @@ export default async function HomePage() {
           aria-labelledby="pacotes"
           style={{ ["--perforation-bg" as string]: "var(--color-blade-mustard)" }}
         >
-          <div className="container-page grid gap-10 py-16 lg:grid-cols-[1fr_2.2fr] lg:py-20">
-            <div>
+          {/* Título em cima e os quatro pacotes numa fileira só no desktop */}
+          <div className="container-page py-16 lg:py-20">
+            <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
               <h2 id="pacotes" className="display text-3xl sm:text-4xl">
                 Compre agora, revele depois
               </h2>
-              <p className="mt-4 text-lg">Pacotes 10x15 com desconto. Use quando quiser.</p>
+              <p className="text-lg">Pacotes 10x15 com desconto. Use quando quiser.</p>
             </div>
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {packages.map((pkg) => (
                 <PackageCard
                   key={pkg.id}

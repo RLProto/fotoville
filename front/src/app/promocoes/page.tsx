@@ -60,9 +60,9 @@ export default async function PromocoesPage() {
           ))}
         </ol>
         <p className="mt-10 text-ink-2">
-          Frete à parte, em cada pedido.{" "}
+          Frete à parte.{" "}
           <Link href="/prazos-e-frete" className="link">
-            Prazos e frete
+            Consultar prazos e frete
           </Link>
         </p>
       </section>
