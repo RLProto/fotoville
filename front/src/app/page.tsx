@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PackageCard } from "@/components/package-card";
 import { SizeBoard } from "@/components/size-board";
 import { getPackages, getProducts } from "@/lib/catalog";
+import { formatBRL } from "@/lib/format";
 import { site, whatsappLink } from "@/lib/site";
 import type { Product } from "@/lib/types";
 
@@ -30,6 +31,9 @@ export default async function HomePage() {
   const bestDiscount = tenByFifteen
     ? Math.max(0, ...packages.map((p) => Math.round((1 - p.price_cents / p.photo_count / tenByFifteen.price_cents) * 100)))
     : 0;
+  // Menor preço do 10x15 (faixa mais alta do desconto progressivo), lido da tabela: muda junto com o painel
+  const lowest = found ? Math.min(found.price_cents, ...found.price_tiers.map((t) => t.price_cents)) : null;
+  const progressive = Boolean(found?.price_tiers.length);
   const mapsQuery = encodeURIComponent(
     `${site.address.street}, ${site.address.district}, ${site.address.city} - ${site.address.state}, ${site.address.cep}`,
   );
@@ -52,9 +56,17 @@ export default async function HomePage() {
         <div className="container-page lg:grid lg:min-h-[560px] lg:grid-cols-[48%_1fr] lg:items-center">
           <div className="hidden lg:block" />
           <div className="py-10 lg:py-14 lg:pl-14">
-            <h1 className="display text-[2.4rem] sm:text-5xl lg:text-6xl">Revele suas fotos</h1>
-            <p className="mt-5 max-w-[40ch] text-lg text-ink-2">
-              Confira como cada foto vai sair antes de pagar. Entrega em todo o Brasil ou retirada em {site.address.city}.
+            <h1 className="display max-w-[14ch] text-[2.4rem] sm:text-5xl lg:text-6xl">Revele suas fotos sem sair de casa</h1>
+            <p className="mt-5 max-w-[42ch] text-lg text-ink-2">
+              {lowest !== null && (
+                <>
+                  <strong className="font-semibold text-ink">
+                    Fotos 10x15 {progressive ? "a partir de" : "por"} {formatBRL(lowest)}.
+                  </strong>{" "}
+                  {progressive && "Quanto mais fotos, menor o preço. "}
+                </>
+              )}
+              Você confere cada foto antes de pagar.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
               <Link href="/enviar" className="btn btn-accent btn-lg w-full sm:w-auto">
@@ -114,8 +126,8 @@ export default async function HomePage() {
       {/* A loja: tempo de casa e onde fica. Fatos, sem lista de vantagens */}
       <section className="container-page grid items-start gap-12 py-16 lg:grid-cols-[1.15fr_1fr] lg:py-24" aria-labelledby="loja">
         <div>
-          <h2 id="loja" className="display max-w-[16ch] text-3xl">
-            Revelando em {site.address.city} desde {site.since}
+          <h2 id="loja" className="display max-w-[18ch] text-3xl">
+            Fotoville, desde {site.since} eternizando momentos
           </h2>
         </div>
         <div className="border-t border-ink pt-5">
