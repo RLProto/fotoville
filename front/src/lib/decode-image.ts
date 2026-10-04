@@ -45,6 +45,6 @@ async function unreadableReason(blob: Blob) {
   const head = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
   const brand = String.fromCharCode(...head.slice(4, 12));
   if (/^ftyp(hei|hev|mif1|msf1|avif)/.test(brand)) return "Foto em formato HEIC. Envie em JPG.";
-  if (!blob.size) return "Arquivo vazio. Se a foto estiver só na nuvem, baixe para o celular e envie de novo.";
+  if (!blob.size) return "Arquivo vazio. Se a foto estiver só na nuvem, baixe para o aparelho e envie de novo.";
   return "Não foi possível abrir esta foto.";
 }

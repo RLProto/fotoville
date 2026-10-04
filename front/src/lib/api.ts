@@ -46,7 +46,7 @@ export function serverFail(scope: string, message: string, err?: unknown, status
 export async function requireUser() {
   if (!hasSupabase) return { error: fail("Banco de dados não configurado.", 503) } as const;
   const user = await getUser();
-  if (!user) return { error: fail("Faça login para continuar.", 401) } as const;
+  if (!user) return { error: fail("Entre na sua conta para continuar.", 401) } as const;
   return { user, supabase: await createClient() } as const;
 }
 

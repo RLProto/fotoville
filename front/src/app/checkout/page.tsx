@@ -1,4 +1,6 @@
+import { CaretLeftIcon } from "@phosphor-icons/react/ssr";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CheckoutForm } from "@/components/checkout-form";
 import { OrderSteps } from "@/components/order-steps";
@@ -23,7 +25,11 @@ export default async function CheckoutPage() {
 
   return (
     <div className="container-page py-8">
-      <OrderSteps current={4} />
+      <Link href="/carrinho" className="inline-flex min-h-11 items-center gap-1 font-semibold text-action hover:underline">
+        <CaretLeftIcon size={18} aria-hidden />
+        Voltar ao carrinho
+      </Link>
+      <OrderSteps current={4} className="mt-2" />
       <h1 className="mt-3 mb-8 display-md text-3xl sm:text-4xl">Entrega e pagamento</h1>
 
       <CheckoutForm

@@ -6,6 +6,14 @@ export function safeNext(value: string | string[] | undefined, fallback = "/cont
   return path && path.startsWith("/") && !path.startsWith("//") && !path.includes("\\") ? path : fallback;
 }
 
+/** Por que a conta é pedida agora, conforme o destino depois do acesso. */
+export function accessReason(next: string) {
+  if (next.startsWith("/enviar/")) return "Para guardar suas fotos enquanto você monta o pedido.";
+  if (next.startsWith("/promocoes")) return "Para comprar o pacote e receber o cupom.";
+  if (next.startsWith("/carrinho") || next.startsWith("/checkout")) return "Para ver e finalizar seu pedido.";
+  return undefined;
+}
+
 export function AuthShell({
   title,
   subtitle,

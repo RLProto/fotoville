@@ -31,7 +31,8 @@ export async function proxy(request: NextRequest) {
   const isProtected = pathname.startsWith("/enviar/") || PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   if (!user && isProtected) {
     const login = request.nextUrl.clone();
-    login.pathname = "/entrar";
+    // Quem chega ao envio sem conta quase sempre é cliente novo: cadastro primeiro, com o link "Entrar" ao lado
+    login.pathname = pathname.startsWith("/enviar/") ? "/cadastro" : "/entrar";
     login.search = `?proximo=${encodeURIComponent(pathname + search)}`;
     return NextResponse.redirect(login);
   }

@@ -96,7 +96,8 @@ Escrito depois da construção, a partir do código em `src/app/globals.css` e d
 
 O site é o envelope de revelação do laboratório: o cliente marca tamanho, acabamento e cópias como nos quadradinhos
 do envelope, sobre papel fotográfico branco e frio, com tinta índigo. As seis lâminas do diafragma do logo aparecem
-como campos inteiros de cor (faixa dos passos, seção de pacotes) e como preenchimento das fotos desenhadas em escala.
+como campos inteiros de cor (régua de tamanhos em petróleo, pacotes em mostarda) e como preenchimento das fotos
+desenhadas.
 O elemento memorável é a régua de tamanhos, com as fotos lado a lado na escala real e um celular de referência.
 Tema único claro, escolhido pela cena de uso: a borda branca da foto precisa ler como papel.
 
@@ -122,12 +123,25 @@ Corpo nunca abaixo de 16px, linhas de até 60 a 68 caracteres, títulos com `tex
 ## Layout
 
 Contêiner de 1200px com respiro lateral de 16px (24px a partir de 640px). Seções com 64px de altura de respiro
-(96px nas seções principais da home). Topo da home em duas colunas no desktop: foto até a borda esquerda da tela,
-título, botão "Enviar fotos" e link "Ver preços" à direita. O tamanho se escolhe no passo seguinte (`/enviar`), nunca
-antes do botão. Seções com título à esquerda e conteúdo à direita (1fr / 2.2fr) nos campos
-de cor; a seção de pacotes da home é a exceção: título em cima e os quatro pacotes numa fileira no desktop. Escolha do tamanho (`/enviar`) em grade de 2, 3 ou 5 cartões iguais: foto na proporção do papel, todas com a
-mesma altura, nome e preço embaixo. Nada que mude a altura de um cartão só (linha extra de desconto, observação). Telas de tarefa (envio,
-carrinho, pagamento, conta) em coluna principal com resumo fixo de 22rem à direita.
+(80 a 96px nas seções principais da home).
+
+**Home, nesta ordem:** topo em duas colunas no desktop (foto até a borda esquerda; título, uma frase, botão "Enviar
+fotos" e link "Ver preços" à direita); régua "Compare os tamanhos" no campo petróleo; pacotes no campo mostarda, com
+título em cima e os quatro canhotos numa fileira no desktop; a loja (desde quando, papel, endereço de retirada);
+perguntas frequentes. Sem faixa "Como funciona" com números grandes: as etapas do pedido já ensinam o fluxo. O título da
+página é o maior da home; títulos de seção ficam em `text-3xl`.
+
+**Fluxo:** o tamanho se escolhe no passo seguinte ao botão (`/enviar`), nunca antes. Escolha do tamanho em grade de 2,
+3 ou 5 cartões iguais: foto na proporção do papel, todas com a mesma altura, nome e preço embaixo; no celular o cartão
+deita (foto de 72px à esquerda, nome e preço à direita) para a lista não passar de uma tela e meia. Nada que mude a
+altura de um cartão só (linha extra de desconto, observação).
+
+**Telas de tarefa** (envio, carrinho, pagamento): coluna principal com resumo fixo à direita no desktop (20 a 22rem,
+`lg:sticky`) e, no celular, barra fixa embaixo, opaca, com o valor e a próxima ação. Nelas o botão flutuante do
+WhatsApp some, e o link "Dúvidas? Falar no WhatsApp" fica no fim do resumo.
+
+**Páginas de informação** (prazos, contato, quem somos): fatos em linhas ou em duas colunas de peso diferente (o canal
+principal maior), nunca três colunas iguais de ícone, título e texto.
 
 ## Elevation & Depth
 
@@ -146,17 +160,23 @@ sombra.
 ## Components
 
 - **Etapas do pedido** (`order-steps`): Tamanho, Fotos, Carrinho, Entrega e pagamento, no topo de cada tela do fluxo.
+  Etapas já feitas são links; a atual é sublinhada. No celular vira uma linha: "Etapa 2 de 4: Fotos".
+- **Área de envio** (`uploader`): vazia, mostra o papel do tamanho escolhido, o acabamento (Brilho já marcado) e
+  "Selecionar fotos"; com fotos, encolhe numa faixa com "Adicionar fotos". Acabamento se escolhe na tela, sem
+  janela. Ações em lote confirmam com um aviso visível de 3,5 s. A miniatura abre o ajuste, e o editor tem
+  "Salvar e próxima" com "1 de 5" no título.
 - **Tabela de preços** (`/precos`): pontilhado entre nome e preço, como a tabela do balcão; desconto por quantidade
   em tabela de faixas com etiqueta verde de porcentagem.
-- **Foto em escala** (`print-shape`): papel branco com borda de 5% e, dentro, uma foto de exemplo real (a lâmina
+- **Foto desenhada** (`print-shape`): papel branco com fio de 2px (a foto comum sai sem borda; o fio só faz o
+  desenho ler como papel) e, dentro, uma foto de exemplo real (a lâmina
   do logo aparece só enquanto a imagem carrega); Polaroid com borda inferior de 20%. Escala em px por cm, por
   propriedade ou pela variável `--cm`. Escala real só na régua da home (6 px/cm, 4 no celular), com a mesma foto em
   todos os tamanhos. Na escolha do tamanho a foto não fica em escala: todas com 112 px de altura, porque a escala
   real ali dava fotos minúsculas ao lado de grandes e deixava a grade torta (pedido do usuário, out/2026). Origem e licença em `design/IMAGES.md`.
 - **Régua de tamanhos** (`size-board`): fotos alinhadas pela base, celular tracejado de 7,2 x 15 cm como referência,
-  rolagem horizontal no celular.
+  rolagem horizontal no celular. Na home fica sobre o campo petróleo (`onColor`: texto claro, foco claro).
 - **Canhoto de pacote** (`package-card`): número grande, preço, economia em texto e picote com meia-lua da cor do
-  fundo (`--perforation-bg`).
+  fundo (`--perforation-bg`). Os quatro iguais, sem selo de "recomendado": o preço por foto já ordena.
 - **Botões:** `btn-accent` e `btn-primary` são a mesma ação; `btn-outline` para alternativa; `btn-ghost` para ação
   de texto. Todos com alvo de 44px e retorno de 1px ao apertar.
 - **Faixa das lâminas:** 3px sob o cabeçalho.
@@ -173,3 +193,7 @@ sombra.
 - Não faça: cartões iguais de ícone, título e texto como estrutura de seção.
 - Não faça: faixa colorida lateral em itens de lista, sombra dura deslocada, travessão ou ponto médio como separador.
 - Não faça: afirmar o que a loja não afirmou (depoimentos, números de clientes, "preço de atacado").
+- Não faça: janela (modal) para uma escolha que cabe na própria tela.
+- Não faça: selo "Recomendado" ou "Mais pedido" sem um motivo que a loja possa sustentar.
+- Não faça: lista de três vantagens com fios, nem números grandes 1-2-3 como enfeite de seção.
+- Não faça: mensagem técnica para o cliente (código HTTP, erro do banco, "neste ambiente"). Erro diz o problema e o que fazer.

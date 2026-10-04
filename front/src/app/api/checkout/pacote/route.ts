@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     })
     .select("*")
     .single();
-  if (error || !created) return serverFail("checkout", "Não foi possível criar o pedido.", error, 500, { package: pkg.id });
+  if (error || !created) return serverFail("checkout", "Não foi possível criar o pedido. Tente de novo ou fale com a gente pelo WhatsApp.", error, 500, { package: pkg.id });
   const order = created as Order;
 
   await admin.from("order_items").insert({

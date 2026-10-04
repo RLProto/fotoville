@@ -5,16 +5,10 @@ import { PageHeader } from "@/components/page-header";
 import { getPackages, getProducts } from "@/lib/catalog";
 
 export const metadata: Metadata = {
-  title: "Promoções: pacotes de fotos 10x15",
+  title: "Pacotes de fotos 10x15",
   description:
-    "Pacotes de 100 a 1000 fotos 10x15 com desconto. Compre agora e revele quando quiser, usando seu cupom.",
+    "Pacotes pré-pagos de 100 a 1000 fotos 10x15 com até 55% de desconto. O saldo vale para vários pedidos. Frete à parte.",
 };
-
-const HOW = [
-  { title: "Compre o pacote", text: "Pix, cartão ou boleto." },
-  { title: "Receba o cupom", text: "Ele aparece na página do pedido." },
-  { title: "Use quando quiser", text: "Informe o cupom ao pagar. Vale para vários pedidos." },
-];
 
 export default async function PromocoesPage() {
   const [packages, products] = await Promise.all([getPackages(), getProducts()]);
@@ -36,30 +30,20 @@ export default async function PromocoesPage() {
       >
         <div className="container-page grid gap-5 py-12 sm:grid-cols-2 lg:grid-cols-4">
           {packages.map((pkg) => (
-            <PackageCard key={pkg.id} pkg={pkg} regularUnitCents={regular} featured={pkg.photo_count === 300} />
+            <PackageCard key={pkg.id} pkg={pkg} regularUnitCents={regular} />
           ))}
         </div>
       </section>
 
-      <section className="container-page py-16" aria-labelledby="como-usar">
-        <h2 id="como-usar" className="display-md text-2xl sm:text-3xl">
-          Como usar o pacote
+      <section className="container-page py-14" aria-labelledby="como-usar">
+        <h2 id="como-usar" className="display-md text-2xl">
+          Como usar
         </h2>
-        <ol className="mt-8 grid gap-8 md:grid-cols-3">
-          {HOW.map((step, i) => (
-            <li key={step.title}>
-              <span className="display block text-4xl tabular-nums" aria-hidden>
-                {i + 1}
-              </span>
-              <h3 className="mt-2 text-lg font-bold">
-                <span className="sr-only">Passo {i + 1}: </span>
-                {step.title}
-              </h3>
-              <p className="mt-1 max-w-[40ch] text-ink-2">{step.text}</p>
-            </li>
-          ))}
-        </ol>
-        <p className="mt-10 text-ink-2">
+        <p className="mt-3 max-w-[60ch] text-lg text-ink-2">
+          Depois do pagamento, o código do cupom aparece na página do pedido. Informe o cupom ao pagar pedidos de fotos
+          10x15 até acabar o saldo.
+        </p>
+        <p className="mt-8 text-ink-2">
           Frete à parte.{" "}
           <Link href="/prazos-e-frete" className="link">
             Consultar prazos e frete

@@ -10,7 +10,7 @@ import { FINISH_LABEL } from "@/lib/types";
 export const metadata: Metadata = {
   title: "Enviar fotos: escolha o tamanho",
   description:
-    "Todos os tamanhos de revelação da Fotoville, de 10x15 a 30x60, Polaroid e foto-placa. Escolha o tamanho e envie suas fotos.",
+    "Tamanhos de revelação do 10x13 ao 30x60, Polaroid e foto-placa, a partir de R$ 1,99 por foto. Entrega em todo o Brasil ou retirada em Joinville/SC.",
 };
 
 /** Altura do desenho de cada tamanho, em px. */
@@ -34,7 +34,7 @@ export default async function EscolherTamanhoPage() {
               <h2 id={`grupo-${g}`} className="display-md border-b border-rule pb-3 text-2xl">
                 {group.title}
               </h2>
-              <ul className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-5">
+              <ul className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-5 lg:grid-cols-5">
                 {items.map((product) => {
                   const onlyFinish =
                     product.finishes.length === 1 && !product.name.toLowerCase().includes(product.finishes[0])
@@ -44,26 +44,38 @@ export default async function EscolherTamanhoPage() {
                     <li key={product.id}>
                       <Link
                         href={`/enviar/${product.id}`}
-                        className="group block h-full rounded-panel border border-rule bg-surface p-3 transition-colors duration-150 hover:border-action sm:p-4"
+                        className="group flex h-full items-center gap-3 rounded-panel border border-rule bg-surface p-2.5 transition-colors duration-150 hover:border-action sm:block sm:p-4"
                         aria-label={`${product.name}, ${formatBRL(product.price_cents)} por foto. Enviar fotos neste tamanho`}
                       >
-                        {/* Todas com a mesma altura: o desenho mostra a proporção do papel, não o tamanho */}
-                        <div className="flex items-center justify-center rounded-control bg-paper" style={{ height: STAGE_PX + 32 }}>
+                        {/*
+                          Todas com a mesma altura: o desenho mostra a proporção do papel, não o tamanho.
+                          No celular o cartão deita (foto pequena à esquerda) para a lista não ficar longa.
+                        */}
+                        <div
+                          className="flex h-[72px] w-16 shrink-0 items-center justify-center rounded-control bg-paper sm:h-[144px] sm:w-auto sm:[--cm:var(--cm-lg)]"
+                          style={
+                            {
+                              "--cm": `${56 / Math.max(product.width_cm, product.height_cm)}px`,
+                              "--cm-lg": `${STAGE_PX / Math.max(product.width_cm, product.height_cm)}px`,
+                            } as React.CSSProperties
+                          }
+                        >
                           <PrintShape
                             product={product}
-                            scale={STAGE_PX / Math.max(product.width_cm, product.height_cm)}
                             color={bladeFor(g)}
                             photo={samplePhotoFor(g)}
-                            className="transition-transform duration-200 ease-out group-hover:-translate-y-1"
+                            className="transition-transform duration-200 ease-out sm:group-hover:-translate-y-1"
                           />
                         </div>
-                        <h3 className="mt-3 font-semibold">
-                          {product.name}
-                          {onlyFinish && <span className="ml-1.5 text-sm font-normal text-ink-2">só {onlyFinish}</span>}
-                        </h3>
-                        <p className="font-display text-lg font-extrabold tabular-nums group-hover:text-action">
-                          {formatBRL(product.price_cents)}
-                        </p>
+                        <div className="min-w-0">
+                          <h3 className="font-semibold sm:mt-3">
+                            {product.name}
+                            {onlyFinish && <span className="ml-1.5 text-sm font-normal text-ink-2">só {onlyFinish}</span>}
+                          </h3>
+                          <p className="font-display text-lg font-extrabold tabular-nums group-hover:text-action">
+                            {formatBRL(product.price_cents)}
+                          </p>
+                        </div>
                       </Link>
                     </li>
                   );

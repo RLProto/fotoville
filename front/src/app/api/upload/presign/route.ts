@@ -20,13 +20,13 @@ export async function POST(request: Request) {
   if (!hasStorage) return fail("Armazenamento de fotos não configurado.", 503);
 
   const parsed = schema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return fail("Requisição inválida.");
+  if (!parsed.success) return fail("Não foi possível enviar. Tente de novo.");
 
   const uploads = await Promise.all(
     parsed.data.files.map(async (file) => {
       const ext = TYPES[file.type];
       if (!ext) return { name: file.name, error: "Formato não aceito. Envie JPG, PNG ou WebP." };
-      if (file.size > MAX_BYTES) return { name: file.name, error: "Arquivo maior que 40 MB." };
+      if (file.size > MAX_BYTES) return { name: file.name, error: "Arquivo maior que 40 MB. Envie uma versão menor." };
 
       const base = `u/${auth.user.id}/${randomUUID()}`;
       const key = `${base}.${ext}`;

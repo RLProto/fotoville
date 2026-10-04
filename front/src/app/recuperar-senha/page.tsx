@@ -9,11 +9,14 @@ export default function RecuperarSenhaPage() {
   return (
     <AuthShell
       title="Recuperar senha"
-      subtitle="Enviamos um link para o seu e-mail."
+      subtitle="Você recebe um link para criar uma nova senha."
       footer={
-        <Link href="/entrar" className="font-bold text-action underline underline-offset-2">
-          Voltar para o login
-        </Link>
+        <p>
+          Lembrou a senha?{" "}
+          <Link href="/entrar" className="font-bold text-action underline underline-offset-2">
+            Entrar
+          </Link>
+        </p>
       }
     >
       <AuthForm mode="recuperar" />

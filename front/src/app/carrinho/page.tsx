@@ -9,6 +9,7 @@ import { loadCartPhotos, summarizeCart } from "@/lib/cart";
 import { getProducts } from "@/lib/catalog";
 import { formatBRL, plural } from "@/lib/format";
 import { nearTier, unitPrice } from "@/lib/pricing";
+import { whatsappLink } from "@/lib/site";
 import { withThumbUrls } from "@/lib/storage";
 import { createClient, getUser } from "@/lib/supabase/server";
 
@@ -25,14 +26,10 @@ export default async function CarrinhoPage() {
 
   if (!cart.lines.length) {
     return (
-      <div className="container-page py-20 text-center">
-        <span className="mx-auto inline-flex size-16 items-center justify-center rounded-control bg-action-soft text-action">
-          <ImagesIcon size={30} aria-hidden />
-        </span>
-        <h1 className="mt-5 display-md text-3xl">Seu carrinho está vazio</h1>
-        <p className="mt-2 text-lg text-ink-2">Escolha um tamanho para começar.</p>
+      <div className="container-page py-24 text-center">
+        <h1 className="display-md text-3xl">Seu carrinho está vazio</h1>
         <Link href="/enviar" className="btn btn-accent btn-lg mt-7">
-          Escolher tamanho
+          Enviar fotos
         </Link>
       </div>
     );
@@ -59,7 +56,7 @@ export default async function CarrinhoPage() {
 
 
   return (
-    <div className="container-page py-8">
+    <div className="container-page pt-8 pb-28 lg:pb-8">
       <OrderSteps current={3} />
       <h1 className="mt-3 display-md text-3xl sm:text-4xl">Seu carrinho</h1>
 
@@ -71,7 +68,7 @@ export default async function CarrinhoPage() {
                 <div>
                   <h2 className="text-xl font-bold">{group.product.name}</h2>
                   <p className="text-ink-2">
-                    {plural(group.copies, "cópia", "cópias")} de {plural(group.files, "foto", "fotos")},{" "}
+                    {plural(group.copies, "foto", "fotos")},{" "}
                     {group.unit < group.product.price_cents && (
                       <s className="text-ink-3">
                         <span className="sr-only">de </span>
@@ -85,7 +82,7 @@ export default async function CarrinhoPage() {
               </div>
               {group.next && (
                 <p className="mt-2 text-sm font-semibold text-success">
-                  Com mais {group.next.min - group.copies}, cada uma sai por {formatBRL(group.next.price_cents)}.
+                  Com mais {group.next.min - group.copies} fotos, cada uma sai por {formatBRL(group.next.price_cents)}.
                 </p>
               )}
 
@@ -97,7 +94,7 @@ export default async function CarrinhoPage() {
                 ))}
               </ul>
               {group.files > PREVIEW_LIMIT && (
-                <p className="mt-2 text-sm text-ink-2">e mais {group.files - PREVIEW_LIMIT}.</p>
+                <p className="mt-2 text-sm text-ink-2">+{group.files - PREVIEW_LIMIT} fotos</p>
               )}
 
               {group.lines.length > 1 && (
@@ -105,7 +102,7 @@ export default async function CarrinhoPage() {
               )}
 
               <div className="mt-4 flex flex-wrap gap-2 border-t border-rule pt-4">
-                <Link href={`/enviar/${group.product.id}`} className="btn btn-outline btn-sm">
+                <Link href={`/enviar/${group.product.id}`} className="btn btn-outline">
                   <PencilSimpleIcon size={16} aria-hidden />
                   Editar ou adicionar<span className="sr-only"> fotos {group.product.name}</span>
                 </Link>
@@ -123,7 +120,7 @@ export default async function CarrinhoPage() {
 
         <aside className="card p-5 lg:sticky lg:top-24" aria-labelledby="resumo">
           <h2 id="resumo" className="text-xl font-bold">
-            Resumo
+            Resumo do pedido
           </h2>
           <dl className="mt-4 space-y-2">
             {cart.lines.map((line) => (
@@ -141,11 +138,30 @@ export default async function CarrinhoPage() {
               </dd>
             </div>
           </dl>
-          <p className="mt-3 text-sm text-ink-2">Frete na próxima etapa.</p>
+          <p className="mt-3 text-sm text-ink-2">Frete e cupom na próxima etapa.</p>
           <Link href="/checkout" className="btn btn-accent btn-lg mt-5 w-full">
             Finalizar pedido
           </Link>
+          <p className="mt-4 border-t border-rule pt-3 text-center text-sm">
+            Dúvidas?{" "}
+            <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="link">
+              Falar no WhatsApp
+            </a>
+          </p>
         </aside>
+      </div>
+
+      {/* No celular o resumo fica no fim da lista: a próxima ação fica sempre à mão */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-rule bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden">
+        <div className="container-page flex items-center justify-between gap-4 py-3">
+          <p className="leading-tight">
+            <span className="block text-sm text-ink-2">Subtotal</span>
+            <span className="font-display text-lg font-bold tabular-nums">{formatBRL(cart.subtotal_cents)}</span>
+          </p>
+          <Link href="/checkout" className="btn btn-accent">
+            Finalizar pedido
+          </Link>
+        </div>
       </div>
     </div>
   );

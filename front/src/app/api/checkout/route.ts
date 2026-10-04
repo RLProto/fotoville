@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
   const cpf = onlyDigits(input.customer.cpf);
   const whatsapp = onlyDigits(input.customer.whatsapp);
-  if (!isValidCpf(cpf)) return fail("CPF inválido.");
+  if (!isValidCpf(cpf)) return fail("CPF inválido. Confira os 11 dígitos.");
   if (whatsapp.length < 10) return fail("Informe o WhatsApp com DDD.");
 
   const delivery = input.service !== "retirada";
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
   if (delivery) {
     try {
       const option = (await quoteShipping(cep, parcel)).find((o) => o.service === input.service);
-      if (!option) return fail("Forma de entrega indisponível para este CEP.");
+      if (!option) return fail("Esta opção de entrega não está disponível para este CEP. Escolha outra.");
       shipping = option;
     } catch (err) {
       return serverFail("frete", "Não foi possível calcular o frete agora. Tente de novo em instantes.", err, 502, { cep });
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
     })
     .select("*")
     .single();
-  if (orderError || !created) return serverFail("checkout", "Não foi possível criar o pedido.", orderError);
+  if (orderError || !created) return serverFail("checkout", "Não foi possível criar o pedido. Tente de novo ou fale com a gente pelo WhatsApp.", orderError);
   const order = created as Order;
 
   const rollback = async () => {
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
     });
     if (!redeemed) {
       await rollback();
-      return fail("O saldo do cupom mudou. Valide o cupom novamente.", 409);
+      return fail("O saldo do cupom mudou. Aplique o cupom de novo.", 409);
     }
   }
   if (coupon) {
@@ -150,7 +150,7 @@ export async function POST(request: Request) {
       await admin.rpc("redeem_coupon_credits", { p_code: coupon.code, p_credits: -coupon.credits });
     }
     await rollback();
-    return serverFail("checkout", "Não foi possível criar o pedido.", itemsError ?? photosError, 500, {
+    return serverFail("checkout", "Não foi possível criar o pedido. Tente de novo ou fale com a gente pelo WhatsApp.", itemsError ?? photosError, 500, {
       order: order.id,
       etapa: itemsError ? "itens do pedido" : "vincular fotos",
     });

@@ -73,7 +73,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
 
   const { id } = await params;
   const parsed = patchSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success || !Object.keys(parsed.data).length) return fail("Alteração inválida.");
+  if (!parsed.success || !Object.keys(parsed.data).length) return fail("Não foi possível salvar. Tente de novo.");
   const patch = parsed.data;
 
   const { data: current } = await auth.supabase
@@ -82,13 +82,13 @@ export async function PATCH(request: Request, { params }: Ctx) {
     .eq("id", id)
     .is("order_id", null)
     .maybeSingle();
-  if (!current) return fail("Foto não encontrada no carrinho.", 404);
+  if (!current) return fail("Esta foto não está mais no carrinho. Atualize a página.", 404);
   const photo = current as Photo;
 
   if (patch.crop) {
     const c = patch.crop;
     if (c.x + c.width > photo.width_px + 1 || c.y + c.height > photo.height_px + 1) {
-      return fail("Corte fora da imagem.");
+      return fail("Não foi possível salvar o corte. Ajuste de novo.");
     }
   }
   if (patch.finish || patch.adjust) {
@@ -110,7 +110,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
     .is("order_id", null)
     .select("*")
     .single();
-  if (error) return serverFail("fotos", error.message, error, 500, { etapa: "salvar ajustes", photo: id });
+  if (error) return serverFail("fotos", "Não foi possível salvar. Tente de novo.", error, 500, { etapa: "salvar ajustes", photo: id });
   return NextResponse.json({ photo: data });
 }
 
@@ -126,8 +126,8 @@ export async function DELETE(_request: Request, { params }: Ctx) {
     .is("order_id", null)
     .select("storage_key, thumb_key")
     .maybeSingle();
-  if (error) return serverFail("fotos", error.message, error, 500, { etapa: "remover foto", photo: id });
-  if (!data) return fail("Foto não encontrada no carrinho.", 404);
+  if (error) return serverFail("fotos", "Não foi possível remover a foto. Tente de novo.", error, 500, { etapa: "remover foto", photo: id });
+  if (!data) return fail("Esta foto não está mais no carrinho. Atualize a página.", 404);
 
   if (hasStorage) {
     await deleteObjects([data.storage_key, data.thumb_key]).catch((err) =>

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth-form";
-import { AuthShell, safeNext } from "@/components/auth-shell";
+import { accessReason, AuthShell, safeNext } from "@/components/auth-shell";
 import { getUser } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Entrar" };
@@ -19,6 +19,7 @@ export default async function EntrarPage({
   return (
     <AuthShell
       title="Entrar"
+      subtitle={accessReason(next)}
       footer={
         <p>
           Ainda não tem conta?{" "}

@@ -8,19 +8,16 @@ import { NavLinks } from "./nav-links";
 
 export const NAV = [
   { href: "/precos", label: "Preços" },
-  { href: "/promocoes", label: "Promoções" },
+  { href: "/promocoes", label: "Pacotes" },
   { href: "/prazos-e-frete", label: "Prazos e frete" },
   { href: "/contato", label: "Contato" },
 ];
 
 async function cartCount(userId: string) {
   const supabase = await createClient();
-  const { count } = await supabase
-    .from("photos")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .is("order_id", null);
-  return count ?? 0;
+  // Soma as cópias: é o que o cliente paga e o que o carrinho mostra
+  const { data } = await supabase.from("photos").select("quantity").eq("user_id", userId).is("order_id", null);
+  return (data ?? []).reduce((sum, p) => sum + (p.quantity ?? 1), 0);
 }
 
 export async function Header() {
@@ -47,7 +44,8 @@ export async function Header() {
             className="hidden min-h-11 items-center gap-2 rounded-control px-3 font-medium text-ink-2 transition-colors duration-150 hover:bg-ink/[0.05] hover:text-ink sm:inline-flex"
           >
             <UserIcon size={20} aria-hidden />
-            {user ? "Minha conta" : "Entrar"}
+            {/* Entre 768 e 1023 px o menu e o botão disputam espaço: fica só o ícone */}
+            <span className="md:max-lg:sr-only">{user ? "Minha conta" : "Entrar"}</span>
           </Link>
           <Link
             href="/carrinho"
@@ -61,7 +59,7 @@ export async function Header() {
               </span>
             )}
           </Link>
-          <Link href="/enviar" className="btn btn-accent btn-sm ml-1 hidden lg:inline-flex">
+          <Link href="/enviar" className="btn btn-accent btn-sm ml-1 hidden md:inline-flex">
             Enviar fotos
           </Link>
           <MobileMenu items={NAV} loggedIn={Boolean(user)} />

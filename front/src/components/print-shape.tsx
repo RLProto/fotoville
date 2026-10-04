@@ -33,7 +33,7 @@ export function samplePhotoFor(index: number) {
 }
 
 /**
- * Uma foto impressa desenhada em escala: papel branco com borda e, dentro, uma foto de exemplo
+ * Uma foto impressa desenhada em escala: papel branco com um fio de borda e, dentro, uma foto de exemplo
  * (ou só a cor de uma lâmina do logo). Sempre em pé (retrato).
  * A escala vem de `scale` (px por cm) ou, sem ela, da variável CSS --cm do contêiner, o que permite
  * mudar a escala por tamanho de tela.
@@ -54,8 +54,9 @@ export function PrintShape({
   const shortCm = Math.min(product.width_cm, product.height_cm);
   const longCm = Math.max(product.width_cm, product.height_cm);
   const cm = (value: number) => (scale ? `${Math.round(value * scale)}px` : `calc(var(--cm, 6px) * ${value})`);
-  const border = `max(2px, ${cm(shortCm * 0.05)})`;
   const polaroid = product.kind === "polaroid";
+  // Foto comum sai sem borda: o fio branco só faz o desenho ler como papel. A Polaroid tem a moldura dela.
+  const border = polaroid ? `max(2px, ${cm(shortCm * 0.05)})` : "2px";
 
   return (
     <div

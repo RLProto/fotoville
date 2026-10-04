@@ -14,14 +14,14 @@ export async function readImage(file: File): Promise<{ width: number; height: nu
   canvas.width = Math.max(1, Math.round(width * scale));
   canvas.height = Math.max(1, Math.round(height * scale));
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Não foi possível processar a imagem.");
+  if (!ctx) throw new Error("Não foi possível abrir esta foto. Tente outra.");
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(decoded.image, 0, 0, canvas.width, canvas.height);
   decoded.close();
 
   const thumb = await new Promise<Blob>((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Falha ao gerar miniatura."))), "image/jpeg", 0.82),
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Não foi possível abrir esta foto. Tente outra."))), "image/jpeg", 0.82),
   );
   return { width, height, thumb };
 }
@@ -34,8 +34,8 @@ export function putWithProgress(url: string, body: Blob, contentType: string, on
     xhr.setRequestHeader("Content-Type", contentType);
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
     xhr.onload = () =>
-      xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Falha no envio (HTTP ${xhr.status}).`));
-    xhr.onerror = () => reject(new Error("Falha de conexão durante o envio."));
+      xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error("O envio falhou. Tente de novo."));
+    xhr.onerror = () => reject(new Error("A conexão caiu durante o envio. Tente de novo."));
     xhr.send(body);
   });
 }

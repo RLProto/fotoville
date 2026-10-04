@@ -11,13 +11,13 @@ const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin"], axes: 
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
-  title: { default: "Fotoville | Revelação de fotos online", template: "%s | Fotoville" },
+  title: { default: "Revelação de fotos online em Joinville | Fotoville", template: "%s | Fotoville" },
   description: site.description,
   openGraph: {
     type: "website",
     locale: "pt_BR",
     siteName: site.name,
-    title: "Fotoville | Revelação de fotos online",
+    title: "Revelação de fotos online em Joinville | Fotoville",
     description: site.description,
     images: [{ url: "/hero-fotos.jpg", width: 1024, height: 671, alt: "Fotos reveladas pela Fotoville" }],
   },

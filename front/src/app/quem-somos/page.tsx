@@ -12,23 +12,41 @@ export const metadata: Metadata = {
 export default function QuemSomosPage() {
   return (
     <>
-      <PageHeader title="Fotografia é para segurar na mão" />
-      <div className="container-page grid items-center gap-12 py-12 lg:grid-cols-[1.3fr_1fr]">
-        <div className="max-w-[52ch] space-y-4 text-xl">
-          <p>
-            Revelamos fotos em {site.address.city} desde {site.since}, em papel Kodak e Fujifilm.
+      <PageHeader title="Quem somos" />
+      <div className="container-page grid items-start gap-12 py-12 lg:grid-cols-[1.2fr_1fr] lg:gap-20">
+        <div className="max-w-[54ch]">
+          <p className="display-md text-2xl sm:text-3xl">
+            A Fotoville revela fotos em {site.address.city} desde {site.since}.
           </p>
-          <p className="text-ink-2">Você envia pelo site e recebe em casa, em qualquer lugar do Brasil.</p>
-          <p className="pt-4">
+          <div className="mt-6 space-y-4 text-lg text-ink-2">
+            <p>Papel Kodak e Fujifilm, de 10x13 a 30x60, além de Polaroid e foto-placa.</p>
+            <p>Você envia as fotos pelo site e recebe pelos Correios em todo o Brasil, ou retira na loja sem custo.</p>
+          </div>
+          <Image src="/marcas-kodak-fujifilm.png" alt="Kodak e Fujifilm" width={230} height={25} className="mt-8 h-auto" />
+          <p className="mt-10">
             <Link href="/enviar" className="btn btn-accent btn-lg">
               Enviar fotos
             </Link>
           </p>
         </div>
-        <div className="flex flex-col items-center gap-8">
-          <Image src="/logo-full.png" alt="Logo da Fotoville" width={260} height={241} />
-          <Image src="/papeis-kodak-fuji.png" alt="Papéis Kodak e Fujifilm" width={298} height={63} />
-        </div>
+
+        <section aria-labelledby="loja" className="border-t border-ink pt-5">
+          <h2 id="loja" className="text-lg font-bold">
+            Loja e retirada
+          </h2>
+          <address className="mt-2 text-lg leading-relaxed not-italic">
+            {site.address.street}
+            <br />
+            {site.address.district}, {site.address.city}/{site.address.state}
+            <br />
+            CEP {site.address.cep}
+          </address>
+          <p className="mt-4">
+            <Link href="/contato" className="link">
+              Contato e mapa
+            </Link>
+          </p>
+        </section>
       </div>
     </>
   );

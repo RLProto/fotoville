@@ -4,6 +4,7 @@ import { CircleNotchIcon, LockIcon, StorefrontIcon, TruckIcon } from "@phosphor-
 import { useId, useRef, useState } from "react";
 import { formatBRL, formatCep, formatCpf, formatPhone, isValidCpf, onlyDigits } from "@/lib/format";
 import { reportError } from "@/lib/report-error";
+import { whatsappLink } from "@/lib/site";
 import type { ShippingOption } from "@/lib/types";
 
 type Line = { key: string; label: string; total_cents: number };
@@ -182,7 +183,7 @@ export function CheckoutForm({
       });
       window.location.assign(redirect);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Não foi possível concluir o pedido.");
+      setSubmitError(err instanceof Error ? err.message : "Não foi possível concluir o pedido. Tente de novo.");
       setSubmitting(false);
     }
   }
@@ -208,7 +209,7 @@ export function CheckoutForm({
                 />
               )}
             </Field>
-            <Field label="CPF" name="cpf" error={errors.cpf} hint="Necessário para o envio.">
+            <Field label="CPF" name="cpf" error={errors.cpf} hint={mode === "entrega" ? "Necessário para o envio." : undefined}>
               {(props) => (
                 <input
                   {...props}
@@ -245,8 +246,8 @@ export function CheckoutForm({
           <div className="clear-both grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Como você quer receber">
             {(
               [
-                { value: "entrega", title: "Receber em casa", text: "Correios, para todo o Brasil", Icon: TruckIcon },
-                { value: "retirada", title: "Retirar na loja", text: "Sem frete, em Joinville", Icon: StorefrontIcon },
+                { value: "entrega", title: "Receber em casa", text: "Correios, PAC ou SEDEX", Icon: TruckIcon },
+                { value: "retirada", title: "Retirar na loja", text: "Grátis, em Joinville", Icon: StorefrontIcon },
               ] as const
             ).map(({ value, title, text, Icon }) => (
               <label
@@ -276,7 +277,8 @@ export function CheckoutForm({
             <p className="alert alert-info mt-5">
               <StorefrontIcon size={20} aria-hidden className="mt-0.5 shrink-0" />
               <span>
-                <strong>{pickupAddress}</strong>. Avisamos pelo WhatsApp quando estiver pronto.
+                <strong>{pickupAddress}</strong>. Pronto em até {productionDays} dias úteis depois do pagamento. Avisamos
+                pelo WhatsApp.
               </span>
             </p>
           ) : (
@@ -328,11 +330,10 @@ export function CheckoutForm({
                         <span className="flex-1">
                           <span className="block font-bold">{option.label}</span>
                           <span className="block text-sm text-ink-2">
-                            Até {productionDays + option.days} dias úteis
+                            Até {productionDays + option.days} dias úteis depois do pagamento
                           </span>
                         </span>
                         <span className="font-display font-bold tabular-nums">
-                          {option.estimated && <span className="text-sm font-normal text-ink-2">aprox. </span>}
                           {formatBRL(option.price_cents)}
                         </span>
                       </label>
@@ -455,7 +456,8 @@ export function CheckoutForm({
             </dd>
           </div>
           <div className="flex justify-between gap-4 border-t border-rule pt-3 text-xl">
-            <dt className="font-bold">Total</dt>
+            {/* Sem frete calculado, a soma ainda não é o total */}
+            <dt className="font-bold">{shippingCents === null ? "Subtotal" : "Total"}</dt>
             <dd className="font-display font-bold text-ink tabular-nums" aria-live="polite">
               {formatBRL(totalCents)}
             </dd>
@@ -485,7 +487,7 @@ export function CheckoutForm({
               aria-expanded={false}
               onClick={() => setCouponOpen(true)}
             >
-              Tem um cupom?
+              Usar cupom
             </button>
           ) : (
             <div className="pt-1">
@@ -543,12 +545,25 @@ export function CheckoutForm({
           </p>
         )}
 
-        <button type="submit" className="btn btn-accent btn-lg mt-5 w-full" disabled={submitting}>
+        {/* O prazo fica junto do botão: é a última dúvida antes de pagar */}
+        {(mode === "retirada" || selected) && (
+          <p className="mt-4 text-sm font-semibold">
+            {mode === "retirada"
+              ? `Pronto para retirar em até ${productionDays} dias úteis depois do pagamento.`
+              : `Entrega em até ${productionDays + (selected?.days ?? 0)} dias úteis depois do pagamento.`}
+          </p>
+        )}
+
+        <button type="submit" className="btn btn-accent btn-lg mt-4 w-full" disabled={submitting}>
           {submitting ? <CircleNotchIcon size={20} className="spinner" aria-hidden /> : <LockIcon size={18} aria-hidden />}
-          {submitting ? "Criando pedido…" : totalCents === 0 ? "Concluir pedido" : "Ir para o pagamento"}
+          {submitting ? (totalCents === 0 ? "Concluindo…" : "Abrindo pagamento…") : totalCents === 0 ? "Concluir pedido" : "Ir para o pagamento"}
         </button>
-        <p className="mt-3 text-center text-sm text-ink-2">
-          Pix, cartão ou boleto pelo Mercado Pago.
+        <p className="mt-3 text-center text-sm text-ink-2">Pix, cartão ou boleto pelo Mercado Pago.</p>
+        <p className="mt-4 border-t border-rule pt-3 text-center text-sm">
+          Dúvidas?{" "}
+          <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="link">
+            Falar no WhatsApp
+          </a>
         </p>
       </aside>
     </form>

@@ -10,12 +10,10 @@ import type { Package } from "@/lib/types";
 export function PackageCard({
   pkg,
   regularUnitCents,
-  featured,
 }: {
   pkg: Package;
   /** Preço avulso da foto, para mostrar a economia real. */
   regularUnitCents: number;
-  featured?: boolean;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -39,27 +37,20 @@ export function PackageCard({
         return;
       }
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Não foi possível iniciar a compra.");
+      if (!res.ok) throw new Error(data.error ?? "Não foi possível abrir o pagamento. Tente de novo.");
       window.location.assign(data.redirect);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível iniciar a compra.");
+      setError(err instanceof Error ? err.message : "Não foi possível abrir o pagamento. Tente de novo.");
       setLoading(false);
     }
   }
 
   return (
-    <article
-      className={`flex flex-col rounded-panel bg-surface px-6 pt-5 pb-6 text-ink ${
-        featured ? "outline-2 outline-ink" : ""
-      }`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <h3>
-          <span className="display block text-3xl tabular-nums">{pkg.photo_count}</span>
-          <span className="text-sm text-ink-2">fotos 10x15</span>
-        </h3>
-        {featured && <span className="badge bg-ink text-surface">Recomendado</span>}
-      </div>
+    <article className="flex flex-col rounded-panel bg-surface px-6 pt-5 pb-6 text-ink">
+      <h3>
+        <span className="display block text-3xl tabular-nums">{pkg.photo_count}</span>
+        <span className="text-sm text-ink-2">fotos 10x15</span>
+      </h3>
 
       <p className="mt-4 text-2xl font-extrabold tabular-nums" style={{ fontStretch: "112%" }}>
         {formatBRL(pkg.price_cents)}
@@ -74,7 +65,7 @@ export function PackageCard({
           type="button"
           onClick={buy}
           disabled={loading}
-          className={`btn w-full ${featured ? "btn-accent" : "btn-outline"}`}
+          className="btn btn-outline w-full"
         >
           {loading && <CircleNotchIcon size={18} className="spinner" aria-hidden />}
           {loading ? "Abrindo pagamento…" : "Comprar pacote"}

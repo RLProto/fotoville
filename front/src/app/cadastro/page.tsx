@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth-form";
-import { AuthShell, safeNext } from "@/components/auth-shell";
+import { accessReason, AuthShell, safeNext } from "@/components/auth-shell";
 import { getUser } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Criar conta" };
@@ -13,6 +13,7 @@ export default async function CadastroPage({ searchParams }: { searchParams: Pro
   return (
     <AuthShell
       title="Criar conta"
+      subtitle={accessReason(next)}
       footer={
         <p>
           Já tem conta?{" "}

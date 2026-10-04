@@ -4,14 +4,13 @@ import { PageHeader } from "@/components/page-header";
 import { getProducts } from "@/lib/catalog";
 import { formatBRL } from "@/lib/format";
 import { quantityRanges, rangeLabel, unitPrice } from "@/lib/pricing";
-import { site } from "@/lib/site";
 import { SIZE_GROUPS } from "@/lib/size-groups";
 import { FINISH_LABEL } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "Preços de revelação de fotos",
   description:
-    "Tabela de preços da Fotoville: preço por foto de 10x15 a 30x60, Polaroid e foto-placa, com desconto por quantidade.",
+    "Preço por foto do 10x13 ao 30x60, Polaroid e foto-placa. Desconto por quantidade no 10x15. Entrega em todo o Brasil ou retirada em Joinville/SC.",
 };
 
 const shortName = (name: string) => name.replace(" cm", "");
@@ -88,10 +87,11 @@ export default async function PrecosPage() {
                   : `Descontos válidos para os tamanhos ${listNames(tiered.map((p) => shortName(p.name)))}.`}
               </p>
               <p className="mt-6 max-w-[40ch]">
-                Prefere pagar antes e revelar aos poucos?{" "}
+                Para pagar antes e revelar aos poucos, veja os{" "}
                 <Link href="/promocoes" className="link">
-                  Veja os pacotes
+                  pacotes pré-pagos
                 </Link>
+                .
               </p>
             </div>
 
@@ -146,9 +146,9 @@ export default async function PrecosPage() {
             Enviar fotos
           </Link>
           <p className="text-ink-2">
-            Frete à parte, ou retire grátis em {site.address.city}.{" "}
+            Frete à parte.{" "}
             <Link href="/prazos-e-frete" className="link">
-              Prazos e frete
+              Consultar prazos e frete
             </Link>
           </p>
         </div>

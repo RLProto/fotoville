@@ -8,20 +8,12 @@ import type { Product } from "@/lib/types";
 
 const BOARD_SIZES = ["polaroid", "10x15", "13x18", "15x21", "20x30", "30x40"];
 
-const STEPS = [
-  { title: "Envie as fotos", text: "Do celular ou do computador." },
-  { title: "Ajuste o corte", text: "Veja como cada foto vai sair." },
-  { title: "Receba em casa", text: "Ou retire na loja, sem frete." },
-];
-
-const FACTS = ["Ajuste foto a foto antes de pagar", "Atendimento pelo WhatsApp", `Retirada grátis em ${site.address.city}`];
-
 const FAQ = [
   { q: "Quais arquivos posso enviar?", a: "JPG, PNG ou WebP, até 40 MB por foto." },
-  { q: "E se a foto não tiver o formato do papel?", a: "Você ajusta o corte ou imprime a foto inteira, com borda branca." },
+  { q: "E se a foto não couber no tamanho?", a: "Você ajusta o corte ou imprime a foto inteira, com borda branca." },
   {
     q: "Quanto tempo demora?",
-    a: `Produção em até ${site.productionDays} dias úteis. O prazo de entrega aparece antes de pagar.`,
+    a: `Produção em até ${site.productionDays} dias úteis. O prazo de entrega e o frete aparecem antes de pagar.`,
   },
   { q: "Posso misturar tamanhos?", a: "Sim, tudo no mesmo pedido." },
 ];
@@ -33,6 +25,12 @@ function pick(products: Product[], ids: string[]) {
 export default async function HomePage() {
   const [products, packages] = await Promise.all([getProducts(), getPackages()]);
   const tenByFifteen = products.find((p) => p.id === "10x15");
+  const bestDiscount = tenByFifteen
+    ? Math.max(0, ...packages.map((p) => Math.round((1 - p.price_cents / p.photo_count / tenByFifteen.price_cents) * 100)))
+    : 0;
+  const mapsQuery = encodeURIComponent(
+    `${site.address.street}, ${site.address.district}, ${site.address.city} - ${site.address.state}, ${site.address.cep}`,
+  );
 
   return (
     <>
@@ -52,9 +50,9 @@ export default async function HomePage() {
         <div className="container-page lg:grid lg:min-h-[560px] lg:grid-cols-[48%_1fr] lg:items-center">
           <div className="hidden lg:block" />
           <div className="py-10 lg:py-14 lg:pl-14">
-            <h1 className="display text-[2.15rem] sm:text-5xl">Revele suas fotos</h1>
-            <p className="mt-4 max-w-[46ch] text-lg text-ink-2">
-              Envie pelo site e receba em todo o Brasil.
+            <h1 className="display text-[2.4rem] sm:text-5xl lg:text-6xl">Revele suas fotos</h1>
+            <p className="mt-5 max-w-[40ch] text-lg text-ink-2">
+              Confira como cada foto vai sair antes de pagar. Entrega em todo o Brasil ou retirada em {site.address.city}.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
               <Link href="/enviar" className="btn btn-accent btn-lg w-full sm:w-auto">
@@ -68,43 +66,21 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Os três passos: uma sequência real, por isso numerada */}
-      <section className="bg-blade-teal text-surface" aria-labelledby="como-funciona">
-        <div className="container-page grid gap-10 py-14 lg:grid-cols-[1fr_2.2fr] lg:py-16">
-          <h2 id="como-funciona" className="display text-3xl sm:text-4xl">
-            Como funciona
+      {/* A régua de tamanhos: o que só a Fotoville mostra, por isso ganha o campo de cor */}
+      <section className="bg-blade-teal text-surface" aria-labelledby="tamanhos">
+        <div className="container-page py-16 lg:py-20">
+          <h2 id="tamanhos" className="display text-3xl">
+            Compare os tamanhos
           </h2>
-          <ol className="grid gap-8 sm:grid-cols-3">
-            {STEPS.map((step, i) => (
-              <li key={step.title}>
-                <span className="display block text-5xl tabular-nums" aria-hidden>
-                  {i + 1}
-                </span>
-                <h3 className="mt-3 text-lg font-bold">
-                  <span className="sr-only">Passo {i + 1}: </span>
-                  {step.title}
-                </h3>
-                <p className="mt-1 text-[#d6e1e1]">{step.text}</p>
-              </li>
-            ))}
-          </ol>
+          <div className="mt-10">
+            <SizeBoard products={pick(products, BOARD_SIZES)} onColor />
+          </div>
+          <p className="mt-6">
+            <Link href="/precos" className="font-semibold text-surface underline underline-offset-2 hover:text-[#d6e1e1]">
+              Ver os {products.length} tamanhos e preços
+            </Link>
+          </p>
         </div>
-      </section>
-
-      {/* A régua de tamanhos */}
-      <section className="container-page py-16 lg:py-24" aria-labelledby="tamanhos">
-        <h2 id="tamanhos" className="display text-3xl sm:text-4xl">
-          Veja o tamanho real
-        </h2>
-        <p className="mt-3 text-lg text-ink-2">Na mesma escala, ao lado de um celular.</p>
-        <div className="mt-12">
-          <SizeBoard products={pick(products, BOARD_SIZES)} />
-        </div>
-        <p className="mt-6">
-          <Link href="/precos" className="link">
-            Ver os {products.length} tamanhos e preços
-          </Link>
-        </p>
       </section>
 
       {/* Pacotes pré-pagos */}
@@ -117,46 +93,58 @@ export default async function HomePage() {
           {/* Título em cima e os quatro pacotes numa fileira só no desktop */}
           <div className="container-page py-16 lg:py-20">
             <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
-              <h2 id="pacotes" className="display text-3xl sm:text-4xl">
+              <h2 id="pacotes" className="display text-3xl">
                 Compre agora, revele depois
               </h2>
-              <p className="text-lg">Pacotes 10x15 com desconto. Use quando quiser.</p>
+              <p className="text-lg">
+                Pacotes de fotos 10x15{bestDiscount > 0 ? ` com até ${bestDiscount}% de desconto` : ""}. Frete à parte.
+              </p>
             </div>
             <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {packages.map((pkg) => (
-                <PackageCard
-                  key={pkg.id}
-                  pkg={pkg}
-                  regularUnitCents={tenByFifteen.price_cents}
-                  featured={pkg.photo_count === 300}
-                />
+                <PackageCard key={pkg.id} pkg={pkg} regularUnitCents={tenByFifteen.price_cents} />
               ))}
             </div>
           </div>
         </section>
       )}
 
-      {/* Prova: o papel e o tempo de casa */}
-      <section className="container-page grid items-center gap-12 py-16 lg:grid-cols-[1.15fr_1fr] lg:py-24" aria-labelledby="papel">
+      {/* A loja: tempo de casa, papel e onde fica. Fatos, sem lista de vantagens */}
+      <section className="container-page grid items-start gap-12 py-16 lg:grid-cols-[1.15fr_1fr] lg:py-24" aria-labelledby="loja">
         <div>
-          <h2 id="papel" className="display max-w-[16ch] text-3xl sm:text-4xl">
+          <h2 id="loja" className="display max-w-[16ch] text-3xl">
             Revelando em {site.address.city} desde {site.since}
           </h2>
-          <Image src="/papeis-kodak-fuji.png" alt="Papéis Kodak e Fujifilm" width={298} height={63} className="mt-8" />
+          <p className="mt-6 text-lg text-ink-2">Papel Kodak e Fujifilm.</p>
+          <Image src="/marcas-kodak-fujifilm.png" alt="Kodak e Fujifilm" width={260} height={28} className="mt-4 h-auto" />
         </div>
-        <ul className="space-y-4 text-xl font-semibold">
-          {FACTS.map((fact) => (
-            <li key={fact} className="border-t border-rule pt-4">
-              {fact}
-            </li>
-          ))}
-        </ul>
+        <div className="border-t border-ink pt-5">
+          <h3 className="text-lg font-bold">Retirada grátis na loja</h3>
+          <address className="mt-2 text-lg leading-relaxed text-ink-2 not-italic">
+            {site.address.street}
+            <br />
+            {site.address.district}, {site.address.city}/{site.address.state}
+          </address>
+          <p className="mt-5 flex flex-wrap gap-x-6 gap-y-2">
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link"
+            >
+              Ver no mapa
+            </a>
+            <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="link">
+              WhatsApp {site.whatsappDisplay}
+            </a>
+          </p>
+        </div>
       </section>
 
       {/* Perguntas: só as que mudam a decisão */}
       <section className="border-t border-rule" aria-labelledby="duvidas">
         <div className="container-page py-16 lg:py-20">
-          <h2 id="duvidas" className="display text-3xl sm:text-4xl">
+          <h2 id="duvidas" className="display text-3xl">
             Perguntas frequentes
           </h2>
           <dl className="mt-10 grid gap-x-14 gap-y-8 md:grid-cols-2">
@@ -170,7 +158,7 @@ export default async function HomePage() {
           <p className="mt-12 text-lg">
             Outra dúvida?{" "}
             <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="link">
-              Fale no WhatsApp
+              Falar no WhatsApp
             </a>
           </p>
         </div>

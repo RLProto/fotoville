@@ -18,8 +18,8 @@ export function RemoveGroupButton({ productId, productName }: { productId: strin
 
   if (!confirming) {
     return (
-      <button type="button" className="btn btn-danger-ghost btn-sm" onClick={() => setConfirming(true)}>
-        <TrashIcon size={16} aria-hidden />
+      <button type="button" className="btn btn-danger-ghost" onClick={() => setConfirming(true)}>
+        <TrashIcon size={18} aria-hidden />
         Remover
         <span className="sr-only"> fotos {productName}</span>
       </button>
@@ -28,11 +28,11 @@ export function RemoveGroupButton({ productId, productName }: { productId: strin
 
   return (
     <span className="inline-flex items-center gap-1" role="group" aria-label={`Confirmar remoção das fotos ${productName}`}>
-      <button type="button" className="btn btn-sm bg-danger text-white hover:bg-danger/90" onClick={remove} disabled={loading}>
+      <button type="button" className="btn bg-danger text-white hover:bg-danger/90" onClick={remove} disabled={loading}>
         {loading && <CircleNotchIcon size={16} className="spinner" aria-hidden />}
-        Sim, remover
+        Remover todas
       </button>
-      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirming(false)} disabled={loading}>
+      <button type="button" className="btn btn-ghost" onClick={() => setConfirming(false)} disabled={loading}>
         Cancelar
       </button>
     </span>

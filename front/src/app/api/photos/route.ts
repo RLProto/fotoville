@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   if ("error" in auth) return auth.error;
 
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return fail("Dados da foto inválidos.");
+  if (!parsed.success) return fail("Não foi possível registrar a foto. Envie de novo.");
   const input = parsed.data;
 
   const prefix = `u/${auth.user.id}/`;
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   }
 
   const product = await getProduct(input.product_id);
-  if (!product) return fail("Tamanho não encontrado.", 404);
+  if (!product) return fail("Este tamanho não está mais disponível.", 404);
 
   const finish = input.finish && product.finishes.includes(input.finish) ? input.finish : product.finishes[0];
 
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     })
     .select("*")
     .single();
-  if (error) return serverFail("fotos", error.message, error, 500, { etapa: "registrar foto", product: product.id });
+  if (error) return serverFail("fotos", "Não foi possível salvar a foto. Tente de novo.", error, 500, { etapa: "registrar foto", product: product.id });
 
   const [photo] = await withThumbUrls([data as Photo]);
   return NextResponse.json({ photo });
@@ -67,7 +67,7 @@ export async function DELETE(request: Request) {
   if (productId) query = query.eq("product_id", productId);
 
   const { data, error } = await query.select("storage_key, thumb_key");
-  if (error) return serverFail("fotos", error.message, error, 500, { etapa: "remover fotos", product: productId });
+  if (error) return serverFail("fotos", "Não foi possível remover as fotos. Tente de novo.", error, 500, { etapa: "remover fotos", product: productId });
 
   if (hasStorage && data?.length) {
     await deleteObjects(data.flatMap((p) => [p.storage_key, p.thumb_key])).catch((err) =>

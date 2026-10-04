@@ -4,7 +4,7 @@ import { site, whatsappLink } from "@/lib/site";
 
 const LINKS = [
   { href: "/precos", label: "Preços" },
-  { href: "/promocoes", label: "Promoções" },
+  { href: "/promocoes", label: "Pacotes" },
   { href: "/prazos-e-frete", label: "Prazos e frete" },
   { href: "/quem-somos", label: "Quem somos" },
   { href: "/contato", label: "Contato" },
@@ -13,7 +13,7 @@ const LINKS = [
 
 export function Footer() {
   return (
-    <footer className="mt-24 border-t border-rule bg-surface">
+    <footer className="mt-16 border-t border-rule bg-surface">
       <div className="container-page grid gap-10 py-12 md:grid-cols-[1fr_1.2fr]">
         <div className="flex items-start gap-4">
           <Image src="/logo-icon.png" alt="" width={44} height={44} />
@@ -38,7 +38,7 @@ export function Footer() {
             <ul className="grid grid-cols-2 gap-x-4 sm:grid-cols-1">
               {LINKS.map((item) => (
                 <li key={item.href}>
-                  <Link href={item.href} className="inline-flex min-h-9 items-center text-ink-2 hover:text-ink hover:underline">
+                  <Link href={item.href} className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink hover:underline">
                     {item.label}
                   </Link>
                 </li>

@@ -63,7 +63,7 @@ export function describeAdjust(a: Adjust | null): string[] {
   const out: string[] = [];
   if (a.auto) out.push("ajuste automático");
   if (a.bw) out.push("preto e branco");
-  if (a.brightness) out.push(`brilho ${signed(a.brightness)}`);
+  if (a.brightness) out.push(`luz ${signed(a.brightness)}`);
   if (a.contrast) out.push(`contraste ${signed(a.contrast)}`);
   if (a.saturation && !a.bw) out.push(`saturação ${signed(a.saturation)}`);
   if (a.border) {

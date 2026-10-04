@@ -19,7 +19,7 @@ export async function previewCoupon(admin: SupabaseClient, rawCode: string, line
   const { data } = await admin.from("coupons").select("*").eq("code", code).maybeSingle();
   const coupon = data as Coupon | null;
 
-  if (!coupon || !coupon.active) return { ok: false, message: "Cupom não encontrado." };
+  if (!coupon || !coupon.active) return { ok: false, message: "Cupom não encontrado. Confira o código." };
   if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
     return { ok: false, message: "Este cupom expirou." };
   }
@@ -38,11 +38,11 @@ export async function previewCoupon(admin: SupabaseClient, rawCode: string, line
   }
 
   const balance = coupon.credits_total - coupon.credits_used;
-  if (balance <= 0) return { ok: false, message: "Este cupom já foi todo utilizado." };
+  if (balance <= 0) return { ok: false, message: "Este cupom não tem mais saldo." };
 
   const eligible = lines.filter((l) => l.product.id === coupon.product_id);
   if (!eligible.length) {
-    return { ok: false, message: `Este cupom vale para fotos ${coupon.product_id}. Não há nenhuma no carrinho.` };
+    return { ok: false, message: `Este cupom vale para fotos ${coupon.product_id}. Adicione fotos ${coupon.product_id} ao carrinho.` };
   }
 
   let remaining = balance;
@@ -60,7 +60,7 @@ export async function previewCoupon(admin: SupabaseClient, rawCode: string, line
     kind: "credits",
     discount_cents,
     credits,
-    message: `${plural(credits, "foto coberta", "fotos cobertas")} pelo cupom. Saldo depois deste pedido: ${remaining}.`,
+    message: `Cobre ${plural(credits, "foto", "fotos")}. Saldo depois deste pedido: ${plural(remaining, "foto", "fotos")}.`,
   };
 }
 

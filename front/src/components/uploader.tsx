@@ -20,11 +20,17 @@ import { loadImage } from "@/lib/decode-image";
 import { analyzeImage } from "@/lib/photo-render";
 import { nearTier, unitPrice } from "@/lib/pricing";
 import { fileDetail, reportError } from "@/lib/report-error";
+import { whatsappLink } from "@/lib/site";
 import { FINISH_LABEL, type Adjust, type Crop, type Finish, type PhotoView, type Product } from "@/lib/types";
 import { ACCEPTED_TYPES, MAX_FILE_BYTES, putWithProgress, readImage, runPool } from "@/lib/upload-client";
-import { FinishDialog } from "./finish-dialog";
 import { PhotoEditor } from "./photo-editor";
 import { PrintPreview } from "./print-preview";
+import { PrintShape } from "./print-shape";
+
+const FINISH_HINT: Record<Finish, string> = {
+  brilho: "Cores mais vivas.",
+  fosco: "Sem reflexo.",
+};
 
 type Presigned = { name: string; key: string; thumbKey: string; uploadUrl: string; thumbUploadUrl: string };
 type Failure = { name: string; message: string };
@@ -98,16 +104,17 @@ export function Uploader({
 
   /** Acabamento em uso: o de todas as fotos, ou null se estiverem misturados ou não houver fotos. */
   const uniformFinish = photos.length && photos.every((p) => p.finish === photos[0].finish) ? photos[0].finish : null;
-  /**
-   * Pergunta do acabamento no primeiro envio: antes de abrir a galeria ("galeria") ou, ao arrastar
-   * arquivos, com os arquivos já escolhidos.
-   */
-  const [finishPrompt, setFinishPrompt] = useState<"galeria" | File[] | null>(null);
-  /** Acabamento escolhido no popup antes de abrir a galeria. */
-  const [chosenFinish, setChosenFinish] = useState<Finish | null>(null);
+  /** Acabamento do primeiro envio, escolhido na própria área de envio (já vem marcado o primeiro). */
+  const [chosenFinish, setChosenFinish] = useState<Finish>(product.finishes[0]);
+  /** Aviso visível por alguns segundos (envio concluído, ação aplicada a todas). */
+  const [toast, setToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   function pickFiles() {
-    if (!photos.length && !chosenFinish && product.finishes.length > 1) return setFinishPrompt("galeria");
     openPicker();
   }
 
@@ -127,7 +134,7 @@ export function Uploader({
 
   async function upload(fileList: FileList | File[]) {
     const files = [...fileList];
-    if (!files.length || progress || finishPrompt) return;
+    if (!files.length || progress) return;
 
     const rejected: Failure[] = [];
     const valid = files.filter((file) => {
@@ -136,7 +143,7 @@ export function Uploader({
         return false;
       }
       if (file.size > MAX_FILE_BYTES) {
-        rejected.push({ name: file.name, message: "Arquivo maior que 40 MB." });
+        rejected.push({ name: file.name, message: "Arquivo maior que 40 MB. Envie uma versão menor." });
         return false;
       }
       return true;
@@ -157,22 +164,22 @@ export function Uploader({
     const ready = valid.filter((file, i) => {
       if (probes[i] === null) return true;
       reportError("envio", probes[i], { ...fileDetail(file), etapa: "leitura na seleção", product: product.id });
-      rejected.push({ name: file.name, message: "Não foi possível ler esta foto. Escolha de novo." });
+      rejected.push({ name: file.name, message: "Não foi possível ler esta foto. Selecione de novo." });
       return false;
     });
     setFailures(rejected);
     setNotice(null);
     if (!ready.length) return;
 
-    // Primeiro envio deste tamanho: vale o acabamento escolhido no popup. Depois, as novas seguem as que já estão aqui.
+    // Primeiro envio deste tamanho: vale o acabamento marcado na área de envio. Depois, as novas seguem as que já estão aqui.
     const finish = photos.length ? (uniformFinish ?? photos[0].finish) : chosenFinish;
-    if (!finish && product.finishes.length > 1) return setFinishPrompt(ready);
-    await send(ready, finish ?? product.finishes[0]);
+    await send(ready, finish);
   }
 
   async function send(valid: File[], finish: Finish) {
     const ratios = new Array(valid.length).fill(0);
     let done = 0;
+    let sent = 0;
     const report = () =>
       setProgress({ done, total: valid.length, ratio: ratios.reduce((a, b) => a + b, 0) / valid.length });
     report();
@@ -219,14 +226,15 @@ export function Uploader({
           urlsToRevoke.current.push(local.thumb, local.original);
           setLocalUrls((map) => ({ ...map, [photo.id]: local }));
           setPhotos((list) => [...list, photo]);
+          sent += 1;
         } catch (err) {
           reportError("envio", err, { ...fileDetail(file), etapa: step, product: product.id });
           const message =
             err instanceof DOMException && err.name === "NotReadableError"
-              ? "A foto ficou indisponível durante o envio. Escolha de novo."
+              ? "A foto ficou indisponível durante o envio. Selecione de novo."
               : err instanceof Error
                 ? err.message
-                : "Falha no envio.";
+                : "Não foi enviada. Tente de novo.";
           setFailures((list) => [...list, { name: file.name, message }]);
         } finally {
           ratios[index] = 1;
@@ -237,7 +245,11 @@ export function Uploader({
     );
 
     setProgress(null);
-    setNotice(`${plural(valid.length, "foto enviada", "fotos enviadas")}.`);
+    if (sent) {
+      const message = `${plural(sent, "foto enviada", "fotos enviadas")}.`;
+      setNotice(message);
+      setToast(message);
+    }
     router.refresh(); // atualiza o contador do carrinho no topo
   }
 
@@ -314,6 +326,7 @@ export function Uploader({
         before.map((p) => api(`/api/photos/${p.id}`, { method: "PATCH", body: JSON.stringify(changes) })),
       );
       setNotice("Aplicado a todas as fotos.");
+      setToast("Aplicado a todas as fotos.");
     } catch (err) {
       reportError("fotos", err, { etapa: "aplicar a todas", ...changes, count: before.length });
       setPhotos(before);
@@ -322,6 +335,7 @@ export function Uploader({
   }
 
   const thumbOf = (p: PhotoView) => localUrls[p.id]?.thumb ?? p.thumb_url;
+  const compact = photos.length > 0;
 
   const [autoBusy, setAutoBusy] = useState(false);
   const allAuto = photos.length > 0 && photos.every((p) => p.adjust?.auto);
@@ -361,7 +375,9 @@ export function Uploader({
       await Promise.all(
         [...next].map(([id, adjust]) => api(`/api/photos/${id}`, { method: "PATCH", body: JSON.stringify({ adjust }) })),
       );
-      setNotice(allAuto ? "Ajuste automático removido de todas." : "Ajuste automático aplicado a todas.");
+      const message = allAuto ? "Ajuste automático removido de todas." : "Ajuste automático aplicado a todas.";
+      setNotice(message);
+      setToast(message);
     } catch (err) {
       reportError("ajuste", err, { etapa: "gravar ajuste automático em todas", count: next.size });
       setPhotos(before);
@@ -369,6 +385,59 @@ export function Uploader({
     }
     setAutoBusy(false);
   }
+
+  const editingIndex = editing ? photos.findIndex((p) => p.id === editing.id) : -1;
+  const nextToEdit = editingIndex >= 0 ? photos[editingIndex + 1] : undefined;
+
+  const goToCart = async (e: React.MouseEvent) => {
+    if (progress) return e.preventDefault();
+    if (pendingRemoval.current) {
+      e.preventDefault();
+      await flushRemoval();
+      router.push("/carrinho");
+    }
+  };
+
+  const fileInput = (
+    <input
+      ref={inputRef}
+      id="arquivos"
+      type="file"
+      multiple
+      className="hidden"
+      tabIndex={-1}
+      aria-hidden
+      onChange={(e) => {
+        const input = e.currentTarget;
+        if (!input.files?.length) return;
+        // Só limpa o campo depois do envio: no Android, limpar antes pode cortar o acesso às fotos.
+        void upload(input.files).finally(() => {
+          input.value = "";
+        });
+      }}
+    />
+  );
+
+  const progressBar = progress && (
+    <div className={compact ? "w-full" : "mx-auto mt-6 max-w-md"} role="status" aria-live="polite">
+      <div
+        className="h-2.5 overflow-hidden rounded-[2px] bg-rule"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progress.ratio * 100)}
+        aria-label="Progresso do envio"
+      >
+        <div
+          className="h-full origin-left bg-action transition-transform duration-200"
+          style={{ transform: `scaleX(${progress.ratio})` }}
+        />
+      </div>
+      <p className="mt-2 text-sm font-semibold">
+        Enviando {Math.min(progress.done + 1, progress.total)} de {progress.total}. Não feche esta página.
+      </p>
+    </div>
+  );
 
   return (
     <div>
@@ -379,303 +448,355 @@ export function Uploader({
         </p>
       )}
 
-      {/* Área de envio: clique, teclado ou arrastar e soltar */}
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragging(false);
-          upload(e.dataTransfer.files);
-        }}
-        className={`rounded-panel border-2 border-dashed p-8 text-center transition-colors duration-200 ${
-          dragging ? "border-action bg-action-soft" : "border-action/40 bg-surface"
-        }`}
-      >
-        <span className="mx-auto inline-flex size-14 items-center justify-center rounded-control bg-action-soft text-action">
-          <ImagesIcon size={28} aria-hidden />
-        </span>
-        <p className="mt-4 text-lg font-bold">
-          {photos.length ? "Adicionar mais fotos" : "Escolha as fotos"}
-        </p>
-        <p className="mt-1 text-ink-2">
-          <span className="hidden sm:inline">Ou arraste para cá. </span>JPG, PNG ou WebP, até 40 MB.
-        </p>
-        <input
-          ref={inputRef}
-          id="arquivos"
-          type="file"
-          multiple
-          className="hidden"
-          tabIndex={-1}
-          aria-hidden
-          onChange={(e) => {
-            const input = e.currentTarget;
-            if (!input.files?.length) return;
-            // Só limpa o campo depois do envio: no Android, limpar antes pode cortar o acesso às fotos.
-            void upload(input.files).finally(() => {
-              input.value = "";
-            });
-          }}
-        />
-        <div>
-          <button
-            type="button"
-            className="btn btn-accent mt-5"
-            disabled={!storageReady || Boolean(progress)}
-            onClick={pickFiles}
+      {/* Com fotos, o resumo vai para uma coluna fixa à direita no desktop, como no carrinho e no pagamento */}
+      <div className={compact ? "lg:grid lg:grid-cols-[1fr_20rem] lg:items-start lg:gap-8" : undefined}>
+        <div className="min-w-0">
+          {/* Área de envio: clique, teclado ou arrastar e soltar */}
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              upload(e.dataTransfer.files);
+            }}
+            className={`rounded-panel border-2 border-dashed transition-colors duration-200 ${
+              dragging ? "border-action bg-action-soft" : "border-action/40 bg-surface"
+            } ${
+              // Com fotos na lista, a área encolhe numa faixa: o que importa agora são as fotos
+              compact ? "flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-4" : "px-6 py-10 text-center"
+            }`}
           >
-            Selecionar fotos
-          </button>
+            {fileInput}
+            {compact ? (
+              <>
+                <ImagesIcon size={26} className="shrink-0 text-action" aria-hidden />
+                <p className="min-w-0 flex-1 text-sm text-ink-2">
+                  JPG, PNG ou WebP, até 40 MB.<span className="hidden sm:inline"> Ou arraste para cá.</span>
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-outline w-full sm:w-auto"
+                  disabled={!storageReady || Boolean(progress)}
+                  onClick={pickFiles}
+                >
+                  Adicionar fotos
+                </button>
+                {progressBar}
+              </>
+            ) : (
+              <>
+                {/* O papel escolhido, na proporção dele: o cliente vê onde a foto vai entrar */}
+                <div className="flex justify-center" aria-hidden>
+                  <PrintShape
+                    product={product}
+                    scale={72 / Math.max(product.width_cm, product.height_cm)}
+                    color="var(--color-action-soft)"
+                  />
+                </div>
+
+                {product.finishes.length > 1 && (
+                  <fieldset className="mx-auto mt-7 max-w-sm text-left">
+                    <legend className="field-label">Acabamento</legend>
+                    <div className="grid grid-cols-2 gap-2">
+                      {product.finishes.map((f) => (
+                        <label
+                          key={f}
+                          className={`cursor-pointer rounded-control border-2 px-3 py-2 transition-colors has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-action ${
+                            chosenFinish === f ? "border-action bg-action-soft" : "border-rule hover:border-ink-2"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="acabamento"
+                            value={f}
+                            checked={chosenFinish === f}
+                            onChange={() => setChosenFinish(f)}
+                            className="sr-only"
+                          />
+                          <span className="block font-semibold">{FINISH_LABEL[f]}</span>
+                          <span className="block text-sm text-ink-2">{FINISH_HINT[f]}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                )}
+
+                <button
+                  type="button"
+                  className="btn btn-accent btn-lg mt-6"
+                  disabled={!storageReady || Boolean(progress)}
+                  onClick={pickFiles}
+                >
+                  Selecionar fotos
+                </button>
+                <p className="mt-3 text-sm text-ink-2">
+                  JPG, PNG ou WebP, até 40 MB.<span className="hidden sm:inline"> Ou arraste para cá.</span>
+                </p>
+                {progressBar}
+              </>
+            )}
+          </div>
+
+          <p className="sr-only" role="status" aria-live="polite">
+            {notice}
+          </p>
+
+          {failures.length > 0 && (
+            <div className="alert alert-danger mt-4" role="alert">
+              <WarningIcon size={20} aria-hidden className="mt-0.5 shrink-0" />
+              <div>
+                <p className="font-bold">{plural(failures.length, "foto não foi enviada", "fotos não foram enviadas")}</p>
+                <ul className="mt-1 space-y-0.5">
+                  {failures.map((f, i) => (
+                    <li key={`${f.name}-${i}`}>
+                      <span className="font-semibold break-all">{f.name}</span>: {f.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {photos.length > 0 && (
+            <>
+              <div className="mt-10 flex flex-wrap items-end justify-between gap-4">
+                <h2 className="text-2xl font-bold">
+                  Suas fotos <span className="text-ink-2">({photos.length})</span>
+                </h2>
+                <div className="flex flex-wrap items-end gap-3">
+                  {product.finishes.length > 1 && (
+                    <div>
+                      <label htmlFor="todas-acabamento" className="field-label">
+                        Acabamento de todas
+                      </label>
+                      <select
+                        id="todas-acabamento"
+                        className="field-input w-auto"
+                        value={uniformFinish ?? ""}
+                        onChange={(e) => e.target.value && applyToAll({ finish: e.target.value as Finish })}
+                      >
+                        {!uniformFinish && <option value="">Misturado</option>}
+                        {product.finishes.map((f) => (
+                          <option key={f} value={f}>
+                            {FINISH_LABEL[f]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label htmlFor="todas-copias" className="field-label">
+                      Cópias de cada
+                    </label>
+                    <select
+                      id="todas-copias"
+                      className="field-input w-auto"
+                      value=""
+                      onChange={(e) => e.target.value && applyToAll({ quantity: Number(e.target.value) })}
+                    >
+                      <option value="">Escolher…</option>
+                      {[1, 2, 3, 4, 5, 10].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    aria-pressed={allAuto}
+                    className={`btn ${allAuto ? "btn-primary" : "btn-outline"}`}
+                    disabled={autoBusy}
+                    onClick={autoAll}
+                  >
+                    {autoBusy ? (
+                      <CircleNotchIcon size={18} className="spinner" aria-hidden />
+                    ) : (
+                      <MagicWandIcon size={18} aria-hidden />
+                    )}
+                    Ajuste automático
+                  </button>
+                </div>
+              </div>
+
+              <ul className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+                {photos.map((photo) => {
+                  const lowRes = printDpi(photo, product) < LOW_DPI;
+                  return (
+                    <li key={photo.id} className="card flex flex-col p-3">
+                      {/* A prévia também abre o ajuste */}
+                      <button
+                        type="button"
+                        className="block rounded-control"
+                        onClick={() => setEditing(photo)}
+                        aria-label={`Ajustar ${photo.file_name}`}
+                      >
+                        <PrintPreview src={thumbOf(photo)} alt="" photo={photo} product={product} />
+                      </button>
+                      <p className="mt-2 truncate text-xs text-ink-2" title={photo.file_name}>
+                        {photo.file_name}
+                      </p>
+                      {lowRes && (
+                        <p className="badge mt-1 self-start bg-warning-soft text-warning">
+                          <WarningIcon size={12} aria-hidden /> Resolução baixa
+                        </p>
+                      )}
+
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <div className="flex items-center rounded-control border border-field" role="group" aria-label="Cópias">
+                          <button
+                            type="button"
+                            className="inline-flex size-11 items-center justify-center rounded-control hover:bg-action-soft disabled:opacity-40"
+                            aria-label={`Diminuir cópias de ${photo.file_name}`}
+                            disabled={photo.quantity <= 1}
+                            onClick={() => patch(photo.id, { quantity: photo.quantity - 1 }).catch(() => {})}
+                          >
+                            <MinusIcon size={18} aria-hidden />
+                          </button>
+                          <span className="min-w-7 text-center font-bold tabular-nums" aria-live="polite">
+                            {photo.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            className="inline-flex size-11 items-center justify-center rounded-control hover:bg-action-soft disabled:opacity-40"
+                            aria-label={`Aumentar cópias de ${photo.file_name}`}
+                            disabled={photo.quantity >= 999}
+                            onClick={() => patch(photo.id, { quantity: photo.quantity + 1 }).catch(() => {})}
+                          >
+                            <PlusIcon size={18} aria-hidden />
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          className="inline-flex size-11 items-center justify-center rounded-control text-danger hover:bg-danger-soft"
+                          aria-label={`Remover ${photo.file_name}`}
+                          onClick={() => remove(photo)}
+                        >
+                          <TrashIcon size={18} aria-hidden />
+                        </button>
+                      </div>
+
+                      <button type="button" className="btn btn-outline mt-2" onClick={() => setEditing(photo)}>
+                        <SlidersHorizontalIcon size={16} aria-hidden />
+                        Ajustar
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
         </div>
 
-        {progress && (
-          <div className="mx-auto mt-6 max-w-md" role="status" aria-live="polite">
-            <div
-              className="h-2.5 overflow-hidden rounded-[2px] bg-rule"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(progress.ratio * 100)}
-              aria-label="Progresso do envio"
-            >
-              <div
-                className="h-full origin-left bg-action transition-transform duration-200"
-                style={{ transform: `scaleX(${progress.ratio})` }}
-              />
-            </div>
-            <p className="mt-2 text-sm font-semibold">
-              Enviando {Math.min(progress.done + 1, progress.total)} de {progress.total}… não feche esta página.
+        {/* Resumo no desktop: coluna fixa à direita */}
+        {compact && (
+          <aside
+            className="card mt-10 hidden p-5 lg:sticky lg:top-24 lg:mt-0 lg:block print:hidden"
+            aria-labelledby="resumo-envio"
+          >
+            <h2 id="resumo-envio" className="text-xl font-bold">
+              Resumo
+            </h2>
+            <p className="mt-3 text-ink-2">
+              {plural(copies, "foto", "fotos")} {product.name}
+              {unit < product.price_cents && <>, {formatBRL(unit)} cada</>}
             </p>
-          </div>
+            <p className="mt-1 font-display text-2xl font-bold tabular-nums">{formatBRL(subtotal)}</p>
+            {next && (
+              <p className="mt-2 text-sm font-semibold text-success">
+                Com mais {next.min - copies} fotos, {formatBRL(next.price_cents)} cada.
+              </p>
+            )}
+            <Link
+              href="/carrinho"
+              aria-disabled={Boolean(progress)}
+              className="btn btn-accent btn-lg mt-5 w-full"
+              onClick={goToCart}
+            >
+              Ir para o carrinho
+            </Link>
+            <Link href="/enviar" className="btn btn-ghost mt-2 w-full">
+              Outro tamanho
+            </Link>
+            <p className="mt-4 border-t border-rule pt-3 text-center text-sm">
+              Dúvidas?{" "}
+              <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="link">
+                Falar no WhatsApp
+              </a>
+            </p>
+          </aside>
         )}
       </div>
 
-      <p className="sr-only" role="status" aria-live="polite">
-        {notice}
-      </p>
-
-      {failures.length > 0 && (
-        <div className="alert alert-danger mt-4" role="alert">
-          <WarningIcon size={20} aria-hidden className="mt-0.5 shrink-0" />
-          <div>
-            <p className="font-bold">{plural(failures.length, "foto não foi enviada", "fotos não foram enviadas")}</p>
-            <ul className="mt-1 space-y-0.5">
-              {failures.map((f, i) => (
-                <li key={`${f.name}-${i}`}>
-                  <span className="font-semibold break-all">{f.name}</span>: {f.message}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
-
-      {photos.length > 0 && (
+      {/* Resumo no celular: barra fixa embaixo, opaca, com a próxima ação */}
+      {compact && (
         <>
-          <div className="mt-10 flex flex-wrap items-end justify-between gap-4">
-            <h2 className="text-2xl font-bold">
-              Suas fotos <span className="text-ink-2">({photos.length})</span>
-            </h2>
-            <div className="flex flex-wrap items-end gap-3">
-              {product.finishes.length > 1 && (
-                <div>
-                  <label htmlFor="todas-acabamento" className="field-label">
-                    Acabamento
-                  </label>
-                  <select
-                    id="todas-acabamento"
-                    className="field-input w-auto"
-                    value={uniformFinish ?? ""}
-                    onChange={(e) => e.target.value && applyToAll({ finish: e.target.value as Finish })}
-                  >
-                    {!uniformFinish && <option value="">Escolher…</option>}
-                    {product.finishes.map((f) => (
-                      <option key={f} value={f}>
-                        {FINISH_LABEL[f]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <div>
-                <label htmlFor="todas-copias" className="field-label">
-                  Cópias
-                </label>
-                <select
-                  id="todas-copias"
-                  className="field-input w-auto"
-                  value=""
-                  onChange={(e) => e.target.value && applyToAll({ quantity: Number(e.target.value) })}
-                >
-                  <option value="">Escolher…</option>
-                  {[1, 2, 3, 4, 5, 10].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <button
-                type="button"
-                aria-pressed={allAuto}
-                className={`btn ${allAuto ? "btn-primary" : "btn-outline"}`}
-                disabled={autoBusy}
-                onClick={autoAll}
-              >
-                {autoBusy ? (
-                  <CircleNotchIcon size={18} className="spinner" aria-hidden />
-                ) : (
-                  <MagicWandIcon size={18} aria-hidden />
-                )}
-                Ajuste automático
-              </button>
-            </div>
-          </div>
-
-          <ul className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {photos.map((photo) => {
-              const lowRes = printDpi(photo, product) < LOW_DPI;
-              return (
-                <li key={photo.id} className="card flex flex-col p-3">
-                  <PrintPreview src={thumbOf(photo)} alt={`Prévia de ${photo.file_name}`} photo={photo} product={product} />
-                  <p className="mt-2 truncate text-sm font-semibold" title={photo.file_name}>
-                    {photo.file_name}
-                  </p>
-                  {lowRes && (
-                    <p className="badge mt-1 self-start bg-warning-soft text-warning">
-                      <WarningIcon size={12} aria-hidden /> Resolução baixa
-                    </p>
-                  )}
-
-                  <div className="mt-3 flex items-center justify-between gap-2">
-                    <div className="flex items-center rounded-control border border-field" role="group" aria-label="Cópias">
-                      <button
-                        type="button"
-                        className="inline-flex size-11 items-center justify-center rounded-control hover:bg-action-soft disabled:opacity-40"
-                        aria-label={`Diminuir cópias de ${photo.file_name}`}
-                        disabled={photo.quantity <= 1}
-                        onClick={() => patch(photo.id, { quantity: photo.quantity - 1 }).catch(() => {})}
-                      >
-                        <MinusIcon size={18} aria-hidden />
-                      </button>
-                      <span className="min-w-7 text-center font-bold tabular-nums" aria-live="polite">
-                        {photo.quantity}
-                      </span>
-                      <button
-                        type="button"
-                        className="inline-flex size-11 items-center justify-center rounded-control hover:bg-action-soft disabled:opacity-40"
-                        aria-label={`Aumentar cópias de ${photo.file_name}`}
-                        disabled={photo.quantity >= 999}
-                        onClick={() => patch(photo.id, { quantity: photo.quantity + 1 }).catch(() => {})}
-                      >
-                        <PlusIcon size={18} aria-hidden />
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      className="inline-flex size-11 items-center justify-center rounded-control text-danger hover:bg-danger-soft"
-                      aria-label={`Remover ${photo.file_name}`}
-                      onClick={() => remove(photo)}
-                    >
-                      <TrashIcon size={18} aria-hidden />
-                    </button>
-                  </div>
-
-                  <button type="button" className="btn btn-outline btn-sm mt-2" onClick={() => setEditing(photo)}>
-                    <SlidersHorizontalIcon size={16} aria-hidden />
-                    Ajustar
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
-
-      {/* Resumo fixo: o próximo passo fica sempre à mão */}
-      {photos.length > 0 && (
-        <div className="sticky bottom-0 z-20 mt-10 -mx-4 border-t border-rule bg-surface/95 backdrop-blur-sm sm:-mx-6 print:hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 pr-20 sm:px-6 sm:pr-24">
-            <p className="leading-tight">
-              <span className="block text-lg font-extrabold tabular-nums" style={{ fontStretch: "112%" }}>
-                {formatBRL(subtotal)}
-              </span>
-              <span className="text-sm text-ink-2">
-                {plural(copies, "foto", "fotos")} {product.name}
-                {unit < product.price_cents && <>, {formatBRL(unit)} cada</>}
-              </span>
-              {next && (
-                <span className="block text-sm font-semibold text-success">
-                  Com mais {next.min - copies}, {formatBRL(next.price_cents)} cada
+          <div className="h-24 lg:hidden" aria-hidden />
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-rule bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden print:hidden">
+            <div className="container-page flex items-center justify-between gap-3 py-3">
+              <p className="min-w-0 leading-tight">
+                <span className="block font-display text-lg font-bold tabular-nums">{formatBRL(subtotal)}</span>
+                <span className="block truncate text-sm text-ink-2">
+                  {plural(copies, "foto", "fotos")} {product.name}
                 </span>
-              )}
-            </p>
-            <div className="flex gap-2">
-              <Link href="/enviar" className="btn btn-ghost btn-sm hidden sm:inline-flex">
-                Outro tamanho
-              </Link>
-              <Link
-                href="/carrinho"
-                aria-disabled={Boolean(progress)}
-                className="btn btn-accent"
-                onClick={async (e) => {
-                  if (progress) return e.preventDefault();
-                  if (pendingRemoval.current) {
-                    e.preventDefault();
-                    await flushRemoval();
-                    router.push("/carrinho");
-                  }
-                }}
-              >
+                {next && (
+                  <span className="block text-sm font-semibold text-success">
+                    Com mais {next.min - copies} fotos, {formatBRL(next.price_cents)} cada
+                  </span>
+                )}
+              </p>
+              <Link href="/carrinho" aria-disabled={Boolean(progress)} className="btn btn-accent shrink-0" onClick={goToCart}>
                 Ir para o carrinho
               </Link>
             </div>
           </div>
-        </div>
+        </>
       )}
 
-      {undoable && (
+      {(undoable || toast) && (
         <div
           role="status"
-          className="fixed bottom-24 left-1/2 z-40 flex w-[min(100vw-2rem,28rem)] -translate-x-1/2 items-center justify-between gap-4 rounded-control bg-ink py-2 pr-2 pl-4 text-surface shadow-lift"
+          className="fixed bottom-28 left-1/2 z-40 flex w-[min(100vw-2rem,28rem)] -translate-x-1/2 items-center justify-between gap-4 rounded-control bg-ink py-2 pr-2 pl-4 text-surface shadow-lift lg:bottom-8"
         >
-          <p className="min-w-0 truncate text-sm">
-            <span className="font-semibold">{undoable.file_name}</span> removida
-          </p>
-          <button type="button" onClick={undoRemoval} className="btn btn-sm shrink-0 text-surface underline hover:bg-surface/10">
-            Desfazer
-          </button>
+          {undoable ? (
+            <>
+              <p className="min-w-0 truncate text-sm">
+                <span className="font-semibold">{undoable.file_name}</span> removida
+              </p>
+              <button type="button" onClick={undoRemoval} className="btn btn-sm shrink-0 text-surface underline hover:bg-surface/10">
+                Desfazer
+              </button>
+            </>
+          ) : (
+            <p className="py-2 text-sm font-semibold">{toast}</p>
+          )}
         </div>
-      )}
-
-      {finishPrompt && (
-        <FinishDialog
-          finishes={product.finishes}
-          onCancel={() => setFinishPrompt(null)}
-          onChoose={(finish) => {
-            setFinishPrompt(null);
-            setChosenFinish(finish);
-            // Galeria: abre agora, ainda no toque do cliente. Arquivos arrastados: envia direto.
-            if (finishPrompt === "galeria") openPicker();
-            else void send(finishPrompt, finish);
-          }}
-        />
       )}
 
       {editing && (
         <PhotoEditor
+          key={editing.id}
           photo={editing}
           product={product}
           localUrl={localUrls[editing.id]?.original}
+          place={editingIndex >= 0 ? { index: editingIndex, total: photos.length } : undefined}
           onClose={() => setEditing(null)}
           onSave={async (changes: { crop: Crop; fit: boolean; adjust: Adjust | null }) => {
             await patch(editing.id, changes);
             setEditing(null);
           }}
+          onSaveNext={
+            nextToEdit
+              ? async (changes: { crop: Crop; fit: boolean; adjust: Adjust | null }) => {
+                  await patch(editing.id, changes);
+                  setEditing(nextToEdit);
+                }
+              : undefined
+          }
         />
       )}
     </div>

@@ -1,7 +1,16 @@
-import { WhatsappLogoIcon } from "@phosphor-icons/react/ssr";
+"use client";
+
+import { WhatsappLogoIcon } from "@phosphor-icons/react";
+import { usePathname } from "next/navigation";
 import { whatsappLink } from "@/lib/site";
 
+/** Telas de tarefa com ação fixa embaixo: lá o WhatsApp fica dentro do resumo, não flutuando sobre os botões. */
+const HIDDEN = ["/enviar/", "/carrinho", "/checkout", "/admin"];
+
 export function WhatsAppButton() {
+  const pathname = usePathname();
+  if (HIDDEN.some((p) => pathname.startsWith(p))) return null;
+
   return (
     <a
       href={whatsappLink()}

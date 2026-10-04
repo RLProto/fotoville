@@ -58,7 +58,7 @@ export default async function EnviarPage({ params }: Props) {
             <ul className="mt-1 flex flex-wrap gap-x-4 text-sm text-ink-2 tabular-nums" aria-label="Desconto por quantidade">
               {product.price_tiers.map((tier) => (
                 <li key={tier.min}>
-                  {tier.min}+ por {formatBRL(tier.price_cents)}
+                  {tier.min}+ fotos: {formatBRL(tier.price_cents)} cada
                 </li>
               ))}
             </ul>

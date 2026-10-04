@@ -4,44 +4,49 @@ import { site, whatsappLink } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Prazos e frete",
-  description: "Produção em até 3 dias úteis, entrega pelos Correios em todo o Brasil ou retirada grátis em Joinville.",
+  description: `Produção em até ${site.productionDays} dias úteis, entrega pelos Correios em todo o Brasil ou retirada grátis em Joinville.`,
 };
 
 export default function PrazosPage() {
-  const items = [
-    { title: "Produção", big: `Até ${site.productionDays} dias úteis`, text: "Depois do pagamento aprovado." },
-    { title: "Entrega", big: "PAC ou SEDEX", text: "Prazo e valor aparecem antes de pagar." },
-    { title: "Retirada", big: "Grátis na loja", text: `${site.address.street}, ${site.address.district}.` },
+  const rows = [
+    { label: "Produção", value: `Até ${site.productionDays} dias úteis`, note: "Depois do pagamento aprovado." },
+    { label: "Entrega", value: "Correios, PAC ou SEDEX", note: "Prazo e valor aparecem antes de pagar." },
+    {
+      label: "Retirada",
+      value: "Grátis na loja",
+      note: `${site.address.street}, ${site.address.district}, ${site.address.city}/${site.address.state}.`,
+    },
+    { label: "Rastreio", value: "Na página do pedido", note: "Para entregas pelos Correios." },
   ];
 
   return (
     <>
       <PageHeader title="Prazos e frete" />
       <div className="container-page py-12">
-        <dl className="grid gap-10 md:grid-cols-3">
-          {items.map((item) => (
-            <div key={item.title} className="border-t-2 border-ink pt-4">
-              <dt className="text-ink-2">{item.title}</dt>
-              <dd className="display-md mt-1 text-2xl">{item.big}</dd>
-              <dd className="mt-2 text-ink-2">{item.text}</dd>
+        {/* Linhas de tabela, como no verso do envelope: rótulo à esquerda, o fato à direita */}
+        <dl className="max-w-3xl border-t border-ink">
+          {rows.map((row) => (
+            <div key={row.label} className="grid gap-1 border-b border-rule py-6 sm:grid-cols-[10rem_1fr] sm:gap-8">
+              <dt className="pt-1 font-semibold text-ink-2">{row.label}</dt>
+              <dd>
+                <span className="display-md block text-2xl">{row.value}</span>
+                <span className="mt-1 block text-ink-2">{row.note}</span>
+              </dd>
             </div>
           ))}
         </dl>
 
-        <ul className="mt-14 space-y-3 text-lg">
-          <li>O código de rastreio aparece na página do pedido.</li>
-          <li>
-            Algum problema com a entrega?{" "}
-            <a
-              href={whatsappLink("Olá, preciso de ajuda com a entrega do meu pedido.")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="link"
-            >
-              Fale com a gente no WhatsApp
-            </a>
-          </li>
-        </ul>
+        <p className="mt-10 text-lg">
+          Algum problema com a entrega?{" "}
+          <a
+            href={whatsappLink("Olá, preciso de ajuda com a entrega do meu pedido.")}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="link"
+          >
+            Falar no WhatsApp
+          </a>
+        </p>
       </div>
     </>
   );

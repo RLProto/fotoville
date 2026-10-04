@@ -25,8 +25,7 @@ export default async function PedidoPage({ params, searchParams }: Props) {
   if (!UUID.test(id)) notFound();
 
   const supabase = await createClient();
-  const load = async () =>
-    (await supabase.from("orders").select("*").eq("id", id).maybeSingle()).data as Order | null;
+  const load = async () => (await supabase.from("orders").select("*").eq("id", id).maybeSingle()).data as Order | null;
 
   let order = await load();
   if (!order) notFound(); // RLS: só o dono enxerga o pedido
@@ -57,7 +56,7 @@ export default async function PedidoPage({ params, searchParams }: Props) {
   const pickup = order.shipping_service === "retirada";
 
   return (
-    <div className="container-page max-w-4xl py-10">
+    <div className="container-page py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="display-md text-3xl sm:text-4xl">Pedido #{order.number}</h1>
@@ -70,14 +69,28 @@ export default async function PedidoPage({ params, searchParams }: Props) {
         {order.status === "pending" && (
           <div className="alert alert-warning flex-col sm:flex-row sm:items-center sm:justify-between">
             <p>
-              {query.erroPagamento
-                ? "O pagamento não abriu. Seu pedido está salvo."
-                : query.semPagamento || !order.mp_init_point
-                  ? "Pedido registrado. Pagamento online indisponível neste ambiente."
-                  : "Aguardando pagamento."}
+              {query.erroPagamento ? (
+                "O pagamento não abriu. Seu pedido está salvo."
+              ) : query.semPagamento || !order.mp_init_point ? (
+                <>
+                  Pedido registrado. O pagamento não abriu.{" "}
+                  <a
+                    href={whatsappLink(`Olá, preciso de ajuda para pagar o pedido #${order.number}.`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold underline underline-offset-2"
+                  >
+                    Falar no WhatsApp
+                  </a>
+                </>
+              ) : order.kind === "package" ? (
+                "Pague para receber o cupom."
+              ) : (
+                "Pague para o pedido entrar em produção."
+              )}
             </p>
             {order.mp_init_point && (
-              <a href={order.mp_init_point} className="btn btn-accent btn-sm shrink-0">
+              <a href={order.mp_init_point} className="btn btn-accent shrink-0">
                 Pagar agora
               </a>
             )}
@@ -97,9 +110,7 @@ export default async function PedidoPage({ params, searchParams }: Props) {
             <TicketIcon size={22} className="text-action" aria-hidden />
             Seu cupom
           </h2>
-          <p className="mt-3 font-display text-3xl font-bold tracking-wider text-ink select-all">
-            {coupon.code}
-          </p>
+          <p className="mt-3 font-display text-3xl font-bold tracking-wider text-ink select-all">{coupon.code}</p>
           <p className="mt-2 text-ink/85">
             Saldo: <strong>{coupon.credits_total - coupon.credits_used}</strong> de {coupon.credits_total} fotos{" "}
             {coupon.product_id}. Use ao pagar.
@@ -160,9 +171,7 @@ export default async function PedidoPage({ params, searchParams }: Props) {
             )}
             <div className="flex justify-between gap-4 border-t border-rule pt-3 text-lg">
               <dt className="font-bold">Total</dt>
-              <dd className="font-display font-bold text-ink tabular-nums">
-                {formatBRL(order.total_cents)}
-              </dd>
+              <dd className="font-display font-bold text-ink tabular-nums">{formatBRL(order.total_cents)}</dd>
             </div>
           </dl>
         </section>
@@ -173,13 +182,16 @@ export default async function PedidoPage({ params, searchParams }: Props) {
               {pickup ? "Retirada na loja" : "Entrega"}
             </h2>
             {pickup ? (
-              <address className="mt-4 not-italic text-ink/90">
-                {site.address.street}
-                <br />
-                {site.address.district}, {site.address.city}/{site.address.state}
-                <br />
-                Avisamos pelo WhatsApp quando estiver pronto.
-              </address>
+              <>
+                <address className="mt-4 not-italic text-ink/90">
+                  {site.address.street}
+                  <br />
+                  {site.address.district}, {site.address.city}/{site.address.state}
+                </address>
+                <p className="mt-3 text-ink-2">
+                  Pronto em até {site.productionDays} dias úteis depois do pagamento. Avisamos pelo WhatsApp.
+                </p>
+              </>
             ) : (
               address && (
                 <>
@@ -187,8 +199,7 @@ export default async function PedidoPage({ params, searchParams }: Props) {
                     {order.shipping_label}
                     {order.shipping_days != null && (
                       <span className="font-normal text-ink-2">
-                        {" "}
-                        , até {site.productionDays + order.shipping_days} dias úteis após o pagamento
+                        , até {site.productionDays + order.shipping_days} dias úteis depois do pagamento
                       </span>
                     )}
                   </p>

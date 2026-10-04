@@ -44,15 +44,21 @@ export function PhotoEditor({
   photo,
   product,
   localUrl,
+  place,
   onClose,
   onSave,
+  onSaveNext,
 }: {
   photo: PhotoView;
   product: Product;
   /** URL local do arquivo original, quando ele acabou de ser enviado nesta sessão. */
   localUrl?: string;
+  /** Posição da foto na lista, para o "Foto 3 de 12". */
+  place?: { index: number; total: number };
   onClose: () => void;
   onSave: (patch: { crop: Crop; fit: boolean; adjust: Adjust | null }) => Promise<void>;
+  /** Salva e abre a próxima foto da lista; ausente na última. */
+  onSaveNext?: (patch: { crop: Crop; fit: boolean; adjust: Adjust | null }) => Promise<void>;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const previewRef = useRef<HTMLCanvasElement>(null);
@@ -229,22 +235,23 @@ export function PhotoEditor({
     setTone((t) => ({ ...t, auto }));
   }
 
-  async function save() {
+  async function save(next = false) {
     if (!pixels) return;
     setSaving(true);
     setError(null);
     try {
       // A borda muda a proporção da janela: o corte acompanha, na orientação dele mesmo.
       const crop = fitCrop(pixels, cropAspect(product, pixels.width >= pixels.height, adjust));
-      await onSave({ crop, fit, adjust: neutral ? null : adjust });
+      const patch = { crop, fit, adjust: neutral ? null : adjust };
+      await (next && onSaveNext ? onSaveNext(patch) : onSave(patch));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível salvar.");
+      setError(err instanceof Error ? err.message : "Não foi possível salvar. Tente de novo.");
       setSaving(false);
     }
   }
 
   const tabs: { id: Tab; label: string; Icon: typeof CropIcon }[] = [
-    { id: "corte", label: "Enquadrar", Icon: CropIcon },
+    { id: "corte", label: "Corte", Icon: CropIcon },
     { id: "cor", label: "Cor", Icon: DropHalfIcon },
     polaroid
       ? { id: "papel", label: "Legenda", Icon: TextAaIcon }
@@ -271,6 +278,12 @@ export function PhotoEditor({
         <div className="min-w-0">
           <h2 id="editor-title" className="text-lg font-bold">
             Ajustar foto
+            {place && place.total > 1 && (
+              <span className="font-normal text-ink-2">
+                {" "}
+                {place.index + 1} de {place.total}
+              </span>
+            )}
           </h2>
           <p className="truncate text-sm text-ink-2">
             {product.name}, {photo.file_name}
@@ -406,10 +419,10 @@ export function PhotoEditor({
                 />
                 <span>
                   <span className="font-bold">Imprimir a foto inteira</span>
-                  <span className="block text-sm text-ink-2">Sem cortar nada.</span>
+                  <span className="block text-sm text-ink-2">Pode sobrar borda.</span>
                 </span>
               </label>
-              {!fit && <p className="text-sm text-ink-2">Arraste a foto para enquadrar.</p>}
+              {!fit && <p className="text-sm text-ink-2">Arraste para posicionar a foto.</p>}
             </>
           )}
 
@@ -442,7 +455,7 @@ export function PhotoEditor({
                 )}
               </div>
               <div className="space-y-1">
-                <Slider label="Brilho" value={tone.brightness} onChange={(v) => setTone((t) => ({ ...t, brightness: v }))} />
+                <Slider label="Luz" value={tone.brightness} onChange={(v) => setTone((t) => ({ ...t, brightness: v }))} />
                 <Slider label="Contraste" value={tone.contrast} onChange={(v) => setTone((t) => ({ ...t, contrast: v }))} />
                 {!tone.bw && (
                   <Slider
@@ -544,7 +557,7 @@ export function PhotoEditor({
       <div className="shrink-0 space-y-3 border-t border-rule px-5 py-3">
         {dpi < LOW_DPI && (
           <p className="alert alert-warning" role="status">
-            Resolução baixa: a foto pode sair sem nitidez neste tamanho.
+            Resolução baixa para este tamanho. A foto pode sair sem nitidez.
           </p>
         )}
         {error && (
@@ -556,10 +569,22 @@ export function PhotoEditor({
           <button type="button" className="btn btn-ghost" onClick={() => dialogRef.current?.close()}>
             Cancelar
           </button>
-          <button type="button" className="btn btn-primary" onClick={save} disabled={saving || !pixels}>
-            {saving && <CircleNotchIcon size={18} className="spinner" aria-hidden />}
-            {saving ? "Salvando…" : "Salvar"}
-          </button>
+          {onSaveNext ? (
+            <>
+              <button type="button" className="btn btn-outline" onClick={() => save()} disabled={saving || !pixels}>
+                Salvar
+              </button>
+              <button type="button" className="btn btn-primary" onClick={() => save(true)} disabled={saving || !pixels}>
+                {saving && <CircleNotchIcon size={18} className="spinner" aria-hidden />}
+                {saving ? "Salvando…" : "Salvar e próxima"}
+              </button>
+            </>
+          ) : (
+            <button type="button" className="btn btn-primary" onClick={() => save()} disabled={saving || !pixels}>
+              {saving && <CircleNotchIcon size={18} className="spinner" aria-hidden />}
+              {saving ? "Salvando…" : "Salvar"}
+            </button>
+          )}
         </div>
       </div>
     </dialog>

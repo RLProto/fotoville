@@ -20,6 +20,7 @@ function translate(message: string) {
   if (/email not confirmed/i.test(message)) return "Confirme seu e-mail pelo link que enviamos.";
   if (/password should be at least/i.test(message)) return "A senha precisa ter pelo menos 8 caracteres.";
   if (/rate limit/i.test(message)) return "Muitas tentativas. Aguarde alguns minutos e tente de novo.";
+  if (/invalid.*email|validate email/i.test(message)) return "E-mail inválido. Confira o endereço.";
   return "Não deu certo. Confira os dados e tente de novo.";
 }
 

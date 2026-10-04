@@ -16,7 +16,7 @@ export async function POST(request: Request) {
 
   const parsed = schema.safeParse(await request.json().catch(() => null));
   const cep = onlyDigits(parsed.success ? parsed.data.cep : "");
-  if (cep.length !== 8) return fail("Informe um CEP válido com 8 dígitos.");
+  if (cep.length !== 8) return fail("Informe o CEP com 8 dígitos.");
 
   const [photos, products] = await Promise.all([loadCartPhotos(auth.supabase, auth.user.id), getProducts()]);
   const cart = summarizeCart(photos, products);

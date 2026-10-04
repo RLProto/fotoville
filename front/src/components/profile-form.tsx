@@ -63,7 +63,7 @@ export function ProfileForm({ userId, initial }: { userId: string; initial: { na
         </button>
         <p aria-live="polite" className="text-sm font-semibold">
           {state === "saved" && <span className="text-success">Dados salvos.</span>}
-          {state === "error" && <span className="text-danger">Não foi possível salvar.</span>}
+          {state === "error" && <span className="text-danger">Não foi possível salvar. Tente de novo.</span>}
         </p>
       </div>
     </form>
