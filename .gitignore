@@ -1,0 +1,9 @@
+# Só entra no git o que está liberado abaixo. O resto da pasta é local:
+# .env (senha do banco), .tmp, .npm-cache, .claude (skills), cópia do site antigo.
+/*
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/front/
+!/back/
+!/docs/

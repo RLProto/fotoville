@@ -1,0 +1,58 @@
+-- Fotoville — catálogo inicial. Gerado por scripts/generate-seed.mts; não edite à mão.
+-- Rode depois do schema.sql. Pode rodar de novo: atualiza nome, medidas e preço.
+
+insert into public.products
+  (id, name, kind, width_cm, height_cm, price_cents, price_tiers, finishes, unit_weight_g, unit_thickness_mm, sort)
+values
+  ('10x13', '10x13 cm', 'print', 10, 13, 199, '[]', '{brilho,fosco}', null, null, 10),
+  ('10x15', '10x15 cm', 'print', 10, 15, 199, '[{"min":100,"price_cents":119},{"min":300,"price_cents":109},{"min":500,"price_cents":99},{"min":1000,"price_cents":89}]', '{brilho,fosco}', null, null, 20),
+  ('13x15', '13x15 cm', 'print', 13, 15, 209, '[]', '{brilho,fosco}', null, null, 30),
+  ('13x18', '13x18 cm Fosco', 'print', 13, 18, 500, '[]', '{fosco}', null, null, 40),
+  ('15x15', '15x15 cm', 'print', 15, 15, 329, '[]', '{brilho,fosco}', null, null, 50),
+  ('15x21', '15x21 cm', 'print', 15, 21, 399, '[]', '{brilho,fosco}', null, null, 60),
+  ('15x30', '15x30 cm', 'print', 15, 30, 659, '[]', '{brilho,fosco}', null, null, 70),
+  ('20x20', '20x20 cm', 'print', 20, 20, 499, '[]', '{brilho,fosco}', null, null, 80),
+  ('20x25', '20x25 cm', 'print', 20, 25, 599, '[]', '{brilho,fosco}', null, null, 90),
+  ('20x30', '20x30 cm', 'print', 20, 30, 849, '[]', '{brilho,fosco}', null, null, 100),
+  ('20x45', '20x45 cm', 'print', 20, 45, 1299, '[]', '{brilho,fosco}', null, null, 110),
+  ('25x25', '25x25 cm', 'print', 25, 25, 749, '[]', '{brilho,fosco}', null, null, 120),
+  ('25x30', '25x30 cm', 'print', 25, 30, 869, '[]', '{brilho,fosco}', null, null, 130),
+  ('25x40', '25x40 cm', 'print', 25, 40, 1499, '[]', '{brilho,fosco}', null, null, 140),
+  ('25x45', '25x45 cm', 'print', 25, 45, 1549, '[]', '{brilho,fosco}', null, null, 150),
+  ('25x50', '25x50 cm', 'print', 25, 50, 1599, '[]', '{brilho,fosco}', null, null, 160),
+  ('25x60', '25x60 cm', 'print', 25, 60, 1869, '[]', '{brilho,fosco}', null, null, 170),
+  ('28x35', '28x35 cm', 'print', 28, 35, 2000, '[]', '{brilho,fosco}', null, null, 180),
+  ('30x30', '30x30 cm', 'print', 30, 30, 1589, '[]', '{brilho,fosco}', null, null, 190),
+  ('30x35', '30x35 cm', 'print', 30, 35, 1599, '[]', '{brilho,fosco}', null, null, 200),
+  ('30x40', '30x40 cm', 'print', 30, 40, 1899, '[]', '{brilho,fosco}', null, null, 210),
+  ('30x45', '30x45 cm', 'print', 30, 45, 2099, '[]', '{brilho,fosco}', null, null, 220),
+  ('30x50', '30x50 cm', 'print', 30, 50, 2399, '[]', '{brilho,fosco}', null, null, 230),
+  ('30x60', '30x60 cm', 'print', 30, 60, 2659, '[]', '{brilho,fosco}', null, null, 240),
+  ('polaroid', 'Polaroid', 'polaroid', 9, 11, 450, '[]', '{brilho,fosco}', null, null, 300),
+  ('foto-placa-20x30', 'Foto-placa 20x30 cm', 'placa', 20, 30, 2000, '[]', '{brilho,fosco}', 380, 4, 310)
+on conflict (id) do update set
+  name = excluded.name,
+  kind = excluded.kind,
+  width_cm = excluded.width_cm,
+  height_cm = excluded.height_cm,
+  price_cents = excluded.price_cents,
+  price_tiers = excluded.price_tiers,
+  finishes = excluded.finishes,
+  unit_weight_g = excluded.unit_weight_g,
+  unit_thickness_mm = excluded.unit_thickness_mm,
+  sort = excluded.sort;
+
+insert into public.packages
+  (id, name, product_id, photo_count, price_cents, description, sort)
+values
+  ('pacote-100', '100 fotos 10x15', '10x15', 100, 11900, 'Papel fotográfico. Compre agora e revele quando quiser.', 10),
+  ('pacote-300', '300 fotos 10x15', '10x15', 300, 32700, 'Papel fotográfico. Compre agora e revele quando quiser.', 20),
+  ('pacote-500', '500 fotos 10x15', '10x15', 500, 49500, 'Papel fotográfico. Compre agora e revele quando quiser.', 30),
+  ('pacote-1000', '1000 fotos 10x15', '10x15', 1000, 89000, 'Papel fotográfico. Compre agora e revele quando quiser.', 40)
+on conflict (id) do update set
+  name = excluded.name,
+  product_id = excluded.product_id,
+  photo_count = excluded.photo_count,
+  price_cents = excluded.price_cents,
+  description = excluded.description,
+  sort = excluded.sort;

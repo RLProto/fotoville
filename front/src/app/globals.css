@@ -1,0 +1,337 @@
+@import "tailwindcss";
+
+/*
+ * Fotoville: o envelope de revelação.
+ * Fundo de papel fotográfico, tinta índigo, uma cor de ação (índigo do logo) e as seis lâminas
+ * do diafragma como campos de cor inteiros. Contratos em design/DIRECTION.md e design/DESIGN.md.
+ */
+@theme {
+  /* Superfícies e tinta */
+  --color-paper: #f3f5f7;
+  --color-surface: #fcfdfe;
+  --color-ink: #1b1f33;
+  --color-ink-2: #4e546a;
+  --color-ink-3: #5f6579;
+  --color-rule: #d3d7e0;
+  --color-field: #7b8197;
+
+  /* Ação: uma só cor em todos os controles */
+  --color-action: #4f5d9e;
+  --color-action-strong: #3e4a85;
+  --color-action-soft: #e5e8f3;
+
+  /* Lâminas do logo: campos de seção e fotos desenhadas, nunca controles */
+  --color-blade-olive: #6f8d3a;
+  --color-blade-mustard: #b39340;
+  --color-blade-rust: #a5593f;
+  --color-blade-plum: #60344c;
+  --color-blade-indigo: #4f5d9e;
+  --color-blade-teal: #316665;
+
+  /* Estados */
+  --color-success: #2f6b2f;
+  --color-success-soft: #e6f1e3;
+  --color-warning: #7a5300;
+  --color-warning-soft: #fbf1d6;
+  --color-danger: #a3261d;
+  --color-danger-soft: #fbe9e7;
+
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+
+  /* Cantos: controles 6px, painéis 10px, fotos 2px */
+  --radius-control: 6px;
+  --radius-panel: 10px;
+  --radius-print: 2px;
+
+  /* Sombra de foto: deslocada, curta, tingida com a tinta */
+  --shadow-print: 0 1px 1px rgb(27 31 51 / 0.1), 0 10px 18px -10px rgb(27 31 51 / 0.38);
+  --shadow-lift: 0 2px 3px rgb(27 31 51 / 0.08), 0 18px 32px -16px rgb(27 31 51 / 0.32);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    scroll-padding-top: 5.5rem; /* o cabeçalho fixo não cobre o elemento focado */
+    -webkit-text-size-adjust: 100%;
+    scrollbar-color: var(--color-field) var(--color-paper);
+    accent-color: var(--color-action);
+  }
+
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.55;
+    caret-color: var(--color-action);
+  }
+
+  ::selection {
+    background: #d6dcf0;
+    color: var(--color-ink);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    line-height: 1.12;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  a {
+    text-underline-offset: 0.2em;
+    text-decoration-thickness: 1px;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-action);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  label,
+  summary {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgb(79 93 158 / 0.15);
+  }
+
+  button,
+  [role="button"],
+  summary,
+  label[for],
+  select {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-[1200px] px-4 sm:px-6;
+  }
+
+  /* Títulos: Archivo larga e pesada, como a impressão das embalagens de laboratório */
+  .display {
+    font-weight: 800;
+    font-stretch: 118%;
+    letter-spacing: -0.02em;
+    line-height: 1.04;
+  }
+  /* font-display: mesma família, largura expandida (preços e números de destaque) */
+  .font-display {
+    font-stretch: 112%;
+  }
+  .display-md {
+    font-weight: 750;
+    font-stretch: 112%;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+  }
+
+  /* Botões: retos, alvo de toque mínimo de 44px, retorno físico ao apertar */
+  .btn {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-control px-5 py-2.5 text-base font-semibold select-none;
+    font-stretch: 104%;
+    transition:
+      background-color 160ms ease-out,
+      color 160ms ease-out,
+      border-color 160ms ease-out,
+      transform 120ms ease-out;
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .btn:disabled,
+  .btn[aria-disabled="true"] {
+    @apply cursor-not-allowed opacity-50;
+  }
+  .btn-lg {
+    @apply min-h-13 px-7 text-lg;
+  }
+  .btn-sm {
+    @apply min-h-10 px-3.5 py-1.5 text-sm;
+  }
+  /* btn-accent e btn-primary são a mesma ação: uma única cor de ação no site */
+  .btn-accent,
+  .btn-primary {
+    @apply bg-action text-surface hover:bg-action-strong;
+  }
+  .btn-outline {
+    @apply border-[1.5px] border-ink bg-transparent text-ink hover:bg-ink/[0.06];
+  }
+  .btn-ghost {
+    @apply text-action hover:bg-action-soft hover:text-action-strong;
+  }
+  .btn-danger-ghost {
+    @apply text-danger hover:bg-danger-soft;
+  }
+
+  /* Painel plano para telas de tarefa (carrinho, pagamento, conta). Sem sombra. */
+  .card {
+    @apply rounded-panel border border-rule bg-surface;
+  }
+
+  /* Foto impressa: borda branca de papel e sombra curta */
+  .print {
+    @apply rounded-print bg-surface;
+    box-shadow: var(--shadow-print);
+  }
+
+  /* Campos de formulário: borda com contraste de 3:1 */
+  .field-label {
+    @apply mb-1.5 block text-sm font-semibold text-ink;
+  }
+  .field-input {
+    @apply block min-h-11 w-full rounded-control border border-field bg-surface px-3.5 py-2.5 text-base text-ink placeholder:text-ink-3;
+    transition:
+      border-color 150ms ease-out,
+      box-shadow 150ms ease-out;
+  }
+  .field-input:hover {
+    @apply border-ink-2;
+  }
+  .field-input:focus {
+    @apply border-action outline-none;
+    box-shadow: 0 0 0 3px rgb(79 93 158 / 0.28);
+  }
+  .field-input[aria-invalid="true"] {
+    @apply border-danger;
+    box-shadow: 0 0 0 3px rgb(163 38 29 / 0.15);
+  }
+  select.field-input {
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+  }
+  .field-hint {
+    @apply mt-1.5 text-sm text-ink-2;
+  }
+  .field-error {
+    @apply mt-1.5 text-sm font-semibold text-danger;
+  }
+
+  /* Etiqueta quadrada, como o carimbo do laboratório */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-[3px] px-2 py-0.5 text-xs font-semibold whitespace-nowrap;
+  }
+
+  .alert {
+    @apply flex items-start gap-3 rounded-control border px-4 py-3 text-sm;
+  }
+  .alert-danger {
+    @apply border-danger/30 bg-danger-soft text-danger;
+  }
+  .alert-success {
+    @apply border-success/30 bg-success-soft text-success;
+  }
+  .alert-warning {
+    @apply border-warning/30 bg-warning-soft text-warning;
+  }
+  .alert-info {
+    @apply border-action/25 bg-action-soft text-action-strong;
+  }
+
+  .link {
+    @apply font-semibold text-action underline hover:text-action-strong;
+  }
+
+  .prose-site {
+    @apply text-ink;
+  }
+  .prose-site h2 {
+    @apply mt-10 mb-3 text-2xl;
+    font-weight: 750;
+    font-stretch: 112%;
+  }
+  .prose-site h3 {
+    @apply mt-6 mb-2 text-lg font-bold;
+  }
+  .prose-site p,
+  .prose-site ul {
+    @apply mb-4 max-w-[68ch] text-ink/90;
+  }
+  .prose-site ul {
+    @apply list-disc space-y-1.5 pl-6;
+  }
+  .prose-site a {
+    @apply font-semibold text-action underline hover:text-action-strong;
+  }
+
+  /* Faixa com as seis lâminas do logo */
+  .blade-strip {
+    background: linear-gradient(
+      to right,
+      var(--color-blade-olive) 0 16.66%,
+      var(--color-blade-mustard) 16.66% 33.33%,
+      var(--color-blade-rust) 33.33% 50%,
+      var(--color-blade-plum) 50% 66.66%,
+      var(--color-blade-indigo) 66.66% 83.33%,
+      var(--color-blade-teal) 83.33% 100%
+    );
+  }
+
+  /* Pontilhado entre o nome e o preço, como na tabela de preços do balcão */
+  .leader {
+    @apply mx-2 min-w-4 flex-1 translate-y-[-0.3em] border-b-2 border-dotted border-field/60;
+  }
+
+  /* Picote do canhoto: linha tracejada com meia-lua nas pontas */
+  .perforation {
+    position: relative;
+    border-top: 2px dashed var(--color-field);
+  }
+  .perforation::before,
+  .perforation::after {
+    content: "";
+    position: absolute;
+    top: -11px;
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    background: var(--perforation-bg, var(--color-paper));
+  }
+  .perforation::before {
+    left: -31px;
+  }
+  .perforation::after {
+    right: -31px;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+/* Lista longa de fotos no envio: o navegador só desenha o que está na tela */
+.photo-tile {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 340px;
+}
