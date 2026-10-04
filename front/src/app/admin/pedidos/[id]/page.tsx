@@ -79,6 +79,14 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
               <dt className="sr-only">E-mail</dt>
               <dd className="break-all">{customer?.email}</dd>
             </div>
+            {order.price_profile_name && (
+              <div>
+                <dt className="sr-only">Tabela de preço</dt>
+                <dd>
+                  <span className="badge bg-action-soft text-action-strong">Tabela: {order.price_profile_name}</span>
+                </dd>
+              </div>
+            )}
             {customer?.whatsapp && (
               <div>
                 <dt className="sr-only">WhatsApp</dt>

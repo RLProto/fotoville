@@ -214,6 +214,34 @@ create table if not exists public.error_logs (
 create index if not exists error_logs_recent_idx on public.error_logs (created_at desc);
 
 -- ---------------------------------------------------------------------------
+-- Perfis de preço (clientes preferenciais)
+-- Cada perfil tem tabela própria; tamanho sem linha no perfil usa o preço da loja.
+-- ---------------------------------------------------------------------------
+create table if not exists public.price_profiles (
+  id uuid primary key default gen_random_uuid(),
+  name text not null check (length(trim(name)) between 1 and 60),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.profile_prices (
+  profile_id uuid not null references public.price_profiles (id) on delete cascade,
+  product_id text not null references public.products (id) on delete cascade,
+  price_cents integer not null check (price_cents >= 0),
+  price_tiers jsonb not null default '[]',
+  primary key (profile_id, product_id)
+);
+
+-- Perfil de cada cliente, à parte do cadastro: o cliente nunca escolhe o próprio perfil.
+create table if not exists public.customer_price_profiles (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  profile_id uuid not null references public.price_profiles (id) on delete cascade,
+  assigned_at timestamptz not null default now()
+);
+create index if not exists customer_price_profiles_profile_idx on public.customer_price_profiles (profile_id);
+
+alter table public.orders add column if not exists price_profile_name text;
+
+-- ---------------------------------------------------------------------------
 -- Row Level Security
 -- O site grava pedidos, itens e cupons só pelo servidor (service role),
 -- que ignora RLS. As políticas abaixo valem para o cliente logado.
@@ -226,6 +254,11 @@ alter table public.order_items enable row level security;
 alter table public.photos enable row level security;
 alter table public.coupons enable row level security;
 alter table public.coupon_redemptions enable row level security;
+-- Perfis de preço: sem políticas, só o servidor lê e grava.
+alter table public.price_profiles enable row level security;
+alter table public.profile_prices enable row level security;
+alter table public.customer_price_profiles enable row level security;
+
 -- Sem políticas: só o servidor (service role) grava e lê o registro de erros.
 alter table public.error_logs enable row level security;
 

@@ -25,8 +25,8 @@ export default async function ContaPage() {
   return (
     <div className="container-page py-10">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="display-md text-3xl sm:text-4xl">
+        <div className="min-w-0">
+          <h1 className="display-md text-3xl break-words sm:text-4xl">
             Olá{profile?.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}
           </h1>
           <p className="mt-1 break-all text-ink-2">{user.email}</p>

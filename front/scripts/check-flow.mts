@@ -32,6 +32,7 @@ const email = `teste-fluxo-${stamp}@exemplo.com`;
 const password = `Teste-${stamp}-fotoville`;
 const couponCode = `TESTE-${stamp}`;
 let userId: string | null = null;
+let profileId: string | null = null;
 const keys: string[] = [];
 
 const jar = new Map<string, string>();
@@ -220,11 +221,67 @@ try {
   // 8. Cliente comum não entra no painel
   const panel = await api("GET", "/admin");
   check("painel bloqueado para cliente", panel.status === 404, `HTTP ${panel.status}`);
+
+  // 9. Perfil de cliente preferencial, pelo mesmo caminho do painel
+  await admin.from("profiles").update({ is_admin: true }).eq("id", userId);
+  const { data: store10 } = await admin.from("products").select("price_cents, price_tiers").eq("id", "10x15").single();
+  const sameStore = await api("PUT", "/api/admin/precos", {
+    items: [{ product_id: "10x15", price_cents: store10!.price_cents, price_tiers: store10!.price_tiers }],
+  });
+  check("salvar preços da loja pelo painel", sameStore.status === 200, `HTTP ${sameStore.status} ${sameStore.text.slice(0, 120)}`);
+
+  const newProfile = await api<{ id: string }>("POST", "/api/admin/perfis", { name: `Teste ${stamp}`, percent: 20 });
+  profileId = newProfile.data.id ?? null;
+  check("criar perfil pelo painel", newProfile.status === 200 && Boolean(profileId), `HTTP ${newProfile.status} ${newProfile.text.slice(0, 120)}`);
+  const { count: copied } = await admin.from("profile_prices").select("product_id", { count: "exact", head: true }).eq("profile_id", profileId);
+  check("perfil nasce com a tabela da loja", (copied ?? 0) > 20, `${copied} tamanhos`);
+
+  const badTier = await api("PATCH", `/api/admin/perfis/${profileId}`, {
+    items: [{ product_id: "10x15", price_cents: 100, price_tiers: [{ min: 100, price_cents: 120 }] }],
+  });
+  check("faixa mais cara que o preço é recusada", badTier.status === 400, `HTTP ${badTier.status}`);
+  const ownPrice = await api("PATCH", `/api/admin/perfis/${profileId}`, {
+    items: [{ product_id: "10x15", price_cents: 100, price_tiers: [{ min: 100, price_cents: 80 }] }],
+  });
+  check("preço próprio no perfil", ownPrice.status === 200, `HTTP ${ownPrice.status} ${ownPrice.text.slice(0, 120)}`);
+
+  const assign = await api("PUT", `/api/admin/clientes/${userId}`, { profile_id: profileId });
+  check("aplicar perfil ao cliente", assign.status === 200, `HTTP ${assign.status}`);
+
+  const withProfile = await uploadPhoto("perfil.jpg", 3000, 2000);
+  await api("PATCH", `/api/photos/${withProfile.id}`, { quantity: 3 });
+  const profileCart = await api("GET", "/carrinho");
+  check(
+    "carrinho com o preço do perfil e o da loja riscado",
+    profileCart.status === 200 && profileCart.text.includes("3,00") && profileCart.text.includes(`${(store10!.price_cents / 100).toFixed(2).replace(".", ",")}`),
+    `HTTP ${profileCart.status}`,
+  );
+  const profileOrder = await api<{ orderId?: string; error?: string }>("POST", "/api/checkout", {
+    customer: { name: "Cliente Teste", cpf: "123.456.789-09", whatsapp: "(47) 99999-0000" },
+    service: "retirada",
+  });
+  const { data: charged } = await admin
+    .from("orders")
+    .select("subtotal_cents, price_profile_name")
+    .eq("id", profileOrder.data.orderId ?? "00000000-0000-0000-0000-000000000000")
+    .maybeSingle();
+  check(
+    "pedido cobrado pela tabela do perfil",
+    charged?.subtotal_cents === 300 && charged?.price_profile_name === `Teste ${stamp}`,
+    JSON.stringify(charged ?? profileOrder.data),
+  );
+
+  const removed2 = await api("DELETE", `/api/admin/perfis/${profileId}`);
+  check("excluir perfil", removed2.status === 200, `HTTP ${removed2.status}`);
+  const { count: still } = await admin.from("customer_price_profiles").select("user_id", { count: "exact", head: true }).eq("user_id", userId);
+  check("cliente volta para a tabela da loja", still === 0);
+  profileId = null;
 } catch (err) {
   failures++;
   console.error("FALHOU", err instanceof Error ? err.message : err);
 } finally {
-  // Limpeza: pedido, cupom, arquivos e o cliente temporário
+  // Limpeza: perfil de teste, pedido, cupom, arquivos e o cliente temporário
+  if (profileId) await admin.from("price_profiles").delete().eq("id", profileId);
   if (userId) {
     await admin.from("error_logs").delete().eq("scope", "teste-fluxo");
     await admin.from("coupon_redemptions").delete().eq("code", couponCode);

@@ -24,7 +24,9 @@ function pick(products: Product[], ids: string[]) {
 
 export default async function HomePage() {
   const [products, packages] = await Promise.all([getProducts(), getPackages()]);
-  const tenByFifteen = products.find((p) => p.id === "10x15");
+  const found = products.find((p) => p.id === "10x15");
+  // Pacote tem preço da loja: a economia é calculada contra a tabela da loja, mesmo para cliente com perfil
+  const tenByFifteen = found && { ...found, price_cents: found.store?.price_cents ?? found.price_cents };
   const bestDiscount = tenByFifteen
     ? Math.max(0, ...packages.map((p) => Math.round((1 - p.price_cents / p.photo_count / tenByFifteen.price_cents) * 100)))
     : 0;

@@ -85,9 +85,8 @@ export default async function EscolherTamanhoPage() {
                         className="group flex h-full flex-col rounded-panel border border-rule bg-surface px-4 pt-4 pb-3.5 transition-[border-color,background-color] duration-150 hover:border-action hover:bg-action-soft/40"
                         aria-label={`${product.name}, ${formatBRL(product.price_cents)} por foto. Enviar fotos neste tamanho`}
                       >
-                        <h3 className="font-display text-[1.7rem] leading-none font-extrabold tracking-[-0.01em] tabular-nums">
-                          {main}
-                          {unit && <span className="ml-1 text-sm font-semibold tracking-normal text-ink-2">{unit}</span>}
+                        <h3 className="font-display text-[1.5rem] leading-none font-extrabold tracking-[-0.01em] tabular-nums">
+                          {main} {unit && <span className="text-sm font-semibold tracking-normal text-ink-2">{unit}</span>}
                         </h3>
                         {notes.map((n, i) => (
                           <p key={i} className={`text-sm text-ink-2 ${i === 0 ? "mt-1.5" : ""}`}>
@@ -98,6 +97,13 @@ export default async function EscolherTamanhoPage() {
                         {/* Picote fino entre a medida e o preço; o preço fica sempre no pé do cartão */}
                         <div className="mt-auto pt-5">
                           <p className="border-t border-dashed border-rule pt-3">
+                            {/* Preço da loja riscado numa linha própria: lado a lado não cabe com valores de dois dígitos */}
+                            {product.store && product.store.price_cents > product.price_cents && (
+                              <s className="block text-sm leading-tight text-ink-3 tabular-nums">
+                                <span className="sr-only">de </span>
+                                {formatBRL(product.store.price_cents)}
+                              </s>
+                            )}
                             <span className="font-display text-lg font-bold tabular-nums transition-colors duration-150 group-hover:text-action">
                               {formatBRL(product.price_cents)}
                             </span>

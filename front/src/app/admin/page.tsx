@@ -21,20 +21,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   if (filter === "abertos") query = query.in("status", ["paid", "in_production", "ready_for_pickup"]);
   else if (filter !== "todos") query = query.eq("status", filter as OrderStatus);
 
-  const [{ data, error }, { count: openErrors }] = await Promise.all([
-    query,
-    createAdminClient().from("error_logs").select("id", { count: "exact", head: true }).is("resolved_at", null),
-  ]);
+  const { data, error } = await query;
   const orders = (data ?? []) as Order[];
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="display-md text-3xl">Painel da loja</h1>
-        <Link href="/admin/erros" className="btn btn-ghost btn-sm">
-          Erros do site{openErrors ? ` (${openErrors} em aberto)` : ""}
-        </Link>
-      </div>
+      <h1 className="display-md text-3xl">Pedidos</h1>
       <nav aria-label="Filtrar pedidos" className="mt-5 flex flex-wrap gap-2">
         {FILTERS.map((f) => (
           <Link

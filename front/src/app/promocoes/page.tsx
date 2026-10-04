@@ -12,7 +12,8 @@ export const metadata: Metadata = {
 
 export default async function PromocoesPage() {
   const [packages, products] = await Promise.all([getPackages(), getProducts()]);
-  const regular = products.find((p) => p.id === "10x15")?.price_cents ?? 0;
+  const ten = products.find((p) => p.id === "10x15");
+  const regular = ten?.store?.price_cents ?? ten?.price_cents ?? 0;
   const bestDiscount = regular
     ? Math.max(...packages.map((p) => Math.round((1 - p.price_cents / p.photo_count / regular) * 100)))
     : 0;

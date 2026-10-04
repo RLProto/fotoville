@@ -11,6 +11,8 @@ export type Product = {
   height_cm: number;
   price_cents: number;
   price_tiers: PriceTier[];
+  /** Tabela da loja, presente só quando o perfil do cliente mudou o preço deste tamanho (para mostrar riscado). */
+  store?: { price_cents: number; price_tiers: PriceTier[] };
   finishes: Finish[];
   unit_weight_g: number | null;
   unit_thickness_mm: number | null;
@@ -122,6 +124,8 @@ export type Order = {
   number: number;
   user_id: string;
   kind: "prints" | "package";
+  /** Perfil de preço do cliente no momento da compra (null = tabela da loja). */
+  price_profile_name: string | null;
   status: OrderStatus;
   subtotal_cents: number;
   discount_cents: number;
@@ -181,3 +185,9 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
 };
 
 export const FINISH_LABEL: Record<Finish, string> = { brilho: "Brilho", fosco: "Fosco" };
+
+/** Preço e desconto progressivo de um tamanho numa tabela (da loja ou de um perfil de cliente). */
+export type PriceRow = { product_id: string; price_cents: number; price_tiers: PriceTier[] };
+
+/** Perfil de preço (cliente preferencial) com a tabela dele por tamanho. */
+export type CustomerPriceProfile = { id: string; name: string; prices: Map<string, Omit<PriceRow, "product_id">> };

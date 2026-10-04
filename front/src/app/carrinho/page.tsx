@@ -8,7 +8,7 @@ import { RemoveGroupButton } from "@/components/remove-group-button";
 import { loadCartPhotos, summarizeCart } from "@/lib/cart";
 import { getProducts } from "@/lib/catalog";
 import { formatBRL, plural } from "@/lib/format";
-import { minCopies, nearTier, unitPrice } from "@/lib/pricing";
+import { minCopies, nearTier, regularPrice, unitPrice } from "@/lib/pricing";
 import { whatsappLink } from "@/lib/site";
 import { withThumbUrls } from "@/lib/storage";
 import { createClient, getUser } from "@/lib/supabase/server";
@@ -82,10 +82,10 @@ export default async function CarrinhoPage() {
                   <h2 className="text-xl font-bold">{group.product.name}</h2>
                   <p className="text-ink-2">
                     {plural(group.copies, "foto", "fotos")},{" "}
-                    {group.unit < group.product.price_cents && (
+                    {group.unit < regularPrice(group.product) && (
                       <s className="text-ink-3">
                         <span className="sr-only">de </span>
-                        {formatBRL(group.product.price_cents)}
+                        {formatBRL(regularPrice(group.product))}
                       </s>
                     )}{" "}
                     {formatBRL(group.unit)} cada

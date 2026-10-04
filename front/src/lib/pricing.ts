@@ -9,6 +9,11 @@ export function minCopies(product: Pick<Product, "id">) {
   return MIN_COPIES[product.id] ?? 1;
 }
 
+/** Preço de tabela, antes de qualquer desconto: o da loja quando o cliente tem perfil, senão o do produto. */
+export function regularPrice(product: Pick<Product, "price_cents" | "store">) {
+  return product.store?.price_cents ?? product.price_cents;
+}
+
 /** Preço por foto conforme o total de cópias daquele tamanho no pedido. */
 export function unitPrice(product: Priced, quantity: number) {
   let price = product.price_cents;

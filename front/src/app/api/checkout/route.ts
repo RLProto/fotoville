@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { fail, reportServerError, requireUser, serverFail } from "@/lib/api";
 import { belowMinimum, loadCartPhotos, summarizeCart } from "@/lib/cart";
-import { getProducts } from "@/lib/catalog";
+import { getCustomerPriceProfile, getProducts } from "@/lib/catalog";
 import { previewCoupon } from "@/lib/coupons";
 import { isValidCpf, onlyDigits } from "@/lib/format";
 import { createPreference, hasMercadoPago } from "@/lib/mercadopago";
@@ -97,6 +97,8 @@ export async function POST(request: Request) {
       total_cents,
       coupon_code: coupon?.code ?? null,
       customer: { name: input.customer.name, cpf, whatsapp, email: user.email },
+      // Com que tabela o pedido foi cobrado (perfil de cliente preferencial), para o painel
+      price_profile_name: (await getCustomerPriceProfile())?.name ?? null,
       shipping_service: shipping.service,
       shipping_label: shipping.label,
       shipping_days: shipping.days,

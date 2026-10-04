@@ -113,8 +113,13 @@ reais, ajuste as constantes no topo do arquivo.
   estimado, e permite mudar a situação e informar o código de rastreio.
 - **Fotos para imprimir:** na página do pedido, *Baixar todas recortadas* gera os arquivos já no enquadramento que
   o cliente escolheu, com nome `pedido_tamanho_acabamento_cópias_índice.jpg`. Também dá para baixar os originais.
-- **Preços e produtos:** edite a tabela `products` no Supabase (preço em centavos). Para desativar um tamanho,
-  marque `active = false`.
+- **Preços:** Painel > Preços. Preço por foto e faixas do desconto progressivo de cada tamanho, para quem não tem
+  perfil. Para desativar um tamanho ou criar um novo, use a tabela `products` no Supabase.
+- **Clientes preferenciais:** Painel > Perfis cria tabelas de preço próprias (Perfil 1, Perfil 2…), já preenchidas
+  com a tabela da loja e um desconto inicial; cada preço e faixa pode ser ajustado. Painel > Clientes escolhe o perfil
+  de cada cliente (os que mais compram aparecem primeiro). O cliente com perfil vê e paga a tabela do perfil em todo o
+  site, com o preço da loja riscado ao lado, e o pedido guarda o nome do perfil usado. Tamanho sem preço no perfil
+  usa o da loja; excluir um perfil devolve os clientes à tabela da loja.
 - **Pacotes "compre agora, revele depois":** tabela `packages`. Ao ser pago, o pacote gera um cupom com créditos
   de fotos (tabela `coupons`), que o cliente usa no fechamento de um ou mais pedidos.
 - **Cupom de desconto percentual:**

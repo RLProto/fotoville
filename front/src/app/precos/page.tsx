@@ -22,11 +22,12 @@ export default async function PrecosPage() {
   const tiered = products.filter((p) => p.price_tiers.length > 0);
   const ranges = quantityRanges(tiered);
   const single = tiered.length === 1 ? tiered[0] : null;
+  const hasProfile = products.some((p) => p.store);
 
   return (
     <>
       <PageHeader title="Preços">
-        <p>Preço por foto.</p>
+        <p>{hasProfile ? "Preço por foto, com o seu desconto de cliente." : "Preço por foto."}</p>
       </PageHeader>
 
       <section aria-labelledby="tamanhos">
@@ -65,7 +66,15 @@ export default async function PrecosPage() {
                               {minCopies(product) > 1 && <span className="text-sm text-ink-2">mínimo {minCopies(product)}</span>}
                             </span>
                             <span className="leader" aria-hidden />
-                            <span className="shrink-0 tabular-nums group-hover:text-action">{formatBRL(product.price_cents)}</span>
+                            <span className="shrink-0 text-right tabular-nums group-hover:text-action">
+                              {product.store && product.store.price_cents > product.price_cents && (
+                                <s className="block text-xs leading-tight text-ink-3">
+                                  <span className="sr-only">de </span>
+                                  {formatBRL(product.store.price_cents)}
+                                </s>
+                              )}
+                              {formatBRL(product.price_cents)}
+                            </span>
                           </Link>
                         </li>
                       );

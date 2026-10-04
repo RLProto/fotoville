@@ -5,7 +5,8 @@ import { PACKAGES, PRODUCTS } from "./catalog-data";
 import { logError } from "./error-log";
 import { parseTiers } from "./pricing";
 import { hasSupabase } from "./site";
-import type { Package, Product } from "./types";
+import { createAdminClient, getUser } from "./supabase/server";
+import type { CustomerPriceProfile, Package, Product } from "./types";
 
 function publicClient() {
   return createSupabaseClient(
@@ -15,8 +16,8 @@ function publicClient() {
   );
 }
 
-/** Produtos ativos. Sem Supabase configurado, usa o catálogo de referência. */
-export const getProducts = cache(async (): Promise<Product[]> => {
+/** Produtos ativos com os preços da loja. Sem Supabase configurado, usa o catálogo de referência. */
+export const getStoreProducts = cache(async (): Promise<Product[]> => {
   if (!hasSupabase) return PRODUCTS;
   const { data, error } = await publicClient()
     .from("products")
@@ -36,6 +37,58 @@ export const getProducts = cache(async (): Promise<Product[]> => {
     unit_weight_g: p.unit_weight_g === null ? null : Number(p.unit_weight_g),
     unit_thickness_mm: p.unit_thickness_mm === null ? null : Number(p.unit_thickness_mm),
   })) as Product[];
+});
+
+/** Perfil de preço de um cliente e a tabela dele. Só o servidor lê (RLS sem políticas). */
+export async function loadPriceProfileFor(userId: string): Promise<CustomerPriceProfile | null> {
+  if (!hasSupabase || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
+  const admin = createAdminClient();
+  const { data: link, error } = await admin
+    .from("customer_price_profiles")
+    .select("profile_id, price_profiles(name)")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) {
+    await logError({ source: "server", scope: "catalogo", message: error.message, detail: { tabela: "customer_price_profiles" } });
+    return null;
+  }
+  if (!link) return null;
+  const { data: rows } = await admin
+    .from("profile_prices")
+    .select("product_id, price_cents, price_tiers")
+    .eq("profile_id", link.profile_id);
+  const joined = link.price_profiles as unknown as { name: string } | { name: string }[] | null;
+  const name = (Array.isArray(joined) ? joined[0]?.name : joined?.name) ?? "Perfil";
+  return {
+    id: link.profile_id,
+    name,
+    prices: new Map((rows ?? []).map((r) => [r.product_id, { price_cents: r.price_cents, price_tiers: parseTiers(r.price_tiers) }])),
+  };
+}
+
+/** Perfil de preço do cliente logado, ou null. */
+export const getCustomerPriceProfile = cache(async (): Promise<CustomerPriceProfile | null> => {
+  const user = await getUser().catch(() => null);
+  return user ? loadPriceProfileFor(user.id) : null;
+});
+
+/** Põe a tabela do perfil por cima da tabela da loja. Tamanho sem preço no perfil fica com o da loja. */
+export function applyPriceProfile(products: Product[], profile: CustomerPriceProfile | null): Product[] {
+  if (!profile) return products;
+  return products.map((p) => {
+    const own = profile.prices.get(p.id);
+    if (!own) return p;
+    return { ...p, ...own, store: { price_cents: p.price_cents, price_tiers: p.price_tiers } };
+  });
+}
+
+/**
+ * Produtos com os preços de quem está navegando: a tabela da loja ou, para cliente com perfil, a do perfil.
+ * Tudo que mostra ou cobra preço passa por aqui (páginas, carrinho, frete, cupom, pagamento).
+ */
+export const getProducts = cache(async (): Promise<Product[]> => {
+  const [store, profile] = await Promise.all([getStoreProducts(), getCustomerPriceProfile()]);
+  return applyPriceProfile(store, profile);
 });
 
 export async function getProduct(id: string) {

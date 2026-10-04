@@ -18,7 +18,7 @@ import { LOW_DPI, printDpi } from "@/lib/crop";
 import { formatBRL, plural } from "@/lib/format";
 import { loadImage } from "@/lib/decode-image";
 import { analyzeImage } from "@/lib/photo-render";
-import { minCopies, nearTier, unitPrice } from "@/lib/pricing";
+import { minCopies, nearTier, regularPrice, unitPrice } from "@/lib/pricing";
 import { fileDetail, reportError } from "@/lib/report-error";
 import { whatsappLink } from "@/lib/site";
 import { FINISH_LABEL, type Adjust, type Crop, type Finish, type PhotoView, type Product } from "@/lib/types";
@@ -99,6 +99,7 @@ export function Uploader({
 
   const copies = photos.reduce((sum, p) => sum + p.quantity, 0);
   const unit = unitPrice(product, copies);
+  const regular = regularPrice(product);
   const subtotal = copies * unit;
   const next = nearTier(product, copies);
   /** Mínimo de fotos do tamanho (Mini Polaroid: 2). Só cobra depois da primeira foto. */
@@ -715,7 +716,16 @@ export function Uploader({
             </h2>
             <p className="mt-3 text-ink-2">
               {plural(copies, "foto", "fotos")} {product.name}
-              {unit < product.price_cents && <>, {formatBRL(unit)} cada</>}
+              {unit < regular && (
+                <>
+                  ,{" "}
+                  <s className="text-ink-3">
+                    <span className="sr-only">de </span>
+                    {formatBRL(regular)}
+                  </s>{" "}
+                  {formatBRL(unit)} cada
+                </>
+              )}
             </p>
             <p className="mt-1 font-display text-2xl font-bold tabular-nums">{formatBRL(subtotal)}</p>
             {missing > 0 ? (

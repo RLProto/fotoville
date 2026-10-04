@@ -72,12 +72,7 @@ export default async function ErrorsPage({ searchParams }: { searchParams: Promi
 
   return (
     <>
-      <p>
-        <Link href="/admin" className="link text-sm">
-          Painel da loja
-        </Link>
-      </p>
-      <h1 className="mt-2 display-md text-3xl">Erros do site</h1>
+      <h1 className="display-md text-3xl">Erros do site</h1>
       <nav aria-label="Filtrar erros" className="mt-5 flex flex-wrap gap-2">
         {FILTERS.map((f) => (
           <Link

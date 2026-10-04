@@ -53,6 +53,12 @@ export default async function EnviarPage({ params }: Props) {
         <div>
           <h1 className="display-md text-3xl sm:text-4xl">Fotos {product.name}</h1>
           <p className="mt-1 text-lg text-ink-2">
+            {product.store && product.store.price_cents > product.price_cents && (
+              <s className="mr-1.5 text-ink-3">
+                <span className="sr-only">de </span>
+                {formatBRL(product.store.price_cents)}
+              </s>
+            )}
             {formatBRL(product.price_cents)} por foto
             {minCopies(product) > 1 && <>, mínimo de {minCopies(product)} fotos</>}
           </p>
