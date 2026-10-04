@@ -22,10 +22,13 @@ type ErrorLog = {
   resolved_at: string | null;
 };
 
+/** Por padrão só o site publicado; os erros de teste na máquina de desenvolvimento ficam num filtro à parte. */
 const FILTERS = [
   { value: "abertos", label: "Abertos" },
   { value: "todos", label: "Todos" },
-];
+  { value: "teste", label: "Teste local" },
+] as const;
+type Filter = (typeof FILTERS)[number]["value"];
 
 /** Aparelho e navegador em poucas palavras, a partir do user agent. */
 function device(ua: string | null) {
@@ -43,9 +46,11 @@ function device(ua: string | null) {
 export default async function ErrorsPage({ searchParams }: { searchParams: Promise<{ filtro?: string }> }) {
   if (!(await getProfile())?.is_admin) notFound();
 
-  const filter = (await searchParams).filtro === "todos" ? "todos" : "abertos";
+  const asked = (await searchParams).filtro;
+  const filter: Filter = asked === "todos" || asked === "teste" ? asked : "abertos";
   const admin = createAdminClient();
   let query = admin.from("error_logs").select("*").order("created_at", { ascending: false }).limit(500);
+  query = filter === "teste" ? query.neq("env", "production") : query.eq("env", "production");
   if (filter === "abertos") query = query.is("resolved_at", null);
   const { data, error } = await query;
   const logs = (data ?? []) as ErrorLog[];
@@ -90,7 +95,11 @@ export default async function ErrorsPage({ searchParams }: { searchParams: Promi
 
       {groups.size === 0 ? (
         <p className="card mt-6 p-8 text-center text-lg text-ink-2">
-          {filter === "abertos" ? "Nenhum erro em aberto." : "Nenhum erro registrado."}
+          {filter === "abertos"
+            ? "Nenhum erro em aberto no site."
+            : filter === "teste"
+              ? "Nenhum erro de teste local."
+              : "Nenhum erro registrado no site."}
         </p>
       ) : (
         <ul className="mt-6 space-y-4">
