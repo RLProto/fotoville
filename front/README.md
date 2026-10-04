@@ -94,6 +94,7 @@ valor como "aprox.". Ajuste a tabela aos valores que a loja paga.
 | `npm run check:storage` | Envio, leitura, CORS e bloqueio anônimo no bucket |
 | `npm run check:fluxo` | Fluxo completo com o site rodando: cria um cliente temporário, envia fotos, cota frete, aplica cupom, fecha pedido e apaga tudo no fim |
 | `npm run check:frete` | Peso, volume e frete estimado de pedidos de exemplo |
+| `npm run whatsapp -- teste` | Manda agora o status do bucket pelo bot do WhatsApp |
 
 ## Como o frete é calculado
 
@@ -169,6 +170,20 @@ Erros do navegador do cliente e do servidor ficam na tabela `error_logs` e apare
 `reportError(área, erro, detalhes)` (`src/lib/report-error.ts`); no servidor, com `serverFail`/`reportServerError`
 (`src/lib/api.ts`) nas rotas de API ou `logError` (`src/lib/error-log.ts`) no resto. Erros não tratados são capturados
 sozinhos (`src/instrumentation.ts` e `src/instrumentation-client.ts`).
+
+## Bot do WhatsApp
+
+Manda para o WhatsApp da loja o status do bucket às 8h, um aviso quando o uso passa de 70% dos 100 GB, um alerta
+por hora acima de 90% e os erros novos do site publicado (a cada 10 minutos, numa mensagem só). Roda inteiro no
+Supabase: `pg_cron` agenda, `pg_net` chama o [CallMeBot](https://www.callmebot.com/blog/free-api-whatsapp-messages/)
+e a chave fica no Vault. Código em `../back/supabase/migrations/2026-10-04_whatsapp_monitor.sql`.
+
+1. No WhatsApp, mande `I allow callmebot to send me messages` para **+34 644 05 92 17**. A resposta traz a chave.
+2. Preencha `WHATSAPP_PHONE` (no formato que a resposta do CallMeBot mostrar) e `CALLMEBOT_APIKEY` no `.env.local`.
+3. `npm run whatsapp -- config` grava os dois no banco; `npm run whatsapp -- teste` manda o status agora.
+
+Mensagens enviadas ficam em `monitor.messages`. Falha de entrega aparece em `/admin/erros` como aviso (área
+`whatsapp`). Limites, horário e endereço do site ficam na linha única de `monitor.settings`.
 
 ## Pontos para confirmar com a loja
 
