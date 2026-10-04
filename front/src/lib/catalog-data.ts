@@ -6,7 +6,8 @@ import type { Finish, Package, PriceTier, Product } from "./types";
  * Em produção, os preços valem pelo banco: edite a tabela `products`.
  */
 
-const BOTH: Finish[] = ["brilho", "fosco"];
+/** Acabamento único. Não aparece no site; fica só nos dados do pedido. */
+const FINISH: Finish[] = ["brilho"];
 
 /**
  * Desconto progressivo do 10x15. O site antigo não tinha faixas, só os pacotes pré-pagos;
@@ -34,7 +35,7 @@ function print(
     height_cm: h,
     price_cents,
     price_tiers: [],
-    finishes: BOTH,
+    finishes: FINISH,
     unit_weight_g: null,
     unit_thickness_mm: null,
     sort,
@@ -47,7 +48,7 @@ export const PRODUCTS: Product[] = [
   print(10, 10, 13, 199),
   print(20, 10, 15, 199, { price_tiers: TIERS_10X15 }),
   print(30, 13, 15, 209),
-  print(40, 13, 18, 500, { name: "13x18 cm Fosco", finishes: ["fosco"] }),
+  print(40, 13, 18, 500),
   print(50, 15, 15, 329),
   print(60, 15, 21, 399),
   print(70, 15, 30, 659),
@@ -78,7 +79,7 @@ export const PRODUCTS: Product[] = [
     height_cm: 8.6,
     price_cents: 350,
     price_tiers: [],
-    finishes: BOTH,
+    finishes: FINISH,
     unit_weight_g: null,
     unit_thickness_mm: null,
     sort: 295,
@@ -93,7 +94,7 @@ export const PRODUCTS: Product[] = [
     height_cm: 10.7,
     price_cents: 450,
     price_tiers: [],
-    finishes: BOTH,
+    finishes: FINISH,
     unit_weight_g: null,
     unit_thickness_mm: null,
     sort: 300,
@@ -107,7 +108,7 @@ export const PRODUCTS: Product[] = [
     height_cm: 30,
     price_cents: 2000,
     price_tiers: [],
-    finishes: BOTH,
+    finishes: FINISH,
     // Placa rígida: peso e espessura estimados. Confirmar com a loja.
     unit_weight_g: 380,
     unit_thickness_mm: 4,
@@ -127,7 +128,7 @@ export const PACKAGES: Package[] = [
   product_id: "10x15",
   photo_count: count,
   price_cents: price,
-  description: "Papel fotográfico. Compre agora e revele quando quiser.",
+  description: "Compre agora e revele quando quiser.",
   sort: (i + 1) * 10,
   active: true,
 }));

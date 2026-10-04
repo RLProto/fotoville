@@ -94,7 +94,7 @@ Escrito depois da construção, a partir do código em `src/app/globals.css` e d
 
 ## Overview
 
-O site é o envelope de revelação do laboratório: o cliente marca tamanho, acabamento e cópias como nos quadradinhos
+O site é o envelope de revelação do laboratório: o cliente marca tamanho e cópias como nos quadradinhos
 do envelope, sobre papel fotográfico branco e frio, com tinta índigo. As seis lâminas do diafragma do logo aparecem
 como campos inteiros de cor (régua de tamanhos em petróleo, pacotes em mostarda) e como preenchimento das fotos
 desenhadas.
@@ -133,7 +133,7 @@ página é o maior da home; títulos de seção ficam em `text-3xl`.
 
 **Fluxo:** o tamanho se escolhe no passo seguinte ao botão (`/enviar`), nunca antes. Escolha do tamanho em cartões
 só tipográficos, sem foto nem desenho de proporção (pedido do usuário, out/2026: a foto ali ficava brega): a medida
-em destaque ("10 × 15", com o × em `ink-3`), "cm" pequeno, uma linha opcional ("Só fosco", "Foto-placa"), picote
+em destaque ("10 × 15", com o × em `ink-3`), "cm" pequeno, uma linha opcional ("Foto-placa", "Mínimo de 2 fotos"), picote
 tracejado e o preço no pé. Grade `repeat(auto-fill, minmax(9.5rem, 1fr))`: duas colunas a 360 px, seis no desktop, uma
 coluna quando a fonte do sistema está aumentada. Cartões da mesma linha com a mesma altura.
 
@@ -166,10 +166,12 @@ sombra.
 
 - **Etapas do pedido** (`order-steps`): Tamanho, Fotos, Carrinho, Entrega e pagamento, no topo de cada tela do fluxo.
   Etapas já feitas são links; a atual é sublinhada. No celular vira uma linha: "Etapa 2 de 4: Fotos".
-- **Área de envio** (`uploader`): vazia, mostra o papel do tamanho escolhido, o acabamento (Brilho já marcado) e
-  "Selecionar fotos"; com fotos, encolhe numa faixa com "Adicionar fotos". Acabamento se escolhe na tela, sem
-  janela. Ações em lote confirmam com um aviso visível de 3,5 s. A miniatura abre o ajuste, e o editor tem
-  "Salvar e próxima" com "1 de 5" no título.
+- **Área de envio** (`uploader`): vazia, mostra o papel do tamanho escolhido e "Selecionar fotos"; com fotos, encolhe
+  numa faixa com "Adicionar fotos". Sem escolha de acabamento: é um só e não aparece no site. Cópias digitáveis de 1
+  a 10.000 (`copies-input`), por foto e "Cópias de cada" para todas. Enquadramento rápido (`quick-frame`): arrastar a
+  miniatura move o corte e grava; com mouse sempre, no toque só com o modo "Enquadrar" ligado, para não brigar com a
+  rolagem. Clique sem arrastar abre o editor completo, que tem "Salvar e próxima". Ações em lote confirmam com um
+  aviso visível de 3,5 s.
 - **Tabela de preços** (`/precos`): pontilhado entre nome e preço, como a tabela do balcão; desconto progressivo
   em tabela de faixas com etiqueta verde de porcentagem.
 - **Foto desenhada** (`print-shape`): papel branco com fio de 2px (a foto comum sai sem borda; o fio só faz o

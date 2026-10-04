@@ -49,7 +49,7 @@ create table if not exists public.products (
   height_cm numeric(5, 1) not null,
   price_cents integer not null check (price_cents >= 0),
   price_tiers jsonb not null default '[]',   -- desconto progressivo: [{ "min": 100, "price_cents": 119 }, ...]
-  finishes text[] not null default '{brilho,fosco}',
+  finishes text[] not null default '{brilho}',       -- acabamento único; não aparece no site
   unit_weight_g numeric(7, 2),               -- null = calcula pela área do papel
   unit_thickness_mm numeric(5, 2),           -- null = espessura padrão do papel
   sort integer not null default 0,
@@ -132,7 +132,7 @@ create table if not exists public.photos (
   fit boolean not null default false,        -- true = foto inteira, sem cortar
   adjust jsonb,                              -- cor, borda e legenda (ver Adjust em src/lib/types.ts); null = nenhum
   finish text not null default 'brilho',
-  quantity integer not null default 1 check (quantity between 1 and 999),
+  quantity integer not null default 1 check (quantity between 1 and 10000),
   created_at timestamptz not null default now()
 );
 -- Bancos criados antes dos ajustes de foto (out/2026)

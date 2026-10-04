@@ -113,7 +113,7 @@ reais, ajuste as constantes no topo do arquivo.
 - **Painel:** `/admin` (só para contas com `is_admin`). Lista os pedidos pagos, mostra cliente, endereço e pacote
   estimado, e permite mudar a situação e informar o código de rastreio.
 - **Fotos para imprimir:** na página do pedido, *Baixar todas recortadas* gera os arquivos já no enquadramento que
-  o cliente escolheu, com nome `pedido_tamanho_acabamento_cópias_índice.jpg`. Também dá para baixar os originais.
+  o cliente escolheu, com nome `pedido_tamanho_cópias_índice.jpg`. Também dá para baixar os originais.
 - **Preços:** Painel > Preços. Preço por foto e faixas do desconto progressivo de cada tamanho, para quem não tem
   perfil. Para desativar um tamanho ou criar um novo, use a tabela `products` no Supabase.
 - **Clientes preferenciais:** Painel > Perfis cria tabelas de preço próprias (Perfil 1, Perfil 2…), já preenchidas
@@ -191,6 +191,5 @@ Mensagens enviadas ficam em `monitor.messages`. Falha de entrega aparece em `/ad
 - Preço da Mini Polaroid (R$ 3,50 provisório). As medidas da Polaroid (8,8 × 10,7 cm) e da Mini Polaroid (5,4 × 8,6 cm)
   seguem os filmes originais (`INSTANT_FRAMES` em `src/lib/crop.ts`); confirmar se a loja imprime nesses tamanhos.
   Peso e espessura da foto-placa.
-- Se os pacotes valem para brilho e fosco (hoje valem para os dois; o site antigo citava só fosco).
 - Textos de Termos de uso e Política de privacidade (rascunhos; pedem revisão jurídica).
 - Valores da tabela de frete estimado, caso a loja não tenha contrato com os Correios.

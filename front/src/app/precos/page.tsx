@@ -5,7 +5,6 @@ import { getProducts } from "@/lib/catalog";
 import { formatBRL } from "@/lib/format";
 import { minCopies, quantityRanges, rangeLabel, unitPrice } from "@/lib/pricing";
 import { SIZE_GROUPS } from "@/lib/size-groups";
-import { FINISH_LABEL } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "Preços de revelação de fotos",
@@ -48,10 +47,6 @@ export default async function PrecosPage() {
                   </h3>
                   <ul className="mt-2">
                     {items.map((product) => {
-                      const onlyFinish =
-                        product.finishes.length === 1 && !product.name.toLowerCase().includes(product.finishes[0])
-                          ? FINISH_LABEL[product.finishes[0]].toLowerCase()
-                          : null;
                       return (
                         <li key={product.id}>
                           <Link
@@ -62,7 +57,6 @@ export default async function PrecosPage() {
                             {/* O nome pode quebrar de linha (fonte grande); o preço fica sempre inteiro à direita */}
                             <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                               <span className="font-semibold">{product.name}</span>
-                              {onlyFinish && <span className="text-sm text-ink-2">só {onlyFinish}</span>}
                               {minCopies(product) > 1 && <span className="text-sm text-ink-2">mínimo {minCopies(product)}</span>}
                             </span>
                             <span className="leader" aria-hidden />

@@ -9,7 +9,7 @@ Dials: variância 6, movimento 4, densidade 4. Modo impeccable: Persuade na home
 carrinho, pagamento, conta e painel.
 
 ## THESIS
-O site é o envelope de revelação do laboratório: escolher tamanho, acabamento e cópias como quem marca os quadradinhos
+O site é o envelope de revelação do laboratório: escolher tamanho e cópias como quem marca os quadradinhos
 do envelope. Recusa o padrão da categoria: hero centralizado sobre foto, três cartões de vantagens, creme com
 terracota, rótulo em maiúsculas sobre cada título.
 

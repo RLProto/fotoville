@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Quem somos",
-  description: `A Fotoville revela fotos em ${site.address.city} desde ${site.since}, em papel Kodak e Fujifilm.`,
+  description: `A Fotoville revela fotos em ${site.address.city} desde ${site.since}. Entrega em todo o Brasil ou retirada na loja.`,
 };
 
 export default function QuemSomosPage() {
@@ -19,10 +18,9 @@ export default function QuemSomosPage() {
             A Fotoville revela fotos em {site.address.city} desde {site.since}.
           </p>
           <div className="mt-6 space-y-4 text-lg text-ink-2">
-            <p>Papel Kodak e Fujifilm, de 10x13 a 30x60, além de Polaroid e foto-placa.</p>
+            <p>Revelamos de 10x13 a 30x60, além de Mini Polaroid, Polaroid e foto-placa.</p>
             <p>Você envia as fotos pelo site e recebe pelos Correios em todo o Brasil, ou retira na loja sem custo.</p>
           </div>
-          <Image src="/marcas-kodak-fujifilm.png" alt="Kodak e Fujifilm" width={230} height={25} className="mt-8 h-auto" />
           <p className="mt-10">
             <Link href="/enviar" className="btn btn-accent btn-lg">
               Enviar fotos

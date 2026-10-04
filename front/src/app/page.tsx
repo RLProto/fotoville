@@ -41,7 +41,7 @@ export default async function HomePage() {
         <div className="relative h-52 sm:h-96 lg:absolute lg:inset-y-0 lg:left-0 lg:h-auto lg:w-[48%]">
           <Image
             src="/hero-fotos.jpg"
-            alt="Mão segurando três fotos de família reveladas em papel"
+            alt="Mão segurando três fotos de família reveladas"
             fill
             priority
             sizes="(min-width: 1024px) 48vw, 100vw"
@@ -111,14 +111,12 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* A loja: tempo de casa, papel e onde fica. Fatos, sem lista de vantagens */}
+      {/* A loja: tempo de casa e onde fica. Fatos, sem lista de vantagens */}
       <section className="container-page grid items-start gap-12 py-16 lg:grid-cols-[1.15fr_1fr] lg:py-24" aria-labelledby="loja">
         <div>
           <h2 id="loja" className="display max-w-[16ch] text-3xl">
             Revelando em {site.address.city} desde {site.since}
           </h2>
-          <p className="mt-6 text-lg text-ink-2">Papel Kodak e Fujifilm.</p>
-          <Image src="/marcas-kodak-fujifilm.png" alt="Kodak e Fujifilm" width={260} height={28} className="mt-4 h-auto" />
         </div>
         <div className="border-t border-ink pt-5">
           <h3 className="text-lg font-bold">Retirada grátis na loja</h3>

@@ -4,8 +4,8 @@ Documento de desenvolvimento. Não é servido no site.
 
 ## O que é
 Laboratório de revelação fotográfica de Joinville/SC, ativo desde 2012. O cliente envia fotos do celular ou do
-computador, escolhe tamanho, acabamento (brilho ou fosco) e cópias, ajusta o enquadramento, paga pelo Mercado Pago e
-recebe pelos Correios ou retira na loja. Papel Kodak e Fujifilm.
+computador, escolhe tamanho e cópias, ajusta o enquadramento, paga pelo Mercado Pago e
+recebe pelos Correios ou retira na loja.
 
 ## Para quem
 Famílias e pessoas comuns com fotos guardadas no celular, na câmera ou no computador: álbum de bebê, formatura,
@@ -18,9 +18,8 @@ Compra quase sempre pelo celular, no sofá, à noite, ou no computador quando o 
 - Como começar: escolher o tamanho e enviar as fotos.
 
 ## Fatos que podem aparecer no site
-- 26 tamanhos, de 10x13 a 30x60, mais Polaroid e foto-placa. Preços em src/lib/catalog-data.ts e no banco.
+- 27 tamanhos, de 10x13 a 30x60, mais Mini Polaroid, Polaroid e foto-placa. Preços em src/lib/catalog-data.ts e no banco.
 - Pacotes 10x15 pré-pagos de 100, 300, 500 e 1000 fotos.
-- Papéis Kodak e Fujifilm.
 - Desde 2012, em Joinville.
 - Retirada na loja: R. Vice-Prefeito Luiz Carlos Garcia, 1125, Sala 3, Costa e Silva, Joinville/SC, 89219-370.
 - WhatsApp (47) 3029-3792.
@@ -32,3 +31,7 @@ Depoimentos, número de clientes, avaliações, prazos diferentes dos configurad
 - Logo: diafragma de seis lâminas coloridas e a palavra FOTOVILLE. Não alterar.
 - Foto da mão segurando três fotos reveladas: usar no topo da home.
 - Cupom só na etapa de pagamento.
+
+## Não mencionar
+- Papel e marcas de papel (Kodak, Fujifilm): não gera engajamento (decisão do dono, out/2026).
+- Acabamento (brilho ou fosco): é um só e o cliente não escolhe.

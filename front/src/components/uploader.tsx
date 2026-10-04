@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowsOutCardinalIcon,
   CircleNotchIcon,
   ImagesIcon,
   MagicWandIcon,
@@ -21,16 +22,13 @@ import { analyzeImage } from "@/lib/photo-render";
 import { minCopies, nearTier, regularPrice, unitPrice } from "@/lib/pricing";
 import { fileDetail, reportError } from "@/lib/report-error";
 import { whatsappLink } from "@/lib/site";
-import { FINISH_LABEL, type Adjust, type Crop, type Finish, type PhotoView, type Product } from "@/lib/types";
+import type { Adjust, Crop, Finish, PhotoView, Product } from "@/lib/types";
 import { ACCEPTED_TYPES, MAX_FILE_BYTES, putWithProgress, readImage, runPool } from "@/lib/upload-client";
+import { CopiesInput, MAX_COPIES } from "./copies-input";
 import { PhotoEditor } from "./photo-editor";
-import { PrintPreview } from "./print-preview";
 import { PrintShape } from "./print-shape";
+import { QuickFrame } from "./quick-frame";
 
-const FINISH_HINT: Record<Finish, string> = {
-  brilho: "Cores mais vivas.",
-  fosco: "Sem reflexo.",
-};
 
 type Presigned = { name: string; key: string; thumbKey: string; uploadUrl: string; thumbUploadUrl: string };
 type Failure = { name: string; message: string };
@@ -106,10 +104,10 @@ export function Uploader({
   const minimum = minCopies(product);
   const missing = photos.length ? Math.max(0, minimum - copies) : 0;
 
-  /** Acabamento em uso: o de todas as fotos, ou null se estiverem misturados ou não houver fotos. */
-  const uniformFinish = photos.length && photos.every((p) => p.finish === photos[0].finish) ? photos[0].finish : null;
-  /** Acabamento do primeiro envio, escolhido na própria área de envio (já vem marcado o primeiro). */
-  const [chosenFinish, setChosenFinish] = useState<Finish>(product.finishes[0]);
+  /** Modo "Enquadrar": no celular, libera arrastar as fotos para enquadrar sem abrir o editor. */
+  const [framing, setFraming] = useState(false);
+  /** Cópias para aplicar a todas as fotos de uma vez. */
+  const [bulkCopies, setBulkCopies] = useState(1);
   /** Aviso visível por alguns segundos (envio concluído, ação aplicada a todas). */
   const [toast, setToast] = useState<string | null>(null);
   useEffect(() => {
@@ -175,9 +173,8 @@ export function Uploader({
     setNotice(null);
     if (!ready.length) return;
 
-    // Primeiro envio deste tamanho: vale o acabamento marcado na área de envio. Depois, as novas seguem as que já estão aqui.
-    const finish = photos.length ? (uniformFinish ?? photos[0].finish) : chosenFinish;
-    await send(ready, finish);
+    // Acabamento único do tamanho: não é escolha do cliente nem aparece no site
+    await send(ready, product.finishes[0]);
   }
 
   async function send(valid: File[], finish: Finish) {
@@ -263,6 +260,7 @@ export function Uploader({
     setPhotos((list) => list.map((p) => (p.id === id ? { ...p, ...changes } : p)));
     try {
       await api(`/api/photos/${id}`, { method: "PATCH", body: JSON.stringify(changes) });
+      if (changes.quantity !== undefined) router.refresh(); // o contador do carrinho no topo soma as cópias
     } catch (err) {
       setPhotos(before);
       reportError("fotos", err, { etapa: "salvar alteração", photo: id, campos: Object.keys(changes) });
@@ -322,7 +320,7 @@ export function Uploader({
     setNotice(`${pending.photo.file_name} voltou para a lista.`);
   }
 
-  async function applyToAll(changes: { finish?: Finish; quantity?: number }) {
+  async function applyToAll(changes: { quantity: number }) {
     const before = photos;
     setPhotos((list) => list.map((p) => ({ ...p, ...changes })));
     try {
@@ -331,6 +329,7 @@ export function Uploader({
       );
       setNotice("Aplicado a todas as fotos.");
       setToast("Aplicado a todas as fotos.");
+      router.refresh();
     } catch (err) {
       reportError("fotos", err, { etapa: "aplicar a todas", ...changes, count: before.length });
       setPhotos(before);
@@ -502,32 +501,6 @@ export function Uploader({
                   />
                 </div>
 
-                {product.finishes.length > 1 && (
-                  <fieldset className="mx-auto mt-7 max-w-sm text-left">
-                    <legend className="field-label">Acabamento</legend>
-                    <div className="grid grid-cols-2 gap-2">
-                      {product.finishes.map((f) => (
-                        <label
-                          key={f}
-                          className={`cursor-pointer rounded-control border-2 px-3 py-2 transition-colors has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-action ${
-                            chosenFinish === f ? "border-action bg-action-soft" : "border-rule hover:border-ink-2"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="acabamento"
-                            value={f}
-                            checked={chosenFinish === f}
-                            onChange={() => setChosenFinish(f)}
-                            className="sr-only"
-                          />
-                          <span className="block font-semibold">{FINISH_LABEL[f]}</span>
-                          <span className="block text-sm text-ink-2">{FINISH_HINT[f]}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </fieldset>
-                )}
 
                 <button
                   type="button"
@@ -573,44 +546,35 @@ export function Uploader({
                   Suas fotos <span className="text-ink-2">({photos.length})</span>
                 </h2>
                 <div className="flex flex-wrap items-end gap-3">
-                  {product.finishes.length > 1 && (
-                    <div>
-                      <label htmlFor="todas-acabamento" className="field-label">
-                        Acabamento de todas
-                      </label>
-                      <select
-                        id="todas-acabamento"
-                        className="field-input w-auto"
-                        value={uniformFinish ?? ""}
-                        onChange={(e) => e.target.value && applyToAll({ finish: e.target.value as Finish })}
-                      >
-                        {!uniformFinish && <option value="">Misturado</option>}
-                        {product.finishes.map((f) => (
-                          <option key={f} value={f}>
-                            {FINISH_LABEL[f]}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
                   <div>
                     <label htmlFor="todas-copias" className="field-label">
                       Cópias de cada
                     </label>
-                    <select
-                      id="todas-copias"
-                      className="field-input w-auto"
-                      value=""
-                      onChange={(e) => e.target.value && applyToAll({ quantity: Number(e.target.value) })}
-                    >
-                      <option value="">Escolher…</option>
-                      {[1, 2, 3, 4, 5, 10].map((n) => (
-                        <option key={n} value={n}>
-                          {n}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex gap-2">
+                      <div className="flex min-h-11 w-20 items-center rounded-control border border-field bg-surface">
+                        <CopiesInput
+                          id="todas-copias"
+                          key={bulkCopies}
+                          value={bulkCopies}
+                          label="Cópias de cada foto"
+                          onCommit={setBulkCopies}
+                          className="h-11 w-full rounded-control"
+                        />
+                      </div>
+                      <button type="button" className="btn btn-outline" onClick={() => applyToAll({ quantity: bulkCopies })}>
+                        Aplicar
+                      </button>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    aria-pressed={framing}
+                    className={`btn ${framing ? "btn-primary" : "btn-outline"}`}
+                    onClick={() => setFraming((v) => !v)}
+                  >
+                    <ArrowsOutCardinalIcon size={18} aria-hidden />
+                    {framing ? "Concluir" : "Enquadrar"}
+                  </button>
                   <button
                     type="button"
                     aria-pressed={allAuto}
@@ -628,21 +592,27 @@ export function Uploader({
                 </div>
               </div>
 
+              {framing && (
+                <p className="mt-4 text-sm font-semibold text-action" role="status">
+                  Arraste cada foto para enquadrar.
+                </p>
+              )}
               {/* Largura mínima em rem: com a fonte do sistema aumentada, a grade passa sozinha para uma coluna */}
               <ul className="mt-5 grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
                 {photos.map((photo) => {
                   const lowRes = printDpi(photo, product) < LOW_DPI;
                   return (
                     <li key={photo.id} className="card flex flex-col p-3">
-                      {/* A prévia também abre o ajuste */}
-                      <button
-                        type="button"
-                        className="block rounded-control"
-                        onClick={() => setEditing(photo)}
-                        aria-label={`Ajustar ${photo.file_name}`}
-                      >
-                        <PrintPreview src={thumbOf(photo)} alt="" photo={photo} product={product} />
-                      </button>
+                      {/* Arrastar a prévia enquadra na hora; clicar abre o ajuste completo */}
+                      <QuickFrame
+                        src={thumbOf(photo)}
+                        label={`Ajustar ${photo.file_name}. Arraste para enquadrar.`}
+                        photo={photo}
+                        product={product}
+                        framing={framing}
+                        onCommit={(crop) => patch(photo.id, { crop }).catch(() => setNotice("Não foi possível salvar o enquadramento."))}
+                        onOpen={() => setEditing(photo)}
+                      />
                       <p className="mt-2 truncate text-xs text-ink-2" title={photo.file_name}>
                         {photo.file_name}
                       </p>
@@ -668,14 +638,18 @@ export function Uploader({
                           >
                             <MinusIcon size={18} aria-hidden />
                           </button>
-                          <span className="min-w-7 text-center font-bold tabular-nums" aria-live="polite">
-                            {photo.quantity}
-                          </span>
+                          <CopiesInput
+                            key={photo.quantity}
+                            value={photo.quantity}
+                            label={`Cópias de ${photo.file_name}`}
+                            onCommit={(n) => patch(photo.id, { quantity: n }).catch(() => {})}
+                            className="h-11 flex-1"
+                          />
                           <button
                             type="button"
                             className="inline-flex size-11 items-center justify-center rounded-control hover:bg-action-soft disabled:opacity-40"
                             aria-label={`Aumentar cópias de ${photo.file_name}`}
-                            disabled={photo.quantity >= 999}
+                            disabled={photo.quantity >= MAX_COPIES}
                             onClick={() => patch(photo.id, { quantity: photo.quantity + 1 }).catch(() => {})}
                           >
                             <PlusIcon size={18} aria-hidden />

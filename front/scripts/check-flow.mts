@@ -124,9 +124,11 @@ try {
   check("corte padrão na proporção 10x15", Math.abs(p1.crop.width / p1.crop.height - 1.5) < 0.01, `${p1.crop.width}x${p1.crop.height}`);
   check("miniatura com URL assinada", typeof p1.thumb_url === "string" && p1.thumb_url.includes("X-Amz-Signature"));
 
-  // 4. Ajustes: 3 cópias em fosco; remover a segunda foto
-  const patch = await api("PATCH", `/api/photos/${p1.id}`, { quantity: 3, finish: "fosco" });
-  check("alterar cópias e acabamento", patch.status === 200, `HTTP ${patch.status}`);
+  // 4. Ajustes: 3 cópias; remover a segunda foto. Cópias acima do limite são recusadas.
+  const patch = await api("PATCH", `/api/photos/${p1.id}`, { quantity: 3 });
+  check("alterar cópias", patch.status === 200, `HTTP ${patch.status}`);
+  const tooMany = await api("PATCH", `/api/photos/${p1.id}`, { quantity: 10001 });
+  check("mais de 10.000 cópias é recusado", tooMany.status === 400, `HTTP ${tooMany.status}`);
   // Cor, borda e legenda: a legenda é descartada fora da Polaroid
   const adjust = {
     auto: { gains: [1, 0.98, 0.95], black: 0.03, white: 0.97, gamma: 0.9, shadows: 0.1, vibrance: 0.15 },

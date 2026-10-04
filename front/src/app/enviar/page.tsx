@@ -5,7 +5,7 @@ import { getProducts } from "@/lib/catalog";
 import { formatBRL } from "@/lib/format";
 import { minCopies } from "@/lib/pricing";
 import { SIZE_GROUPS } from "@/lib/size-groups";
-import { FINISH_LABEL, type Product } from "@/lib/types";
+import type { Product } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "Enviar fotos: escolha o tamanho",
@@ -29,7 +29,6 @@ function Measure({ w, h }: { w: number; h: number }) {
 /** O que vai em destaque no cartão e as linhas pequenas embaixo, conforme o tipo de produto. */
 function cardText(product: Product): { main: React.ReactNode; unit: string | null; notes: React.ReactNode[] } {
   const notes: React.ReactNode[] = [];
-  if (product.finishes.length === 1) notes.push(`Só ${FINISH_LABEL[product.finishes[0]].toLowerCase()}`);
   if (product.kind === "print") {
     return { main: <Measure w={product.width_cm} h={product.height_cm} />, unit: "cm", notes };
   }

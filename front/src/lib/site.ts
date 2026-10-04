@@ -2,7 +2,7 @@ export const site = {
   name: "Fotoville",
   tagline: "Revelação fotográfica",
   description:
-    "Revelação de fotos online a partir de R$ 1,99 por foto. Papel Kodak e Fujifilm, entrega em todo o Brasil e retirada grátis em Joinville/SC.",
+    "Revelação de fotos online a partir de R$ 1,99 por foto. Entrega em todo o Brasil e retirada grátis em Joinville/SC.",
   url: (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, ""),
   whatsapp: "554730293792",
   whatsappDisplay: "(47) 3029-3792",

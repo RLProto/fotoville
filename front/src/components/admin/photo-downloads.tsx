@@ -6,7 +6,7 @@ import { PrintPreview } from "@/components/print-preview";
 import { describeAdjust } from "@/lib/adjust";
 import { renderPrintFile } from "@/lib/photo-render";
 import { reportError } from "@/lib/report-error";
-import { FINISH_LABEL, type Photo, type Product } from "@/lib/types";
+import type { Photo, Product } from "@/lib/types";
 
 export type AdminPhoto = Photo & {
   thumb_url: string | null;
@@ -81,7 +81,7 @@ export function PhotoDownloads({ photos, products }: { photos: AdminPhoto[]; pro
                 {photo.quantity}× {product?.name ?? photo.product_id}
               </p>
               <p className="text-sm text-ink-2">
-                {[FINISH_LABEL[photo.finish], photo.fit ? "foto inteira" : "", ...describeAdjust(photo.adjust)]
+                {[photo.fit ? "foto inteira" : "", ...describeAdjust(photo.adjust)]
                   .filter(Boolean)
                   .join(", ")}
               </p>

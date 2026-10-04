@@ -31,7 +31,7 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
   const photos: AdminPhoto[] = await Promise.all(
     ((photoData ?? []) as Photo[]).map(async (photo, i) => {
       const ext = photo.storage_key.split(".").pop() ?? "jpg";
-      const base_name = `${order.number}_${photo.product_id}_${photo.finish}_${photo.quantity}x_${String(i + 1).padStart(3, "0")}`;
+      const base_name = `${order.number}_${photo.product_id}_${photo.quantity}x_${String(i + 1).padStart(3, "0")}`;
       return {
         ...photo,
         base_name,

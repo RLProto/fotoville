@@ -49,7 +49,7 @@ const patchSchema = z
     fit: z.boolean(),
     adjust: adjustSchema.nullable(),
     finish: z.enum(["brilho", "fosco"]),
-    quantity: z.number().int().min(1).max(999),
+    quantity: z.number().int().min(1).max(10000),
   })
   .partial();
 
