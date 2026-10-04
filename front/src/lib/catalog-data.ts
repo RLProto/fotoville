@@ -9,7 +9,7 @@ import type { Finish, Package, PriceTier, Product } from "./types";
 const BOTH: Finish[] = ["brilho", "fosco"];
 
 /**
- * Desconto por quantidade do 10x15. O site antigo não tinha faixas, só os pacotes pré-pagos;
+ * Desconto progressivo do 10x15. O site antigo não tinha faixas, só os pacotes pré-pagos;
  * as faixas usam o preço por foto de cada pacote (100, 300, 500 e 1000 fotos).
  */
 const TIERS_10X15: PriceTier[] = [

@@ -48,7 +48,7 @@ create table if not exists public.products (
   width_cm numeric(5, 1) not null,
   height_cm numeric(5, 1) not null,
   price_cents integer not null check (price_cents >= 0),
-  price_tiers jsonb not null default '[]',   -- desconto por quantidade: [{ "min": 100, "price_cents": 119 }, ...]
+  price_tiers jsonb not null default '[]',   -- desconto progressivo: [{ "min": 100, "price_cents": 119 }, ...]
   finishes text[] not null default '{brilho,fosco}',
   unit_weight_g numeric(7, 2),               -- null = calcula pela área do papel
   unit_thickness_mm numeric(5, 2),           -- null = espessura padrão do papel

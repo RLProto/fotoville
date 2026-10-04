@@ -199,10 +199,10 @@ try {
     const again = await api<{ error: string }>("POST", "/api/cupom", { code: couponCode });
     check("cupom sem saldo é recusado", again.status === 422, `HTTP ${again.status}: ${again.data.error}`);
 
-    // Desconto por quantidade: 120 cópias 10x15 caem na faixa de 100 ou mais (120 x R$ 1,19)
+    // Desconto progressivo: 120 cópias 10x15 caem na faixa de 100 ou mais (120 x R$ 1,19)
     await api("PATCH", `/api/photos/${other.id}`, { quantity: 120 });
     const cartPage = await api("GET", "/carrinho");
-    check("desconto por quantidade no carrinho", cartPage.status === 200 && cartPage.text.includes("142,80"), `HTTP ${cartPage.status}`);
+    check("desconto progressivo no carrinho", cartPage.status === 200 && cartPage.text.includes("142,80"), `HTTP ${cartPage.status}`);
   }
 
   // 8. Cliente comum não entra no painel

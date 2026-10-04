@@ -10,7 +10,7 @@ import { FINISH_LABEL } from "@/lib/types";
 export const metadata: Metadata = {
   title: "Preços de revelação de fotos",
   description:
-    "Preço por foto do 10x13 ao 30x60, Polaroid e foto-placa. Desconto por quantidade no 10x15. Entrega em todo o Brasil ou retirada em Joinville/SC.",
+    "Preço por foto do 10x13 ao 30x60, Polaroid e foto-placa. Desconto progressivo no 10x15. Entrega em todo o Brasil ou retirada em Joinville/SC.",
 };
 
 const shortName = (name: string) => name.replace(" cm", "");
@@ -79,7 +79,7 @@ export default async function PrecosPage() {
           <div className="container-page grid items-start gap-8 py-14 lg:grid-cols-[1fr_1.3fr] lg:gap-14">
             <div>
               <h2 id="quantidade" className="display-md text-2xl sm:text-3xl">
-                Desconto por quantidade
+                Desconto progressivo
               </h2>
               <p className="mt-3 max-w-[40ch] text-lg text-ink-2">
                 {single

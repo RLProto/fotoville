@@ -16,6 +16,6 @@ rode `npm run seed:sql` dentro de `front/`.
 
 | Arquivo | Situação no banco atual |
 |---|---|
-| `2026-10-03_price_tiers.sql` | **Pendente.** Desconto por quantidade. Até rodar, o site usa as faixas do código. |
+| `2026-10-03_price_tiers.sql` | **Pendente.** Desconto progressivo. Até rodar, o site usa as faixas do código. |
 
 Banco novo não precisa das migrações: o `schema.sql` e o `seed.sql` já trazem tudo.

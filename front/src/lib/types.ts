@@ -1,6 +1,6 @@
 export type Finish = "brilho" | "fosco";
 
-/** Faixa de desconto por quantidade: a partir de `min` cópias do tamanho no pedido, cada foto custa `price_cents`. */
+/** Faixa do desconto progressivo: a partir de `min` cópias do tamanho no pedido, cada foto custa `price_cents`. */
 export type PriceTier = { min: number; price_cents: number };
 
 export type Product = {

@@ -170,7 +170,7 @@ sombra.
   "Selecionar fotos"; com fotos, encolhe numa faixa com "Adicionar fotos". Acabamento se escolhe na tela, sem
   janela. Ações em lote confirmam com um aviso visível de 3,5 s. A miniatura abre o ajuste, e o editor tem
   "Salvar e próxima" com "1 de 5" no título.
-- **Tabela de preços** (`/precos`): pontilhado entre nome e preço, como a tabela do balcão; desconto por quantidade
+- **Tabela de preços** (`/precos`): pontilhado entre nome e preço, como a tabela do balcão; desconto progressivo
   em tabela de faixas com etiqueta verde de porcentagem.
 - **Foto desenhada** (`print-shape`): papel branco com fio de 2px (a foto comum sai sem borda; o fio só faz o
   desenho ler como papel) e, dentro, uma foto de exemplo real (a lâmina

@@ -1,4 +1,4 @@
--- Desconto por quantidade (aba Preços). Rode uma vez no SQL Editor do Supabase.
+-- Desconto progressivo (aba Preços). Rode uma vez no SQL Editor do Supabase.
 -- As duas linhas vão juntas: a coluna nasce vazia e, sem o update, o 10x15 perde o desconto.
 alter table public.products add column if not exists price_tiers jsonb not null default '[]';
 
