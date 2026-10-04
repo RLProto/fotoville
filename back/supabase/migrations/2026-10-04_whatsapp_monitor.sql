@@ -90,11 +90,17 @@ declare
   u record;
   pct numeric;
   diff bigint;
+  today date := (now() at time zone 'America/Sao_Paulo')::date;
+  since text;
 begin
   select * into s from monitor.settings;
   select * into u from monitor.bucket_usage();
   pct := 100.0 * u.bytes / s.quota_bytes;
-  diff := u.bytes - s.last_daily_bytes;
+  -- Compara com o último status de um dia anterior; um teste no mesmo dia não mostra variação.
+  if s.last_daily_on < today then
+    diff := u.bytes - s.last_daily_bytes;
+    since := case when s.last_daily_on = today - 1 then 'ontem' else to_char(s.last_daily_on, 'DD/MM') end;
+  end if;
   return concat_ws(E'\n',
     case when pct >= s.alert_pct then '🔴 ' when pct >= s.warn_pct then '⚠️ ' else '' end || '*Bucket Fotoville*',
     monitor.usage_line(u.bytes),
@@ -102,8 +108,8 @@ begin
       monitor.fmt_count(u.files) || ' arquivos',
       case
         when diff is null then null
-        when abs(diff) < 500000 then 'igual a ontem'
-        else format('%s%s desde ontem', case when diff > 0 then '+' else '-' end, monitor.fmt_size(abs(diff)))
+        when abs(diff) < 500000 then 'igual a ' || since
+        else format('%s%s desde %s', case when diff > 0 then '+' else '-' end, monitor.fmt_size(abs(diff)), since)
       end));
 end $$;
 
