@@ -192,8 +192,8 @@ export function CheckoutForm({
 
   return (
     <form ref={formRef} onSubmit={submit} noValidate className="grid items-start gap-8 lg:grid-cols-[1fr_22rem]">
-      <div className="space-y-6">
-        <fieldset className="card p-5 sm:p-6">
+      <div className="min-w-0 space-y-6">
+        <fieldset className="card min-w-0 p-5 sm:p-6">
           <legend className="float-left mb-4 w-full text-xl font-bold">Seus dados</legend>
           <div className="clear-both grid gap-4 sm:grid-cols-2">
             <Field label="Nome completo" name="name" error={errors.name} className="sm:col-span-2">
@@ -241,7 +241,7 @@ export function CheckoutForm({
           </div>
         </fieldset>
 
-        <fieldset className="card p-5 sm:p-6">
+        <fieldset className="card min-w-0 p-5 sm:p-6">
           <legend className="float-left mb-4 w-full text-xl font-bold">Entrega</legend>
           <div className="clear-both grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Como você quer receber">
             {(
@@ -432,30 +432,30 @@ export function CheckoutForm({
 
       </div>
 
-      <aside className="card p-5 lg:sticky lg:top-24" aria-labelledby="resumo-pedido">
+      <aside className="card min-w-0 p-5 lg:sticky lg:top-24" aria-labelledby="resumo-pedido">
         <h2 id="resumo-pedido" className="text-xl font-bold">
           Resumo do pedido
         </h2>
         <dl className="mt-4 space-y-2">
           {lines.map((line) => (
-            <div key={line.key} className="flex justify-between gap-4">
+            <div key={line.key} className="flex flex-wrap justify-between gap-x-4">
               <dt className="text-ink/85">{line.label}</dt>
               <dd className="font-semibold tabular-nums">{formatBRL(line.total_cents)}</dd>
             </div>
           ))}
           {discountCents > 0 && (
-            <div className="flex justify-between gap-4 text-success">
+            <div className="flex flex-wrap justify-between gap-x-4 text-success">
               <dt className="font-semibold">Cupom</dt>
               <dd className="font-semibold tabular-nums">− {formatBRL(discountCents)}</dd>
             </div>
           )}
-          <div className="flex justify-between gap-4">
+          <div className="flex flex-wrap justify-between gap-x-4">
             <dt className="text-ink/85">Frete</dt>
             <dd className="font-semibold tabular-nums">
               {shippingCents === null ? "Informe o CEP" : shippingCents === 0 ? "Grátis" : formatBRL(shippingCents)}
             </dd>
           </div>
-          <div className="flex justify-between gap-4 border-t border-rule pt-3 text-xl">
+          <div className="flex flex-wrap justify-between gap-x-4 border-t border-rule pt-3 text-xl">
             {/* Sem frete calculado, a soma ainda não é o total */}
             <dt className="font-bold">{shippingCents === null ? "Subtotal" : "Total"}</dt>
             <dd className="font-display font-bold text-ink tabular-nums" aria-live="polite">

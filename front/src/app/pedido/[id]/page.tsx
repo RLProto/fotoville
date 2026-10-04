@@ -148,7 +148,7 @@ export default async function PedidoPage({ params, searchParams }: Props) {
           </h2>
           <dl className="mt-4 space-y-2">
             {((items ?? []) as OrderItem[]).map((item) => (
-              <div key={item.id} className="flex justify-between gap-4">
+              <div key={item.id} className="flex flex-wrap justify-between gap-x-4">
                 <dt>
                   {item.quantity}× {item.description}
                 </dt>
@@ -156,20 +156,20 @@ export default async function PedidoPage({ params, searchParams }: Props) {
               </div>
             ))}
             {order.discount_cents > 0 && (
-              <div className="flex justify-between gap-4 text-success">
+              <div className="flex flex-wrap justify-between gap-x-4 text-success">
                 <dt>Cupom {order.coupon_code}</dt>
                 <dd className="font-semibold tabular-nums">− {formatBRL(order.discount_cents)}</dd>
               </div>
             )}
             {order.kind === "prints" && (
-              <div className="flex justify-between gap-4">
+              <div className="flex flex-wrap justify-between gap-x-4">
                 <dt>Frete</dt>
                 <dd className="font-semibold tabular-nums">
                   {order.shipping_cents ? formatBRL(order.shipping_cents) : "Grátis"}
                 </dd>
               </div>
             )}
-            <div className="flex justify-between gap-4 border-t border-rule pt-3 text-lg">
+            <div className="flex flex-wrap justify-between gap-x-4 border-t border-rule pt-3 text-lg">
               <dt className="font-bold">Total</dt>
               <dd className="font-display font-bold text-ink tabular-nums">{formatBRL(order.total_cents)}</dd>
             </div>

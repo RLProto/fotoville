@@ -131,10 +131,15 @@ título em cima e os quatro canhotos numa fileira no desktop; a loja (desde quan
 perguntas frequentes. Sem faixa "Como funciona" com números grandes: as etapas do pedido já ensinam o fluxo. O título da
 página é o maior da home; títulos de seção ficam em `text-3xl`.
 
-**Fluxo:** o tamanho se escolhe no passo seguinte ao botão (`/enviar`), nunca antes. Escolha do tamanho em grade de 2,
-3 ou 5 cartões iguais: foto na proporção do papel, todas com a mesma altura, nome e preço embaixo; no celular o cartão
-deita (foto de 72px à esquerda, nome e preço à direita) para a lista não passar de uma tela e meia. Nada que mude a
-altura de um cartão só (linha extra de desconto, observação).
+**Fluxo:** o tamanho se escolhe no passo seguinte ao botão (`/enviar`), nunca antes. Escolha do tamanho em cartões
+só tipográficos, sem foto nem desenho de proporção (pedido do usuário, out/2026: a foto ali ficava brega): a medida
+em destaque ("10 × 15", com o × em `ink-3`), "cm" pequeno, uma linha opcional ("Só fosco", "Foto-placa"), picote
+tracejado e o preço no pé. Grade `repeat(auto-fill, minmax(9.5rem, 1fr))`: duas colunas a 360 px, seis no desktop, uma
+coluna quando a fonte do sistema está aumentada. Cartões da mesma linha com a mesma altura.
+
+**Telas estreitas:** testar a 360 px e com a fonte da página 30% e 50% maior (o Android aumenta a fonte junto com a
+configuração do sistema). Larguras mínimas em rem, `min-w-0` em itens de grade e em `fieldset`, linhas de valor com
+`flex-wrap`. O nome FOTOVILLE do cabeçalho é logotipo: tamanho em px.
 
 **Telas de tarefa** (envio, carrinho, pagamento): coluna principal com resumo fixo à direita no desktop (20 a 22rem,
 `lg:sticky`) e, no celular, barra fixa embaixo, opaca, com o valor e a próxima ação. Nelas o botão flutuante do
@@ -171,8 +176,7 @@ sombra.
   desenho ler como papel) e, dentro, uma foto de exemplo real (a lâmina
   do logo aparece só enquanto a imagem carrega); Polaroid com borda inferior de 20%. Escala em px por cm, por
   propriedade ou pela variável `--cm`. Escala real só na régua da home (6 px/cm, 4 no celular), com a mesma foto em
-  todos os tamanhos. Na escolha do tamanho a foto não fica em escala: todas com 112 px de altura, porque a escala
-  real ali dava fotos minúsculas ao lado de grandes e deixava a grade torta (pedido do usuário, out/2026). Origem e licença em `design/IMAGES.md`.
+  todos os tamanhos. Não aparece na escolha do tamanho. Origem e licença em `design/IMAGES.md`.
 - **Régua de tamanhos** (`size-board`): fotos alinhadas pela base, celular tracejado de 7,2 x 15 cm como referência,
   rolagem horizontal no celular. Na home fica sobre o campo petróleo (`onColor`: texto claro, foco claro).
 - **Canhoto de pacote** (`package-card`): número grande, preço, economia em texto e picote com meia-lua da cor do

@@ -26,10 +26,18 @@ export async function Header() {
 
   return (
     <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur-sm">
-      <div className="container-page flex h-16 items-center justify-between gap-4">
+      <div className="container-page flex h-16 items-center justify-between gap-3 sm:gap-4">
         <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="Fotoville, página inicial">
-          <Image src="/logo-icon.png" alt="" width={36} height={36} priority />
-          <span translate="no" className="text-lg font-extrabold tracking-[0.18em] text-ink" style={{ fontStretch: "118%" }}>
+          <Image src="/logo-icon.png" alt="" width={36} height={36} priority className="shrink-0" />
+          {/*
+            O nome é logotipo: tamanho em px, não acompanha a fonte do sistema. Em telas estreitas encolhe para não
+            empurrar carrinho e menu para fora da tela.
+          */}
+          <span
+            translate="no"
+            className="text-[16px] font-extrabold tracking-[0.12em] text-ink min-[400px]:text-[18px] min-[400px]:tracking-[0.18em]"
+            style={{ fontStretch: "118%" }}
+          >
             FOTOVILLE
           </span>
         </Link>
@@ -38,7 +46,7 @@ export async function Header() {
           <NavLinks items={NAV} />
         </nav>
 
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           <Link
             href={user ? "/conta" : "/entrar"}
             className="hidden min-h-11 items-center gap-2 rounded-control px-3 font-medium text-ink-2 transition-colors duration-150 hover:bg-ink/[0.05] hover:text-ink sm:inline-flex"

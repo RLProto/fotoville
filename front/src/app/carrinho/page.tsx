@@ -61,7 +61,7 @@ export default async function CarrinhoPage() {
       <h1 className="mt-3 display-md text-3xl sm:text-4xl">Seu carrinho</h1>
 
       <div className="mt-8 grid items-start gap-8 lg:grid-cols-[1fr_22rem]">
-        <ul className="space-y-5">
+        <ul className="min-w-0 space-y-5">
           {groups.map((group) => (
             <li key={group.product.id} className="card p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -118,20 +118,20 @@ export default async function CarrinhoPage() {
           </li>
         </ul>
 
-        <aside className="card p-5 lg:sticky lg:top-24" aria-labelledby="resumo">
+        <aside className="card min-w-0 p-5 lg:sticky lg:top-24" aria-labelledby="resumo">
           <h2 id="resumo" className="text-xl font-bold">
             Resumo do pedido
           </h2>
           <dl className="mt-4 space-y-2">
             {cart.lines.map((line) => (
-              <div key={`${line.product.id}-${line.finish}`} className="flex justify-between gap-4">
+              <div key={`${line.product.id}-${line.finish}`} className="flex flex-wrap justify-between gap-x-4">
                 <dt className="text-ink/85">
                   {line.quantity}× {line.description}
                 </dt>
                 <dd className="font-semibold tabular-nums">{formatBRL(line.total_cents)}</dd>
               </div>
             ))}
-            <div className="flex justify-between gap-4 border-t border-rule pt-3 text-lg">
+            <div className="flex flex-wrap justify-between gap-x-4 border-t border-rule pt-3 text-lg">
               <dt className="font-bold">Subtotal</dt>
               <dd className="font-display font-bold text-ink tabular-nums">
                 {formatBRL(cart.subtotal_cents)}

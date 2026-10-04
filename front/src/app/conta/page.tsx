@@ -29,7 +29,7 @@ export default async function ContaPage() {
           <h1 className="display-md text-3xl sm:text-4xl">
             Olá{profile?.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}
           </h1>
-          <p className="mt-1 text-ink-2">{user.email}</p>
+          <p className="mt-1 break-all text-ink-2">{user.email}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {profile?.is_admin && (
@@ -48,7 +48,7 @@ export default async function ContaPage() {
       </div>
 
       <div className="mt-8 grid items-start gap-8 lg:grid-cols-[1fr_22rem]">
-        <section aria-labelledby="pedidos">
+        <section aria-labelledby="pedidos" className="min-w-0">
           <h2 id="pedidos" className="text-2xl font-bold">
             Meus pedidos
           </h2>
@@ -76,7 +76,7 @@ export default async function ContaPage() {
                       </p>
                       <p className="text-sm text-ink-2">{formatDate(order.created_at)}</p>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                       <StatusBadge status={order.status} />
                       <span className="font-display font-bold tabular-nums">{formatBRL(order.total_cents)}</span>
                       <CaretRightIcon size={18} className="text-ink-2" aria-hidden />
@@ -88,7 +88,7 @@ export default async function ContaPage() {
           )}
         </section>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <section className="card p-5" aria-labelledby="dados">
             <h2 id="dados" className="mb-4 text-xl font-bold">
               Meus dados

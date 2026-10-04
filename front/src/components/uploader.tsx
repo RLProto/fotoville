@@ -623,7 +623,8 @@ export function Uploader({
                 </div>
               </div>
 
-              <ul className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+              {/* Largura mínima em rem: com a fonte do sistema aumentada, a grade passa sozinha para uma coluna */}
+              <ul className="mt-5 grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
                 {photos.map((photo) => {
                   const lowRes = printDpi(photo, product) < LOW_DPI;
                   return (
@@ -646,8 +647,13 @@ export function Uploader({
                         </p>
                       )}
 
-                      <div className="mt-3 flex items-center justify-between gap-2">
-                        <div className="flex items-center rounded-control border border-field" role="group" aria-label="Cópias">
+                      {/* Contador numa linha só; Ajustar e remover na linha de baixo: cabe em cartões de 150px */}
+                      <div className="mt-3">
+                        <div
+                          className="flex w-full items-center justify-between rounded-control border border-field"
+                          role="group"
+                          aria-label="Cópias"
+                        >
                           <button
                             type="button"
                             className="inline-flex size-11 items-center justify-center rounded-control hover:bg-action-soft disabled:opacity-40"
@@ -670,20 +676,22 @@ export function Uploader({
                             <PlusIcon size={18} aria-hidden />
                           </button>
                         </div>
+                      </div>
+
+                      <div className="mt-2 flex gap-2">
+                        <button type="button" className="btn btn-outline min-w-0 flex-1 px-3" onClick={() => setEditing(photo)}>
+                          <SlidersHorizontalIcon size={16} aria-hidden className="shrink-0" />
+                          Ajustar
+                        </button>
                         <button
                           type="button"
-                          className="inline-flex size-11 items-center justify-center rounded-control text-danger hover:bg-danger-soft"
+                          className="inline-flex size-11 shrink-0 items-center justify-center rounded-control text-danger hover:bg-danger-soft"
                           aria-label={`Remover ${photo.file_name}`}
                           onClick={() => remove(photo)}
                         >
                           <TrashIcon size={18} aria-hidden />
                         </button>
                       </div>
-
-                      <button type="button" className="btn btn-outline mt-2" onClick={() => setEditing(photo)}>
-                        <SlidersHorizontalIcon size={16} aria-hidden />
-                        Ajustar
-                      </button>
                     </li>
                   );
                 })}
