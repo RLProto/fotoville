@@ -3,7 +3,6 @@ import Link from "next/link";
 import { PackageCard } from "@/components/package-card";
 import { SizeBoard } from "@/components/size-board";
 import { getPackages, getProducts } from "@/lib/catalog";
-import { formatBRL } from "@/lib/format";
 import { site, whatsappLink } from "@/lib/site";
 import type { Product } from "@/lib/types";
 
@@ -31,9 +30,6 @@ export default async function HomePage() {
   const bestDiscount = tenByFifteen
     ? Math.max(0, ...packages.map((p) => Math.round((1 - p.price_cents / p.photo_count / tenByFifteen.price_cents) * 100)))
     : 0;
-  // Menor preço do 10x15 (faixa mais alta do desconto progressivo), lido da tabela: muda junto com o painel
-  const lowest = found ? Math.min(found.price_cents, ...found.price_tiers.map((t) => t.price_cents)) : null;
-  const progressive = Boolean(found?.price_tiers.length);
   const mapsQuery = encodeURIComponent(
     `${site.address.street}, ${site.address.district}, ${site.address.city} - ${site.address.state}, ${site.address.cep}`,
   );
@@ -57,11 +53,7 @@ export default async function HomePage() {
           <div className="hidden lg:block" />
           <div className="py-10 lg:py-14 lg:pl-14">
             <h1 className="display max-w-[14ch] text-[2.4rem] sm:text-5xl lg:text-6xl">Revele suas fotos sem sair de casa</h1>
-            {lowest !== null && (
-              <p className="mt-5 text-lg text-ink-2">
-                Fotos 10x15 {progressive ? "a partir de" : "por"} {formatBRL(lowest)}.
-              </p>
-            )}
+            <p className="mt-5 text-lg text-ink-2">Entrega em todo o Brasil ou retirada em {site.address.city}.</p>
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
               <Link href="/enviar" className="btn btn-accent btn-lg w-full sm:w-auto">
                 Enviar fotos
