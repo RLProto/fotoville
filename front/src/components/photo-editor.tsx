@@ -427,8 +427,8 @@ export function PhotoEditor({
                 <p className="alert alert-warning" role="status">
                   <WarningIcon size={20} aria-hidden className="mt-0.5 shrink-0" />
                   <span>
-                    <strong>Vai sair com borda branca.</strong> A foto inteira não preenche o papel; o espaço que sobra fica
-                    branco, como na prévia acima.
+                    <strong>Atenção: vai sair com borda branca.</strong> A foto inteira não preenche o papel; o espaço que
+                    sobra fica branco, como na prévia acima.
                   </span>
                 </p>
               ) : (
