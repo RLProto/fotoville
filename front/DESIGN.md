@@ -172,8 +172,10 @@ sombra.
   miniatura move o corte e grava; com mouse sempre, no toque só com o modo "Enquadrar" ligado, para não brigar com a
   rolagem. Clique sem arrastar abre o editor completo, que tem "Salvar e próxima". Ações em lote confirmam com um
   aviso visível de 3,5 s.
-- **Tabela de preços** (`/precos`): pontilhado entre nome e preço, como a tabela do balcão; desconto progressivo
-  em tabela de faixas com etiqueta verde de porcentagem.
+- **Tabela de preços** (`/precos`): pontilhado entre nome e preço, como a tabela do balcão; grupos "Tamanhos" e
+  "Especiais" (a loja achou "Álbum e porta-retrato" confuso). Desconto progressivo em `tier-table`: uma linha por
+  faixa, uma coluna por tamanho, etiqueta verde de porcentagem só a partir de 640 px. A mesma tabela ocupa o campo
+  mostarda da home, no lugar dos pacotes.
 - **Foto desenhada** (`print-shape`): papel branco com fio de 2px (a foto comum sai sem borda; o fio só faz o
   desenho ler como papel) e, dentro, uma foto de exemplo real (a lâmina
   do logo aparece só enquanto a imagem carrega); Polaroid e Mini Polaroid com a moldura do filme

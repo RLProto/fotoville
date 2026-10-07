@@ -18,7 +18,8 @@ Compra quase sempre pelo celular, no sofá, à noite, ou no computador quando o 
 - Como começar: escolher o tamanho e enviar as fotos.
 
 ## Fatos que podem aparecer no site
-- 27 tamanhos, de 10x13 a 30x60, mais Mini Polaroid, Polaroid e foto-placa. Preços em src/lib/catalog-data.ts e no banco.
+- 28 tamanhos, de 10x13 a 30x60, mais Mini Polaroid, Polaroid, Polaroid ímã e foto-placa.
+- Desconto progressivo no 10x15 e no 15x21 (tabela "Valores por unidade para Combo", 2026): 1 / 20 / 50 / 100 / 300 / 500. Preços em src/lib/catalog-data.ts e no banco.
 - Pacotes 10x15 pré-pagos de 100, 300, 500 e 1000 fotos.
 - Desde 2012, em Joinville.
 - Retirada na loja: R. Vice-Prefeito Luiz Carlos Garcia, 1125, Sala 3, Costa e Silva, Joinville/SC, 89219-370.
@@ -32,6 +33,10 @@ Depoimentos, número de clientes, avaliações, prazos diferentes dos configurad
 - Foto da mão segurando três fotos reveladas: usar no topo da home.
 - Cupom só na etapa de pagamento.
 
+## Papel
+Revelação química em papel Fujifilm, com durabilidade superior a 150 anos. Afirmação da loja (out/2026), que pediu
+destaque. Só Fujifilm: não citar Kodak.
+
 ## Não mencionar
-- Papel e marcas de papel (Kodak, Fujifilm): não gera engajamento (decisão do dono, out/2026).
 - Acabamento (brilho ou fosco): é um só e o cliente não escolhe.
+- "Compre agora, revele depois" na home: a loja prefere destacar o desconto progressivo. A aba Pacotes continua.

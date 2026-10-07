@@ -19,5 +19,6 @@ rode `npm run seed:sql` dentro de `front/`.
 | `2026-10-03_price_tiers.sql` | Aplicada em 04/10/2026. Desconto progressivo. |
 | `2026-10-04_price_profiles.sql` | Aplicada em 04/10/2026. Perfis de preço de clientes preferenciais. |
 | `2026-10-04_acabamento_unico_copias.sql` | Aplicada em 04/10/2026. Acabamento único e até 10.000 cópias por foto. |
+| `2026-10-06_tabela_combo_2026.sql` | Aplicada em 06/10/2026. Faixas do 10x15 e 15x21, três preços de ampliação e a Polaroid ímã, da tabela da loja. |
 
 Banco novo não precisa das migrações: o `schema.sql` e o `seed.sql` já trazem tudo.

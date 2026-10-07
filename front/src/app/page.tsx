@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { PackageCard } from "@/components/package-card";
 import { SizeBoard } from "@/components/size-board";
-import { getPackages, getProducts } from "@/lib/catalog";
+import { TierTable, tieredNames } from "@/components/tier-table";
+import { getProducts } from "@/lib/catalog";
 import { site, whatsappLink } from "@/lib/site";
 import type { Product } from "@/lib/types";
 
@@ -16,6 +16,7 @@ const FAQ = [
     a: `Produção em até ${site.productionDays} dias úteis. O prazo de entrega e o frete aparecem antes de pagar.`,
   },
   { q: "Posso misturar tamanhos?", a: "Sim, tudo no mesmo pedido." },
+  { q: "Quanto tempo a foto dura?", a: "Revelação química em papel Fujifilm: durabilidade superior a 150 anos." },
 ];
 
 function pick(products: Product[], ids: string[]) {
@@ -23,13 +24,13 @@ function pick(products: Product[], ids: string[]) {
 }
 
 export default async function HomePage() {
-  const [products, packages] = await Promise.all([getProducts(), getPackages()]);
-  const found = products.find((p) => p.id === "10x15");
-  // Pacote tem preço da loja: a economia é calculada contra a tabela da loja, mesmo para cliente com perfil
-  const tenByFifteen = found && { ...found, price_cents: found.store?.price_cents ?? found.price_cents };
-  const bestDiscount = tenByFifteen
-    ? Math.max(0, ...packages.map((p) => Math.round((1 - p.price_cents / p.photo_count / tenByFifteen.price_cents) * 100)))
-    : 0;
+  const products = await getProducts();
+  const tiered = products.filter((p) => p.price_tiers.length > 0);
+  // Maior desconto da tabela progressiva, para a chamada da seção
+  const bestOff = Math.max(
+    0,
+    ...tiered.flatMap((p) => p.price_tiers.map((t) => Math.round((1 - t.price_cents / p.price_cents) * 100))),
+  );
   const mapsQuery = encodeURIComponent(
     `${site.address.street}, ${site.address.district}, ${site.address.city} - ${site.address.state}, ${site.address.cep}`,
   );
@@ -83,28 +84,25 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Pacotes pré-pagos */}
-      {packages.length > 0 && tenByFifteen && (
-        <section
-          className="bg-blade-mustard text-ink"
-          aria-labelledby="pacotes"
-          style={{ ["--perforation-bg" as string]: "var(--color-blade-mustard)" }}
-        >
-          {/* Título em cima e os quatro pacotes numa fileira só no desktop */}
-          <div className="container-page py-16 lg:py-20">
-            <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
-              <h2 id="pacotes" className="display text-3xl">
-                Compre agora, revele depois
+      {/* Desconto progressivo: o argumento de preço da loja, no campo mostarda */}
+      {tiered.length > 0 && (
+        <section className="bg-blade-mustard text-ink" aria-labelledby="progressivo">
+          <div className="container-page grid items-start gap-10 py-16 lg:grid-cols-[1fr_1.4fr] lg:gap-14 lg:py-20">
+            <div>
+              <h2 id="progressivo" className="display text-3xl">
+                Quanto mais fotos, menor o preço
               </h2>
-              <p className="text-lg">
-                Pacotes de fotos 10x15{bestDiscount > 0 ? ` com até ${bestDiscount}% de desconto` : ""}. Frete à parte.
+              <p className="mt-4 text-lg">
+                Desconto progressivo{bestOff > 0 ? ` de até ${bestOff}%` : ""} no {tieredNames(products)}. Vale pelo
+                total de fotos de cada tamanho no pedido.
+              </p>
+              <p className="mt-6">
+                <Link href="/enviar" className="btn btn-outline">
+                  Enviar fotos
+                </Link>
               </p>
             </div>
-            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {packages.map((pkg) => (
-                <PackageCard key={pkg.id} pkg={pkg} regularUnitCents={tenByFifteen.price_cents} />
-              ))}
-            </div>
+            <TierTable products={products} onColor />
           </div>
         </section>
       )}
@@ -115,6 +113,9 @@ export default async function HomePage() {
           <h2 id="loja" className="display max-w-[18ch] text-3xl">
             Fotoville, desde {site.since} eternizando momentos
           </h2>
+          <p className="mt-6 max-w-[40ch] text-lg">
+            Revelação química em papel Fujifilm, com durabilidade superior a 150 anos.
+          </p>
         </div>
         <div className="border-t border-ink pt-5">
           <h3 className="text-lg font-bold">Retirada grátis na loja</h3>

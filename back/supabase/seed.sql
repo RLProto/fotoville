@@ -5,11 +5,11 @@ insert into public.products
   (id, name, kind, width_cm, height_cm, price_cents, price_tiers, finishes, unit_weight_g, unit_thickness_mm, sort)
 values
   ('10x13', '10x13 cm', 'print', 10, 13, 199, '[]', '{brilho}', null, null, 10),
-  ('10x15', '10x15 cm', 'print', 10, 15, 199, '[{"min":100,"price_cents":119},{"min":300,"price_cents":109},{"min":500,"price_cents":99},{"min":1000,"price_cents":89}]', '{brilho}', null, null, 20),
+  ('10x15', '10x15 cm', 'print', 10, 15, 199, '[{"min":20,"price_cents":179},{"min":50,"price_cents":169},{"min":100,"price_cents":119},{"min":300,"price_cents":109},{"min":500,"price_cents":99}]', '{brilho}', null, null, 20),
   ('13x15', '13x15 cm', 'print', 13, 15, 209, '[]', '{brilho}', null, null, 30),
   ('13x18', '13x18 cm', 'print', 13, 18, 500, '[]', '{brilho}', null, null, 40),
   ('15x15', '15x15 cm', 'print', 15, 15, 329, '[]', '{brilho}', null, null, 50),
-  ('15x21', '15x21 cm', 'print', 15, 21, 399, '[]', '{brilho}', null, null, 60),
+  ('15x21', '15x21 cm', 'print', 15, 21, 399, '[{"min":20,"price_cents":389},{"min":50,"price_cents":379},{"min":100,"price_cents":349},{"min":300,"price_cents":329},{"min":500,"price_cents":309}]', '{brilho}', null, null, 60),
   ('15x30', '15x30 cm', 'print', 15, 30, 659, '[]', '{brilho}', null, null, 70),
   ('20x20', '20x20 cm', 'print', 20, 20, 499, '[]', '{brilho}', null, null, 80),
   ('20x25', '20x25 cm', 'print', 20, 25, 599, '[]', '{brilho}', null, null, 90),
@@ -17,10 +17,10 @@ values
   ('20x45', '20x45 cm', 'print', 20, 45, 1299, '[]', '{brilho}', null, null, 110),
   ('25x25', '25x25 cm', 'print', 25, 25, 749, '[]', '{brilho}', null, null, 120),
   ('25x30', '25x30 cm', 'print', 25, 30, 869, '[]', '{brilho}', null, null, 130),
-  ('25x40', '25x40 cm', 'print', 25, 40, 1499, '[]', '{brilho}', null, null, 140),
+  ('25x40', '25x40 cm', 'print', 25, 40, 1649, '[]', '{brilho}', null, null, 140),
   ('25x45', '25x45 cm', 'print', 25, 45, 1549, '[]', '{brilho}', null, null, 150),
-  ('25x50', '25x50 cm', 'print', 25, 50, 1599, '[]', '{brilho}', null, null, 160),
-  ('25x60', '25x60 cm', 'print', 25, 60, 1869, '[]', '{brilho}', null, null, 170),
+  ('25x50', '25x50 cm', 'print', 25, 50, 1769, '[]', '{brilho}', null, null, 160),
+  ('25x60', '25x60 cm', 'print', 25, 60, 2049, '[]', '{brilho}', null, null, 170),
   ('28x35', '28x35 cm', 'print', 28, 35, 2000, '[]', '{brilho}', null, null, 180),
   ('30x30', '30x30 cm', 'print', 30, 30, 1589, '[]', '{brilho}', null, null, 190),
   ('30x35', '30x35 cm', 'print', 30, 35, 1599, '[]', '{brilho}', null, null, 200),
@@ -30,6 +30,7 @@ values
   ('30x60', '30x60 cm', 'print', 30, 60, 2659, '[]', '{brilho}', null, null, 240),
   ('mini-polaroid', 'Mini Polaroid', 'polaroid', 5.4, 8.6, 350, '[]', '{brilho}', null, null, 295),
   ('polaroid', 'Polaroid', 'polaroid', 8.8, 10.7, 450, '[]', '{brilho}', null, null, 300),
+  ('polaroid-ima', 'Polaroid ímã', 'polaroid', 8.8, 10.7, 750, '[]', '{brilho}', 20, 1.5, 305),
   ('foto-placa-20x30', 'Foto-placa 20x30 cm', 'placa', 20, 30, 2000, '[]', '{brilho}', 380, 4, 310)
 on conflict (id) do update set
   name = excluded.name,

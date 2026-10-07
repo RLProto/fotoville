@@ -11,6 +11,7 @@ type PhotoShape = Pick<Photo, "width_px" | "height_px" | "crop" | "fit" | "adjus
  */
 export const INSTANT_FRAMES: Record<string, { side: number; top: number; ratio: number }> = {
   polaroid: { side: 4.5, top: 6, ratio: 1 },
+  "polaroid-ima": { side: 4.5, top: 6, ratio: 1 },
   "mini-polaroid": { side: 4, top: 6, ratio: 62 / 46 },
 };
 const DEFAULT_FRAME = { side: 5, top: 5, ratio: 1 };

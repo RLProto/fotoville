@@ -9,15 +9,20 @@ import type { Finish, Package, PriceTier, Product } from "./types";
 /** Acabamento único. Não aparece no site; fica só nos dados do pedido. */
 const FINISH: Finish[] = ["brilho"];
 
-/**
- * Desconto progressivo do 10x15. O site antigo não tinha faixas, só os pacotes pré-pagos;
- * as faixas usam o preço por foto de cada pacote (100, 300, 500 e 1000 fotos).
- */
+/** Desconto progressivo, da tabela "Valores por unidade para Combo" da loja (2026). */
 const TIERS_10X15: PriceTier[] = [
+  { min: 20, price_cents: 179 },
+  { min: 50, price_cents: 169 },
   { min: 100, price_cents: 119 },
   { min: 300, price_cents: 109 },
   { min: 500, price_cents: 99 },
-  { min: 1000, price_cents: 89 },
+];
+const TIERS_15X21: PriceTier[] = [
+  { min: 20, price_cents: 389 },
+  { min: 50, price_cents: 379 },
+  { min: 100, price_cents: 349 },
+  { min: 300, price_cents: 329 },
+  { min: 500, price_cents: 309 },
 ];
 
 function print(
@@ -50,7 +55,7 @@ export const PRODUCTS: Product[] = [
   print(30, 13, 15, 209),
   print(40, 13, 18, 500),
   print(50, 15, 15, 329),
-  print(60, 15, 21, 399),
+  print(60, 15, 21, 399, { price_tiers: TIERS_15X21 }),
   print(70, 15, 30, 659),
   print(80, 20, 20, 499),
   print(90, 20, 25, 599),
@@ -58,10 +63,10 @@ export const PRODUCTS: Product[] = [
   print(110, 20, 45, 1299),
   print(120, 25, 25, 749),
   print(130, 25, 30, 869),
-  print(140, 25, 40, 1499),
+  print(140, 25, 40, 1649),
   print(150, 25, 45, 1549),
-  print(160, 25, 50, 1599),
-  print(170, 25, 60, 1869),
+  print(160, 25, 50, 1769),
+  print(170, 25, 60, 2049),
   print(180, 28, 35, 2000),
   print(190, 30, 30, 1589),
   print(200, 30, 35, 1599),
@@ -98,6 +103,21 @@ export const PRODUCTS: Product[] = [
     unit_weight_g: null,
     unit_thickness_mm: null,
     sort: 300,
+    active: true,
+  },
+  {
+    // Polaroid com ímã atrás, mesma medida da Polaroid. Peso do ímã estimado: confirmar com a loja.
+    id: "polaroid-ima",
+    name: "Polaroid ímã",
+    kind: "polaroid",
+    width_cm: 8.8,
+    height_cm: 10.7,
+    price_cents: 750,
+    price_tiers: [],
+    finishes: FINISH,
+    unit_weight_g: 20,
+    unit_thickness_mm: 1.5,
+    sort: 305,
     active: true,
   },
   {

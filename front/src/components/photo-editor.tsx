@@ -10,6 +10,7 @@ import {
   ProhibitIcon,
   RectangleIcon,
   TextAaIcon,
+  WarningIcon,
   XIcon,
 } from "@phosphor-icons/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -419,10 +420,20 @@ export function PhotoEditor({
                 />
                 <span>
                   <span className="font-bold">Imprimir a foto inteira</span>
-                  <span className="block text-sm text-ink-2">Pode sobrar borda.</span>
+                  <span className="block text-sm text-ink-2">A foto não é cortada.</span>
                 </span>
               </label>
-              {!fit && <p className="text-sm text-ink-2">Arraste para posicionar a foto.</p>}
+              {fit ? (
+                <p className="alert alert-warning" role="status">
+                  <WarningIcon size={20} aria-hidden className="mt-0.5 shrink-0" />
+                  <span>
+                    <strong>Vai sair com borda branca.</strong> A foto inteira não preenche o papel; o espaço que sobra fica
+                    branco, como na prévia acima.
+                  </span>
+                </p>
+              ) : (
+                <p className="text-sm text-ink-2">Arraste para posicionar a foto.</p>
+              )}
             </>
           )}
 

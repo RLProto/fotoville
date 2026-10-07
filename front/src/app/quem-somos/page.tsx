@@ -18,7 +18,8 @@ export default function QuemSomosPage() {
             A Fotoville revela fotos em {site.address.city} desde {site.since}.
           </p>
           <div className="mt-6 space-y-4 text-lg text-ink-2">
-            <p>Revelamos de 10x13 a 30x60, além de Mini Polaroid, Polaroid e foto-placa.</p>
+            <p>Revelação química em papel Fujifilm, com durabilidade superior a 150 anos.</p>
+            <p>Tamanhos de 10x13 a 30x60, além de Mini Polaroid, Polaroid, Polaroid ímã e foto-placa.</p>
             <p>Você envia as fotos pelo site e recebe pelos Correios em todo o Brasil, ou retira na loja sem custo.</p>
           </div>
           <p className="mt-10">

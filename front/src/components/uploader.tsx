@@ -3,6 +3,7 @@
 import {
   ArrowsOutCardinalIcon,
   CircleNotchIcon,
+  CopyIcon,
   ImagesIcon,
   MagicWandIcon,
   MinusIcon,
@@ -17,7 +18,7 @@ import { useEffect, useRef, useState } from "react";
 import { DEFAULT_ADJUST, isNeutralAdjust } from "@/lib/adjust";
 import { LOW_DPI, printDpi } from "@/lib/crop";
 import { formatBRL, plural } from "@/lib/format";
-import { loadImage } from "@/lib/decode-image";
+import { decodeImage, loadImage } from "@/lib/decode-image";
 import { analyzeImage } from "@/lib/photo-render";
 import { minCopies, nearTier, regularPrice, unitPrice } from "@/lib/pricing";
 import { fileDetail, reportError } from "@/lib/report-error";
@@ -67,6 +68,10 @@ export function Uploader({
   const [dragging, setDragging] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number; ratio: number } | null>(null);
   const [failures, setFailures] = useState<Failure[]>([]);
+  /** Fotos que já estavam na lista (mesmo nome e medidas) e ficaram de fora do envio, até o cliente confirmar. */
+  const [skipped, setSkipped] = useState<File[]>([]);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [editing, setEditing] = useState<PhotoView | null>(null);
   /** Remoção com prazo para desfazer: a foto só é apagada de verdade depois de alguns segundos. */
@@ -173,8 +178,49 @@ export function Uploader({
     setNotice(null);
     if (!ready.length) return;
 
+    // Repetida = mesmo nome e mesmas medidas de uma foto que já está neste tamanho. Fica de fora, com aviso.
+    const fresh: File[] = [];
+    const repeated: File[] = [];
+    for (const file of ready) {
+      const sameName = photos.filter((p) => p.file_name === file.name);
+      if (!sameName.length) {
+        fresh.push(file);
+        continue;
+      }
+      let size: { width: number; height: number } | null = null;
+      try {
+        const decoded = await decodeImage(file);
+        size = { width: decoded.width, height: decoded.height };
+        decoded.close();
+      } catch {
+        // Não deu para medir: trata como nova e deixa o envio apontar o erro, se houver
+      }
+      const dup = size && sameName.some((p) => p.width_px === size.width && p.height_px === size.height);
+      (dup ? repeated : fresh).push(file);
+    }
+    setSkipped(repeated);
+
     // Acabamento único do tamanho: não é escolha do cliente nem aparece no site
-    await send(ready, product.finishes[0]);
+    if (fresh.length) await send(fresh, product.finishes[0]);
+  }
+
+  /** Remove todas as fotos deste tamanho do carrinho, depois da confirmação. */
+  async function clearAll() {
+    setClearing(true);
+    try {
+      await api(`/api/photos?product=${encodeURIComponent(product.id)}`, { method: "DELETE" });
+      setPhotos([]);
+      setSkipped([]);
+      setConfirmClear(false);
+      setNotice("Todas as fotos foram removidas.");
+      setToast("Todas as fotos foram removidas.");
+      router.refresh();
+    } catch (err) {
+      reportError("fotos", err, { etapa: "remover todas", product: product.id, count: photos.length });
+      setNotice("Não foi possível remover as fotos. Tente de novo.");
+      setToast("Não foi possível remover as fotos. Tente de novo.");
+    }
+    setClearing(false);
   }
 
   async function send(valid: File[], finish: Finish) {
@@ -539,6 +585,37 @@ export function Uploader({
             </div>
           )}
 
+          {skipped.length > 0 && (
+            <div className="alert alert-info mt-4" role="status">
+              <CopyIcon size={20} aria-hidden className="mt-0.5 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="font-bold">
+                  {skipped.length === 1 ? "1 foto já está na lista" : `${skipped.length} fotos já estão na lista`}
+                </p>
+                <p className="mt-1 break-words">
+                  {skipped.map((f) => f.name).join(", ")}. Para imprimir mais vezes, aumente as cópias.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    disabled={Boolean(progress)}
+                    onClick={() => {
+                      const files = skipped;
+                      setSkipped([]);
+                      void send(files, product.finishes[0]);
+                    }}
+                  >
+                    Enviar mesmo assim
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSkipped([])}>
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {photos.length > 0 && (
             <>
               <div className="mt-10 flex flex-wrap items-end justify-between gap-4">
@@ -589,6 +666,22 @@ export function Uploader({
                     )}
                     Ajuste automático
                   </button>
+                  {confirmClear ? (
+                    <span className="flex flex-wrap items-center gap-2" role="group" aria-label="Confirmar remoção de todas as fotos">
+                      <button type="button" className="btn bg-danger text-white hover:bg-danger/90" onClick={clearAll} disabled={clearing}>
+                        {clearing && <CircleNotchIcon size={18} className="spinner" aria-hidden />}
+                        Remover {plural(photos.length, "foto", "fotos")}
+                      </button>
+                      <button type="button" className="btn btn-ghost" onClick={() => setConfirmClear(false)} disabled={clearing}>
+                        Cancelar
+                      </button>
+                    </span>
+                  ) : (
+                    <button type="button" className="btn btn-danger-ghost" onClick={() => setConfirmClear(true)}>
+                      <TrashIcon size={18} aria-hidden />
+                      Remover todas
+                    </button>
+                  )}
                 </div>
               </div>
 
