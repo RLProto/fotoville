@@ -10,7 +10,7 @@ import { SIZE_GROUPS } from "@/lib/size-groups";
 export const metadata: Metadata = {
   title: "Preços de revelação de fotos",
   description:
-    "Preço por foto do 10x13 ao 30x60, Polaroid, Polaroid ímã e foto-placa. Desconto progressivo no 10x15 e no 15x21. Entrega em todo o Brasil ou retirada em Joinville/SC.",
+    "Preço por foto do 10x13 ao 30x60, Mini Polaroid, Polaroid e Polaroid ímã. Desconto progressivo no 10x15 e no 15x21. Entrega em todo o Brasil ou retirada em Joinville/SC.",
 };
 
 export default async function PrecosPage() {

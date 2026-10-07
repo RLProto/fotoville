@@ -10,7 +10,7 @@ import type { Product } from "@/lib/types";
 export const metadata: Metadata = {
   title: "Enviar fotos: escolha o tamanho",
   description:
-    "Tamanhos de revelação do 10x13 ao 30x60, Polaroid e foto-placa, a partir de R$ 1,99 por foto. Entrega em todo o Brasil ou retirada em Joinville/SC.",
+    "Tamanhos de revelação do 10x13 ao 30x60, Mini Polaroid, Polaroid e Polaroid ímã, a partir de R$ 1,99 por foto. Entrega em todo o Brasil ou retirada em Joinville/SC.",
 };
 
 const cmFormat = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });

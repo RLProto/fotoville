@@ -18,7 +18,7 @@ Compra quase sempre pelo celular, no sofá, à noite, ou no computador quando o 
 - Como começar: escolher o tamanho e enviar as fotos.
 
 ## Fatos que podem aparecer no site
-- 28 tamanhos, de 10x13 a 30x60, mais Mini Polaroid, Polaroid, Polaroid ímã e foto-placa.
+- 22 tamanhos: os 19 da tabela da loja (10x13 a 30x60), Mini Polaroid, Polaroid e Polaroid ímã. Sem foto-placa.
 - Desconto progressivo no 10x15 e no 15x21 (tabela "Valores por unidade para Combo", 2026): 1 / 20 / 50 / 100 / 300 / 500. Preços em src/lib/catalog-data.ts e no banco.
 - Pacotes 10x15 pré-pagos de 100, 300, 500 e 1000 fotos.
 - Desde 2012, em Joinville.

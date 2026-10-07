@@ -1,7 +1,7 @@
 import type { Finish, Package, PriceTier, Product } from "./types";
 
 /**
- * Catálogo de referência, copiado do site atual (fotoville.com.br) em out/2026.
+ * Catálogo de referência: a tabela "Valores por unidade para Combo" da loja (2026), mais Mini Polaroid e Polaroid ímã.
  * É a fonte do back/supabase/seed.sql e o fallback quando o Supabase não está configurado.
  * Em produção, os preços valem pelo banco: edite a tabela `products`.
  */
@@ -56,20 +56,15 @@ export const PRODUCTS: Product[] = [
   print(40, 13, 18, 500),
   print(50, 15, 15, 329),
   print(60, 15, 21, 399, { price_tiers: TIERS_15X21 }),
-  print(70, 15, 30, 659),
   print(80, 20, 20, 499),
   print(90, 20, 25, 599),
   print(100, 20, 30, 849),
-  print(110, 20, 45, 1299),
   print(120, 25, 25, 749),
   print(130, 25, 30, 869),
   print(140, 25, 40, 1649),
-  print(150, 25, 45, 1549),
   print(160, 25, 50, 1769),
   print(170, 25, 60, 2049),
-  print(180, 28, 35, 2000),
   print(190, 30, 30, 1589),
-  print(200, 30, 35, 1599),
   print(210, 30, 40, 1899),
   print(220, 30, 45, 2099),
   print(230, 30, 50, 2399),
@@ -118,21 +113,6 @@ export const PRODUCTS: Product[] = [
     unit_weight_g: 20,
     unit_thickness_mm: 1.5,
     sort: 305,
-    active: true,
-  },
-  {
-    id: "foto-placa-20x30",
-    name: "Foto-placa 20x30 cm",
-    kind: "placa",
-    width_cm: 20,
-    height_cm: 30,
-    price_cents: 2000,
-    price_tiers: [],
-    finishes: FINISH,
-    // Placa rígida: peso e espessura estimados. Confirmar com a loja.
-    unit_weight_g: 380,
-    unit_thickness_mm: 4,
-    sort: 310,
     active: true,
   },
 ];
