@@ -93,8 +93,7 @@ export default async function HomePage() {
                 Quanto mais fotos, menor o preço
               </h2>
               <p className="mt-4 text-lg">
-                Desconto progressivo{bestOff > 0 ? ` de até ${bestOff}%` : ""} no {tieredNames(products)}. Vale pelo
-                total de fotos de cada tamanho no pedido.
+                Desconto progressivo{bestOff > 0 ? ` de até ${bestOff}%` : ""} nos tamanhos {tieredNames(products)}.
               </p>
               <p className="mt-6">
                 <Link href="/enviar" className="btn btn-outline">
