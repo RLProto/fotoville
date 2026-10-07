@@ -2,7 +2,7 @@
 import { decodeImage } from "./decode-image";
 
 export const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
-export const MAX_FILE_BYTES = 40 * 1024 * 1024;
+export const MAX_FILE_BYTES = 50 * 1024 * 1024;
 const THUMB_MAX_SIDE = 720;
 
 /** Lê as dimensões (já com a rotação EXIF aplicada) e gera uma miniatura JPEG. */

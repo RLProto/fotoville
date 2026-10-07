@@ -9,7 +9,7 @@ import type { Product } from "@/lib/types";
 const BOARD_SIZES = ["mini-polaroid", "polaroid", "10x15", "13x18", "15x21", "20x30", "30x40"];
 
 const FAQ = [
-  { q: "Quais arquivos posso enviar?", a: "JPG, PNG ou WebP, até 40 MB por foto." },
+  { q: "Quais arquivos posso enviar?", a: "JPG, PNG ou WebP, até 50 MB por foto." },
   { q: "E se a foto não couber no tamanho?", a: "Você ajusta o corte ou imprime a foto inteira, com borda branca." },
   {
     q: "Quanto tempo demora?",

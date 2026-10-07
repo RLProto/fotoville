@@ -150,7 +150,7 @@ export function Uploader({
         return false;
       }
       if (file.size > MAX_FILE_BYTES) {
-        rejected.push({ name: file.name, message: "Arquivo maior que 40 MB. Envie uma versão menor." });
+        rejected.push({ name: file.name, message: "Arquivo maior que 50 MB. Envie uma versão menor." });
         return false;
       }
       return true;
@@ -524,7 +524,7 @@ export function Uploader({
               <>
                 <ImagesIcon size={26} className="shrink-0 text-action" aria-hidden />
                 <p className="min-w-0 flex-1 text-sm text-ink-2">
-                  JPG, PNG ou WebP, até 40 MB.<span className="hidden sm:inline"> Ou arraste para cá.</span>
+                  JPG, PNG ou WebP, até 50 MB.<span className="hidden sm:inline"> Ou arraste para cá.</span>
                 </p>
                 <button
                   type="button"
@@ -557,7 +557,7 @@ export function Uploader({
                   Selecionar fotos
                 </button>
                 <p className="mt-3 text-sm text-ink-2">
-                  JPG, PNG ou WebP, até 40 MB.<span className="hidden sm:inline"> Ou arraste para cá.</span>
+                  JPG, PNG ou WebP, até 50 MB.<span className="hidden sm:inline"> Ou arraste para cá.</span>
                 </p>
                 {minimum > 1 && <p className="mt-1 text-sm font-semibold">Mínimo de {minimum} fotos.</p>}
                 {progressBar}

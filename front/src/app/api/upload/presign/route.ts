@@ -5,7 +5,7 @@ import { fail, requireUser } from "@/lib/api";
 import { hasStorage, presignUpload } from "@/lib/storage";
 
 const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
-const MAX_BYTES = 40 * 1024 * 1024;
+const MAX_BYTES = 50 * 1024 * 1024;
 
 const schema = z.object({
   files: z
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     parsed.data.files.map(async (file) => {
       const ext = TYPES[file.type];
       if (!ext) return { name: file.name, error: "Formato não aceito. Envie JPG, PNG ou WebP." };
-      if (file.size > MAX_BYTES) return { name: file.name, error: "Arquivo maior que 40 MB. Envie uma versão menor." };
+      if (file.size > MAX_BYTES) return { name: file.name, error: "Arquivo maior que 50 MB. Envie uma versão menor." };
 
       const base = `u/${auth.user.id}/${randomUUID()}`;
       const key = `${base}.${ext}`;
