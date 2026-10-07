@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 export default async function PrecosPage() {
   const products = await getProducts();
   const tiered = products.filter((p) => p.price_tiers.length > 0);
+  const firstTier = Math.min(...tiered.flatMap((p) => p.price_tiers.map((t) => t.min)));
   const hasProfile = products.some((p) => p.store);
 
   return (
@@ -93,7 +94,7 @@ export default async function PrecosPage() {
                 Desconto progressivo
               </h2>
               <p className="mt-3 max-w-[40ch] text-lg text-ink-2">
-                Vale para {tieredNames(products)}. Conta o total de fotos de cada tamanho no pedido.
+                Economize a partir de {firstTier} fotos. Desconto válido nos tamanhos {tieredNames(products)}.
               </p>
               <p className="mt-6 max-w-[40ch]">
                 Para pagar antes e revelar aos poucos, veja os{" "}
