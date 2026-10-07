@@ -23,6 +23,14 @@ export function unitPrice(product: Priced, quantity: number) {
   return price;
 }
 
+/**
+ * Faixas de um perfil de cliente nas mesmas quantidades da loja: o perfil só muda o preço de cada faixa.
+ * Quantidade que o perfil não tinha recebe o preço que ele cobra nessa quantidade (pode ser igual à anterior).
+ */
+export function alignTiers(row: Priced, storeTiers: PriceTier[]): PriceTier[] {
+  return storeTiers.map((t) => ({ min: t.min, price_cents: unitPrice(row, t.min) }));
+}
+
 /** Próxima faixa de desconto ainda não alcançada, ou null. */
 export function nextTier(product: Priced, quantity: number): PriceTier | null {
   const current = unitPrice(product, quantity);

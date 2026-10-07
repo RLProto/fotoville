@@ -3,7 +3,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cache } from "react";
 import { PACKAGES, PRODUCTS } from "./catalog-data";
 import { logError } from "./error-log";
-import { parseTiers } from "./pricing";
+import { alignTiers, parseTiers } from "./pricing";
 import { hasSupabase } from "./site";
 import { createAdminClient, getUser } from "./supabase/server";
 import type { CustomerPriceProfile, Package, Product } from "./types";
@@ -72,13 +72,21 @@ export const getCustomerPriceProfile = cache(async (): Promise<CustomerPriceProf
   return user ? loadPriceProfileFor(user.id) : null;
 });
 
-/** Põe a tabela do perfil por cima da tabela da loja. Tamanho sem preço no perfil fica com o da loja. */
+/**
+ * Põe a tabela do perfil por cima da tabela da loja. Tamanho sem preço no perfil fica com o da loja.
+ * As faixas do perfil seguem as quantidades da loja (1, 20, 50...): o perfil só muda o preço de cada faixa.
+ */
 export function applyPriceProfile(products: Product[], profile: CustomerPriceProfile | null): Product[] {
   if (!profile) return products;
   return products.map((p) => {
     const own = profile.prices.get(p.id);
     if (!own) return p;
-    return { ...p, ...own, store: { price_cents: p.price_cents, price_tiers: p.price_tiers } };
+    return {
+      ...p,
+      price_cents: own.price_cents,
+      price_tiers: alignTiers(own, p.price_tiers),
+      store: { price_cents: p.price_cents, price_tiers: p.price_tiers },
+    };
   });
 }
 

@@ -15,13 +15,17 @@ export const priceRowSchema = z.object({
 
 export const priceRowsSchema = z.array(priceRowSchema).max(200);
 
-/** Confere uma linha da tabela: faixas em ordem crescente, sem quantidade repetida e mais baratas que o preço. */
-export function checkPriceRow(row: PriceRow): string | null {
+/**
+ * Confere uma linha da tabela: faixas em ordem crescente, sem quantidade repetida e mais baratas que a anterior.
+ * No perfil de cliente (`allowEqual`) a faixa pode repetir o preço anterior, porque as quantidades são as da loja.
+ */
+export function checkPriceRow(row: PriceRow, { allowEqual = false } = {}): string | null {
   const tiers = [...row.price_tiers].sort((a, b) => a.min - b.min);
   for (let i = 0; i < tiers.length; i++) {
     if (i > 0 && tiers[i].min === tiers[i - 1].min) return `Faixa repetida: ${tiers[i].min} fotos.`;
     const before = i === 0 ? row.price_cents : tiers[i - 1].price_cents;
-    if (tiers[i].price_cents >= before) return `A faixa de ${tiers[i].min} fotos precisa ser mais barata que a anterior.`;
+    if (tiers[i].price_cents > before) return `A faixa de ${tiers[i].min} fotos não pode custar mais que a anterior.`;
+    if (!allowEqual && tiers[i].price_cents === before) return `A faixa de ${tiers[i].min} fotos precisa ser mais barata que a anterior.`;
   }
   return null;
 }

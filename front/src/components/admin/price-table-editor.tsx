@@ -4,6 +4,7 @@ import { CircleNotchIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { formatBRL } from "@/lib/format";
+import { alignTiers } from "@/lib/pricing";
 import type { PriceRow, PriceTier } from "@/lib/types";
 
 type Item = { id: string; name: string; min: number };
@@ -25,7 +26,7 @@ const toDraft = (row: PriceRow): Draft => ({
 });
 
 /** Converte o rascunho em linha da tabela, ou devolve o problema para mostrar no campo. */
-function parseDraft(id: string, draft: Draft): { row: PriceRow } | { error: string } {
+function parseDraft(id: string, draft: Draft, allowEqual = false): { row: PriceRow } | { error: string } {
   const price = parseMoney(draft.price);
   if (price === null) return { error: "Preço inválido. Use o formato 1,99." };
   const tiers: PriceTier[] = [];
@@ -40,7 +41,10 @@ function parseDraft(id: string, draft: Draft): { row: PriceRow } | { error: stri
   for (let i = 0; i < tiers.length; i++) {
     if (i > 0 && tiers[i].min === tiers[i - 1].min) return { error: `Faixa repetida: ${tiers[i].min} fotos.` };
     const before = i === 0 ? price : tiers[i - 1].price_cents;
-    if (tiers[i].price_cents >= before) return { error: `A faixa de ${tiers[i].min} fotos precisa ser mais barata que a anterior.` };
+    if (tiers[i].price_cents > before) return { error: `A faixa de ${tiers[i].min} fotos não pode custar mais que a anterior.` };
+    if (!allowEqual && tiers[i].price_cents === before) {
+      return { error: `A faixa de ${tiers[i].min} fotos precisa ser mais barata que a anterior.` };
+    }
   }
   return { row: { product_id: id, price_cents: price, price_tiers: tiers } };
 }
@@ -52,6 +56,7 @@ const same = (a: PriceRow, b: PriceRow) =>
  * Tabela de preços editável: preço por foto e desconto progressivo de cada tamanho.
  * Serve para a tabela da loja e para a de um perfil de cliente (com a da loja como referência).
  * No perfil, tamanho igual à loja não tem linha própria: segue a tabela da loja, inclusive quando ela mudar.
+ * As faixas do perfil usam as quantidades da loja (1, 20, 50...): só o preço de cada faixa muda.
  */
 export function PriceTableEditor({
   groups,
@@ -71,7 +76,10 @@ export function PriceTableEditor({
   const router = useRouter();
   const ids = useMemo(() => groups.flatMap((g) => g.items.map((i) => i.id)), [groups]);
   // Tamanho sem linha no perfil (criado depois do perfil) parte da tabela da loja
-  const baseOf = (id: string) => initial[id] ?? reference?.[id] ?? { product_id: id, price_cents: 0, price_tiers: [] };
+  const baseOf = (id: string): PriceRow => {
+    const row = initial[id] ?? reference?.[id] ?? { product_id: id, price_cents: 0, price_tiers: [] };
+    return reference ? { ...row, price_tiers: alignTiers(row, reference[id]?.price_tiers ?? []) } : row;
+  };
 
   const [saved, setSaved] = useState<Record<string, PriceRow>>(initial);
   const [drafts, setDrafts] = useState<Record<string, Draft>>(() =>
@@ -89,7 +97,10 @@ export function PriceTableEditor({
     return () => clearTimeout(t);
   }, [toast]);
 
-  const parsed = useMemo(() => Object.fromEntries(ids.map((id) => [id, parseDraft(id, drafts[id])])), [ids, drafts]);
+  const parsed = useMemo(
+    () => Object.fromEntries(ids.map((id) => [id, parseDraft(id, drafts[id], !!reference)])),
+    [ids, drafts, reference],
+  );
   // Alterado = diferente do que está gravado (tamanho sem linha no perfil compara com a loja, que é o que vale)
   const savedOf = (id: string) => saved[id] ?? baseOf(id);
   const changed = ids.filter((id) => {
@@ -182,7 +193,8 @@ export function PriceTableEditor({
             Aplicar a todos os tamanhos
           </button>
           <p className="basis-full text-sm text-ink-2">
-            Recalcula preço e faixas a partir da loja. Depois ajuste o que quiser e salve.
+            Recalcula preço e faixas a partir da loja. Depois ajuste o que quiser e salve. As faixas usam as
+            quantidades da loja; aqui só o preço de cada faixa muda.
           </p>
         </div>
       )}
@@ -236,11 +248,15 @@ export function PriceTableEditor({
                               </span>
                             ))
                           ) : (
-                            <span className="text-sm text-ink-3">Sem desconto progressivo</span>
+                            <span className="text-sm text-ink-3">
+                              {reference ? "Sem desconto progressivo na loja" : "Sem desconto progressivo"}
+                            </span>
                           ))}
-                        <button type="button" className="btn btn-ghost btn-sm" aria-expanded={isOpen} onClick={() => toggle(item.id)}>
-                          {isOpen ? "Fechar faixas" : "Editar faixas"}
-                        </button>
+                        {(!reference || draft.tiers.length > 0) && (
+                          <button type="button" className="btn btn-ghost btn-sm" aria-expanded={isOpen} onClick={() => toggle(item.id)}>
+                            {isOpen ? "Fechar faixas" : "Editar faixas"}
+                          </button>
+                        )}
                         {canReset && (
                           <button
                             type="button"
@@ -258,18 +274,22 @@ export function PriceTableEditor({
                         {draft.tiers.map((t, i) => (
                           <div key={t.key} className="flex flex-wrap items-center gap-2">
                             <span className="text-sm">A partir de</span>
-                            <input
-                              inputMode="numeric"
-                              aria-label={`Quantidade da faixa ${i + 1}`}
-                              className="field-input w-20 text-right tabular-nums"
-                              value={t.min}
-                              onChange={(e) =>
-                                update(item.id, (d) => ({
-                                  ...d,
-                                  tiers: d.tiers.map((x) => (x.key === t.key ? { ...x, min: e.target.value.replace(/\D/g, "") } : x)),
-                                }))
-                              }
-                            />
+                            {reference ? (
+                              <span className="font-semibold tabular-nums">{t.min}</span>
+                            ) : (
+                              <input
+                                inputMode="numeric"
+                                aria-label={`Quantidade da faixa ${i + 1}`}
+                                className="field-input w-20 text-right tabular-nums"
+                                value={t.min}
+                                onChange={(e) =>
+                                  update(item.id, (d) => ({
+                                    ...d,
+                                    tiers: d.tiers.map((x) => (x.key === t.key ? { ...x, min: e.target.value.replace(/\D/g, "") } : x)),
+                                  }))
+                                }
+                              />
+                            )}
                             <span className="text-sm">fotos, R$</span>
                             <input
                               inputMode="decimal"
@@ -284,17 +304,24 @@ export function PriceTableEditor({
                               }
                             />
                             <span className="text-sm">cada</span>
-                            <button
-                              type="button"
-                              className="inline-flex size-11 items-center justify-center rounded-control text-danger hover:bg-danger-soft"
-                              aria-label={`Remover a faixa ${i + 1}`}
-                              onClick={() => update(item.id, (d) => ({ ...d, tiers: d.tiers.filter((x) => x.key !== t.key) }))}
-                            >
-                              <TrashIcon size={18} aria-hidden />
-                            </button>
+                            {!reference && (
+                              <button
+                                type="button"
+                                className="inline-flex size-11 items-center justify-center rounded-control text-danger hover:bg-danger-soft"
+                                aria-label={`Remover a faixa ${i + 1}`}
+                                onClick={() => update(item.id, (d) => ({ ...d, tiers: d.tiers.filter((x) => x.key !== t.key) }))}
+                              >
+                                <TrashIcon size={18} aria-hidden />
+                              </button>
+                            )}
                           </div>
                         ))}
-                        {draft.tiers.length < 10 && (
+                        {reference && (
+                          <p className="text-sm text-ink-2">
+                            Mesmas quantidades da loja. Faixa com o mesmo preço da anterior não muda nada.
+                          </p>
+                        )}
+                        {!reference && draft.tiers.length < 10 && (
                           <button
                             type="button"
                             className="btn btn-ghost btn-sm"

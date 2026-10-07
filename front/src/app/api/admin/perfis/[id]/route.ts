@@ -3,6 +3,7 @@ import { z } from "zod";
 import { checkPriceRow, normalizePriceRow, priceRowsSchema } from "@/lib/admin-pricing";
 import { fail, requireAdmin, serverFail } from "@/lib/api";
 import { getStoreProducts } from "@/lib/catalog";
+import { alignTiers } from "@/lib/pricing";
 import { createAdminClient } from "@/lib/supabase/server";
 
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -24,8 +25,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return fail("Confira o nome e os valores: preço em reais e faixas a partir de 2 fotos.");
-  for (const row of parsed.data.items ?? []) {
-    const problem = checkPriceRow(row);
+  const store = new Map((await getStoreProducts()).map((p) => [p.id, p]));
+  // O perfil só muda o preço de cada faixa: as quantidades são sempre as da loja
+  const items = (parsed.data.items ?? []).map(normalizePriceRow).map((row) => ({
+    ...row,
+    price_tiers: alignTiers(row, store.get(row.product_id)?.price_tiers ?? []),
+  }));
+  for (const row of items) {
+    const problem = checkPriceRow(row, { allowEqual: true });
     if (problem) return fail(`${row.product_id}: ${problem}`);
   }
 
@@ -34,9 +41,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { error } = await admin.from("price_profiles").update({ name: parsed.data.name }).eq("id", id);
     if (error) return serverFail("painel", "Não foi possível renomear o perfil. Tente de novo.", error, 500, { profile: id });
   }
-  if (parsed.data.items?.length) {
-    const store = new Map((await getStoreProducts()).map((p) => [p.id, p]));
-    const items = parsed.data.items.map(normalizePriceRow);
+  if (items.length) {
     const sameAsStore = items.filter((row) => {
       const s = store.get(row.product_id);
       return s && s.price_cents === row.price_cents && JSON.stringify(s.price_tiers) === JSON.stringify(row.price_tiers);

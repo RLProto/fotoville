@@ -14,7 +14,14 @@ export function TierTable({ products, onColor = false }: { products: Product[]; 
   return (
     <div className={`grid min-w-0 gap-4 ${tiered.length > 1 ? "sm:grid-cols-2" : "max-w-sm"}`}>
       {tiered.map((p) => {
-        const ranges = quantityRanges([p]);
+        // Faixas vizinhas com o mesmo preço (perfil de cliente) viram uma linha só
+        const ranges = quantityRanges([p]).reduce<{ from: number; to: number | null; price: number }[]>((acc, r) => {
+          const price = unitPrice(p, r.from);
+          const last = acc[acc.length - 1];
+          if (last && last.price === price) last.to = r.to;
+          else acc.push({ ...r, price });
+          return acc;
+        }, []);
         return (
           <section key={p.id} className={`${shell} min-w-0 px-4 pt-5 pb-3 sm:px-5`} aria-label={`Desconto progressivo ${p.name}`}>
             <h3 className="flex items-baseline justify-between gap-3">
@@ -26,7 +33,7 @@ export function TierTable({ products, onColor = false }: { products: Product[]; 
             </h3>
             <ul className="mt-3">
               {ranges.map((range) => {
-                const price = unitPrice(p, range.from);
+                const price = range.price;
                 const off = Math.round((1 - price / p.price_cents) * 100);
                 // Com fonte muito grande a linha quebra e o preço desce para a direita, em vez de vazar
                 return (
