@@ -65,7 +65,7 @@ export function NewProfileForm({ suggestedName }: { suggestedName: string }) {
         </button>
       </div>
       <p className="mt-3 text-sm text-ink-2">
-        O perfil nasce com a tabela da loja e esse desconto em todos os tamanhos. Depois dá para ajustar cada preço.
+        O perfil nasce com esse desconto sobre a tabela da loja. Depois dá para ajustar cada preço. Tamanho igual à loja acompanha a tabela da loja quando ela mudar.
       </p>
       {error && (
         <p className="field-error" role="alert">

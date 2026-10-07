@@ -10,7 +10,7 @@ const schema = z.object({
   percent: z.number().min(0).max(90).default(0),
 });
 
-/** Cria um perfil já com a tabela da loja copiada (com o desconto inicial, se houver). */
+/** Cria um perfil. Sem desconto inicial, nasce vazio e segue a loja; com desconto, grava cada tamanho já descontado. */
 export async function POST(request: Request) {
   const auth = await requireAdmin();
   if ("error" in auth) return auth.error;
@@ -25,6 +25,8 @@ export async function POST(request: Request) {
     .select("id")
     .single();
   if (error || !profile) return serverFail("painel", "Não foi possível criar o perfil. Tente de novo.", error);
+
+  if (parsed.data.percent === 0) return NextResponse.json({ id: profile.id });
 
   const rows = (await getStoreProducts()).map((p) => ({
     profile_id: profile.id,

@@ -56,3 +56,9 @@ export function tieredNames(products: Product[]) {
   const names = products.filter((p) => p.price_tiers.length > 0).map((p) => p.name.replace(" cm", ""));
   return names.length > 1 ? `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}` : names.join("");
 }
+
+/** "no tamanho 10x15" ou "nos tamanhos 10x15 e 15x21". */
+export function tieredSizesPhrase(products: Product[]) {
+  const count = products.filter((p) => p.price_tiers.length > 0).length;
+  return `${count > 1 ? "nos tamanhos" : "no tamanho"} ${tieredNames(products)}`;
+}

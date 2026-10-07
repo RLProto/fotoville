@@ -51,6 +51,7 @@ const same = (a: PriceRow, b: PriceRow) =>
 /**
  * Tabela de preços editável: preço por foto e desconto progressivo de cada tamanho.
  * Serve para a tabela da loja e para a de um perfil de cliente (com a da loja como referência).
+ * No perfil, tamanho igual à loja não tem linha própria: segue a tabela da loja, inclusive quando ela mudar.
  */
 export function PriceTableEditor({
   groups,
@@ -136,7 +137,15 @@ export function PriceTableEditor({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Não foi possível salvar. Tente de novo.");
-      setSaved((s) => ({ ...s, ...Object.fromEntries(items.map((r) => [r.product_id, r])) }));
+      setSaved((s) => {
+        const next = { ...s };
+        for (const r of items) {
+          const ref = reference?.[r.product_id];
+          if (ref && same(ref, r)) delete next[r.product_id];
+          else next[r.product_id] = r;
+        }
+        return next;
+      });
       setToast(`${items.length === 1 ? "1 tamanho salvo" : `${items.length} tamanhos salvos`}.`);
       router.refresh();
     } catch (err) {
@@ -189,13 +198,17 @@ export function PriceTableEditor({
                 const isOpen = open.has(item.id);
                 const ref = reference?.[item.id];
                 const dirty = changed.includes(item.id);
+                // Sem linha própria e sem edição: o tamanho segue a tabela da loja
+                const followsStore = !!ref && !saved[item.id] && !dirty;
+                // "Usar a loja" só quando o rascunho difere da loja
+                const canReset = !!ref && !followsStore && !("row" in result && same(result.row, ref));
                 return (
                   <li key={item.id} className={`border-b border-rule py-3 ${dirty ? "bg-action-soft/30" : ""}`}>
                     <div className="grid gap-3 sm:grid-cols-[minmax(9rem,1.1fr)_9rem_minmax(0,2fr)] sm:items-center sm:gap-5">
                       <div className="min-w-0">
                         <p className="font-semibold">{item.name}</p>
                         <p className="text-sm text-ink-2">
-                          {ref && <>Loja: {formatBRL(ref.price_cents)}</>}
+                          {ref && (followsStore ? <>Segue a loja: {formatBRL(ref.price_cents)}</> : <>Loja: {formatBRL(ref.price_cents)}</>)}
                           {ref && item.min > 1 && ", "}
                           {item.min > 1 && <>mínimo {item.min} fotos</>}
                         </p>
@@ -228,6 +241,15 @@ export function PriceTableEditor({
                         <button type="button" className="btn btn-ghost btn-sm" aria-expanded={isOpen} onClick={() => toggle(item.id)}>
                           {isOpen ? "Fechar faixas" : "Editar faixas"}
                         </button>
+                        {canReset && (
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => update(item.id, () => toDraft(ref))}
+                          >
+                            Usar a loja
+                          </button>
+                        )}
                       </div>
                     </div>
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { checkPriceRow, normalizePriceRow, priceRowsSchema } from "@/lib/admin-pricing";
 import { fail, requireAdmin, serverFail } from "@/lib/api";
+import { getStoreProducts } from "@/lib/catalog";
 import { createAdminClient } from "@/lib/supabase/server";
 
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -10,7 +11,11 @@ const schema = z.object({
   items: priceRowsSchema.optional(),
 });
 
-/** Renomeia o perfil e grava a tabela de preços dele. */
+/**
+ * Renomeia o perfil e grava a tabela de preços dele.
+ * O perfil guarda só o que difere da loja: tamanho igual à loja perde a linha e passa a seguir a tabela da loja,
+ * inclusive quando ela mudar depois.
+ */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin();
   if ("error" in auth) return auth.error;
@@ -30,9 +35,25 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (error) return serverFail("painel", "Não foi possível renomear o perfil. Tente de novo.", error, 500, { profile: id });
   }
   if (parsed.data.items?.length) {
-    const rows = parsed.data.items.map(normalizePriceRow).map((row) => ({ profile_id: id, ...row }));
-    const { error } = await admin.from("profile_prices").upsert(rows);
-    if (error) return serverFail("painel", "Não foi possível salvar os preços do perfil. Tente de novo.", error, 500, { profile: id });
+    const store = new Map((await getStoreProducts()).map((p) => [p.id, p]));
+    const items = parsed.data.items.map(normalizePriceRow);
+    const sameAsStore = items.filter((row) => {
+      const s = store.get(row.product_id);
+      return s && s.price_cents === row.price_cents && JSON.stringify(s.price_tiers) === JSON.stringify(row.price_tiers);
+    });
+    const own = items.filter((row) => !sameAsStore.includes(row)).map((row) => ({ profile_id: id, ...row }));
+    if (own.length) {
+      const { error } = await admin.from("profile_prices").upsert(own);
+      if (error) return serverFail("painel", "Não foi possível salvar os preços do perfil. Tente de novo.", error, 500, { profile: id });
+    }
+    if (sameAsStore.length) {
+      const { error } = await admin
+        .from("profile_prices")
+        .delete()
+        .eq("profile_id", id)
+        .in("product_id", sameAsStore.map((r) => r.product_id));
+      if (error) return serverFail("painel", "Não foi possível salvar os preços do perfil. Tente de novo.", error, 500, { profile: id });
+    }
   }
   return NextResponse.json({ ok: true });
 }

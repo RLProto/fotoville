@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { TierTable, tieredNames } from "@/components/tier-table";
+import { TierTable, tieredSizesPhrase } from "@/components/tier-table";
 import { getProducts } from "@/lib/catalog";
 import { formatBRL } from "@/lib/format";
 import { minCopies } from "@/lib/pricing";
@@ -84,7 +84,7 @@ export default async function PrecosPage() {
                 Desconto progressivo
               </h2>
               <p className="mt-3 max-w-[40ch] text-lg text-ink-2">Economize a partir de {firstTier} fotos.</p>
-              <p className="mt-2 max-w-[40ch] text-ink-2">Desconto válido nos tamanhos {tieredNames(products)}.</p>
+              <p className="mt-2 max-w-[40ch] text-ink-2">Desconto válido {tieredSizesPhrase(products)}.</p>
             </div>
             <TierTable products={products} />
           </div>

@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { SizeBoard } from "@/components/size-board";
-import { TierTable, tieredNames } from "@/components/tier-table";
+import { TierTable, tieredSizesPhrase } from "@/components/tier-table";
 import { getProducts } from "@/lib/catalog";
 import { site, whatsappLink } from "@/lib/site";
 import type { Product } from "@/lib/types";
@@ -93,7 +93,7 @@ export default async function HomePage() {
                 Quanto mais fotos, menor o preço
               </h2>
               <p className="mt-4 text-lg">
-                Desconto progressivo{bestOff > 0 ? ` de até ${bestOff}%` : ""} nos tamanhos {tieredNames(products)}.
+                Desconto progressivo{bestOff > 0 ? ` de até ${bestOff}%` : ""} {tieredSizesPhrase(products)}.
               </p>
               <p className="mt-6">
                 <Link href="/enviar" className="btn btn-outline">
