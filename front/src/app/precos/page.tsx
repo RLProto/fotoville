@@ -96,13 +96,6 @@ export default async function PrecosPage() {
               <p className="mt-3 max-w-[40ch] text-lg text-ink-2">
                 Economize a partir de {firstTier} fotos. Desconto válido nos tamanhos {tieredNames(products)}.
               </p>
-              <p className="mt-6 max-w-[40ch]">
-                Para pagar antes e revelar aos poucos, veja os{" "}
-                <Link href="/promocoes" className="link">
-                  pacotes pré-pagos
-                </Link>
-                .
-              </p>
             </div>
             <TierTable products={products} />
           </div>
