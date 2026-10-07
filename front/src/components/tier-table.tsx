@@ -3,52 +3,50 @@ import { quantityRanges, rangeLabel, unitPrice } from "@/lib/pricing";
 import type { Product } from "@/lib/types";
 
 /**
- * Tabela do desconto progressivo: uma linha por faixa de quantidade, uma coluna por tamanho
- * (10x15, 15x21...). Serve para a home e para a aba Preços.
+ * Desconto progressivo: um cartão por tamanho, com as faixas em linhas de balcão
+ * (quantidade, pontilhado, preço) e a porcentagem discreta ao lado. Serve para a home e para a aba Preços.
  */
 export function TierTable({ products, onColor = false }: { products: Product[]; onColor?: boolean }) {
   const tiered = products.filter((p) => p.price_tiers.length > 0);
   if (!tiered.length) return null;
-  const ranges = quantityRanges(tiered);
-  // Sobre o campo mostarda a tabela é um painel branco; no papel, um cartão com borda
   const shell = onColor ? "rounded-panel bg-surface" : "card";
 
   return (
-    <div className={`${shell} overflow-x-auto`}>
-      <table className="w-full text-left tabular-nums">
-        <thead className="border-b border-rule text-sm text-ink-2">
-          <tr>
-            <th scope="col" className="px-3 py-3 font-semibold sm:px-5">
-              Fotos
-            </th>
-            {tiered.map((p) => (
-              <th key={p.id} scope="col" className="px-3 py-3 text-right font-semibold whitespace-nowrap sm:px-5">
+    <div className={`grid min-w-0 gap-4 ${tiered.length > 1 ? "sm:grid-cols-2" : "max-w-sm"}`}>
+      {tiered.map((p) => {
+        const ranges = quantityRanges([p]);
+        return (
+          <section key={p.id} className={`${shell} min-w-0 px-4 pt-5 pb-3 sm:px-5`} aria-label={`Desconto progressivo ${p.name}`}>
+            <h3 className="flex items-baseline justify-between gap-3">
+              <span className="font-display text-2xl font-extrabold tabular-nums">
                 {p.name.replace(" cm", "")}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {ranges.map((range) => (
-            <tr key={range.from} className="border-b border-rule last:border-b-0">
-              <th scope="row" className="px-3 py-3 font-semibold whitespace-nowrap sm:px-5">
-                {rangeLabel(range)}
-              </th>
-              {tiered.map((p) => {
+                {p.kind === "print" && <span className="ml-1 text-sm font-semibold text-ink-2">cm</span>}
+              </span>
+              <span className="text-sm text-ink-2">por foto</span>
+            </h3>
+            <ul className="mt-3">
+              {ranges.map((range) => {
                 const price = unitPrice(p, range.from);
                 const off = Math.round((1 - price / p.price_cents) * 100);
+                // Com fonte muito grande a linha quebra e o preço desce para a direita, em vez de vazar
                 return (
-                  <td key={p.id} className="px-3 py-3 text-right whitespace-nowrap sm:px-5">
-                    {/* A porcentagem só cabe a partir de 640 px; no celular ficam os preços */}
-                    {off > 0 && <span className="badge mr-2 hidden bg-success-soft text-success sm:inline-flex">−{off}%</span>}
-                    <span className="font-display text-lg font-bold">{formatBRL(price)}</span>
-                  </td>
+                  <li key={range.from} className="flex flex-wrap items-baseline border-t border-rule py-2.5">
+                    <span className="font-semibold whitespace-nowrap tabular-nums">{rangeLabel(range)}</span>
+                    <span className="leader min-w-2" aria-hidden />
+                    <span className="ml-auto flex items-baseline whitespace-nowrap">
+                      <span className="font-display font-bold tabular-nums">{formatBRL(price)}</span>
+                      {/* Coluna fixa para a porcentagem: os preços ficam alinhados mesmo na linha sem desconto */}
+                      <span className="ml-2 w-[4.5ch] shrink-0 text-right text-sm font-semibold text-success tabular-nums">
+                        {off > 0 ? `−${off}%` : ""}
+                      </span>
+                    </span>
+                  </li>
                 );
               })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+            </ul>
+          </section>
+        );
+      })}
     </div>
   );
 }
