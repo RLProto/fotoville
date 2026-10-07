@@ -21,17 +21,7 @@ export default async function PrecosPage() {
 
   return (
     <>
-      <PageHeader title="Preços">
-        <p>{hasProfile ? "Preço por foto, com o seu desconto de cliente." : "Preço por foto."}</p>
-        {tiered.length > 0 && (
-          <p className="mt-2">
-            <a href="#quantidade" className="link">
-              Desconto progressivo no {tieredNames(products)}
-            </a>
-            : quanto mais fotos, menor o preço.
-          </p>
-        )}
-      </PageHeader>
+      <PageHeader title="Preços">{hasProfile && <p>Com o seu desconto de cliente.</p>}</PageHeader>
 
       <section aria-labelledby="revelacao">
         <div className="container-page py-14">
@@ -93,9 +83,8 @@ export default async function PrecosPage() {
               <h2 id="quantidade" className="display-md scroll-mt-24 text-2xl sm:text-3xl">
                 Desconto progressivo
               </h2>
-              <p className="mt-3 max-w-[40ch] text-lg text-ink-2">
-                Economize a partir de {firstTier} fotos. Desconto válido nos tamanhos {tieredNames(products)}.
-              </p>
+              <p className="mt-3 max-w-[40ch] text-lg text-ink-2">Economize a partir de {firstTier} fotos.</p>
+              <p className="mt-2 max-w-[40ch] text-ink-2">Desconto válido nos tamanhos {tieredNames(products)}.</p>
             </div>
             <TierTable products={products} />
           </div>
