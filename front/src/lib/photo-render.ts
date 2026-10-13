@@ -5,7 +5,7 @@
  */
 import { CAPTION_COLOR, hasToneChange } from "./adjust";
 import { captionFont } from "./caption-fonts";
-import { loadImage } from "./decode-image";
+import { loadImage, type DecodedImage } from "./decode-image";
 import { fitCrop, isLandscape, paperLayout, type Rect } from "./crop";
 import type { Adjust, AutoTone, Photo, Product } from "./types";
 
@@ -342,22 +342,67 @@ export async function withJpegDpi(blob: Blob, dpi: number): Promise<Blob> {
   return new Blob([bytes.subarray(0, 2), app0, bytes.subarray(2)], { type: "image/jpeg" });
 }
 
+/** JPEG do canvas, com o dpi gravado. Zera o canvas em seguida para liberar a memória. */
+async function canvasToPrintJpeg(canvas: HTMLCanvasElement, dpi: number) {
+  const jpeg = await new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("canvas"))), "image/jpeg", 0.95),
+  );
+  canvas.width = canvas.height = 0;
+  return withJpegDpi(jpeg, dpi);
+}
+
 /**
  * Arquivo final para a loja, em JPEG, na medida real do papel e com o dpi gravado no cabeçalho.
  * Resolução: a da foto do cliente (ver printFileDpi).
  */
-export async function renderPrintFile(url: string, photo: PhotoShape, product: Size): Promise<Blob> {
+export async function renderPrintFile(source: DecodedImage, photo: PhotoShape, product: Size): Promise<Blob> {
+  const dpi = printFileDpi(source, photo, product);
+  const canvas = document.createElement("canvas");
+  await renderPrint(canvas, source, photo, product, dpi / 25.4);
+  return canvasToPrintJpeg(canvas, dpi);
+}
+
+/** Baixa a foto do bucket e gera o arquivo de impressão. */
+export async function renderPrintFileFromUrl(url: string, photo: PhotoShape, product: Size): Promise<Blob> {
   const source = await loadImage(url);
   try {
-    const dpi = printFileDpi(source, photo, product);
-    const canvas = document.createElement("canvas");
-    await renderPrint(canvas, source, photo, product, dpi / 25.4);
-    const jpeg = await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("canvas"))), "image/jpeg", 0.95),
-    );
-    canvas.width = canvas.height = 0; // libera a memória antes da próxima foto
-    return await withJpegDpi(jpeg, dpi);
+    return await renderPrintFile(source, photo, product);
   } finally {
     source.close();
   }
+}
+
+/**
+ * Folha de Mini Polaroid: papel 10x15 deitado (15,2 x 10,2 cm) com até duas Minis lado a lado sobre
+ * fundo escuro. A loja imprime a folha como um 10x15 e corta; o fundo escuro marca a borda branca.
+ */
+export const MINI_SHEET = { width: 152, height: 102, gap: 8, perSheet: 2, background: "#202020" };
+
+export type SheetItem = { source: DecodedImage; photo: PhotoShape; product: Size };
+
+export async function renderMiniSheetFile(items: SheetItem[]): Promise<Blob> {
+  const sheetLimit = Math.floor((MAX_CANVAS_SIDE * 25.4) / MINI_SHEET.width);
+  const dpi = Math.min(sheetLimit, Math.max(...items.map((it) => printFileDpi(it.source, it.photo, it.product))));
+  const pxPerMm = dpi / 25.4;
+  const mm = (v: number) => Math.round(v * pxPerMm);
+
+  const sheet = document.createElement("canvas");
+  sheet.width = mm(MINI_SHEET.width);
+  sheet.height = mm(MINI_SHEET.height);
+  const ctx = sheet.getContext("2d")!;
+  ctx.fillStyle = MINI_SHEET.background;
+  ctx.fillRect(0, 0, sheet.width, sheet.height);
+
+  // Minis centradas na folha, sempre em pé (paperLayout da Polaroid), com um vão entre elas.
+  const layouts = items.map((it) => paperLayout(it.product, isLandscape(it.photo), it.photo.adjust));
+  const total = layouts.reduce((w, l) => w + l.width, 0) + MINI_SHEET.gap * (items.length - 1);
+  let x = (MINI_SHEET.width - total) / 2;
+  for (const [i, it] of items.entries()) {
+    const one = document.createElement("canvas");
+    await renderPrint(one, it.source, it.photo, it.product, pxPerMm);
+    ctx.drawImage(one, mm(x), mm((MINI_SHEET.height - layouts[i].height) / 2));
+    one.width = one.height = 0;
+    x += layouts[i].width + MINI_SHEET.gap;
+  }
+  return canvasToPrintJpeg(sheet, dpi);
 }

@@ -6,7 +6,8 @@ import { useState, useSyncExternalStore } from "react";
 import { PrintPreview } from "@/components/print-preview";
 import { describeAdjust } from "@/lib/adjust";
 import { realSizeLabel } from "@/lib/catalog-data";
-import { renderPrintFile } from "@/lib/photo-render";
+import { loadImage, type DecodedImage } from "@/lib/decode-image";
+import { MINI_SHEET, renderMiniSheetFile, renderPrintFileFromUrl } from "@/lib/photo-render";
 import { reportError } from "@/lib/report-error";
 import type { OrderStatus, Photo, Product } from "@/lib/types";
 
@@ -43,6 +44,59 @@ function sizeFolder(product: Product) {
   return product.kind === "print" ? size : `${size} ${product.name}`;
 }
 
+const MINI = "mini-polaroid";
+const MINI_SHEET_FOLDER = `${realSizeLabel({ width_cm: 10.2, height_cm: 15.2 })} Mini Polaroid`;
+
+/** Um arquivo a gravar na pasta do pedido. `copies` grava o mesmo arquivo mais de uma vez. */
+type Job = { folder: string; name: string; copies: number; photoIds: string[]; make: () => Promise<Blob> };
+
+/**
+ * Arquivos do pedido: um por foto (gravado tantas vezes quantas cópias), menos a Mini Polaroid,
+ * que sai em folhas 10x15 com duas Minis cada, já contando as cópias.
+ */
+function planJobs(photos: AdminPhoto[], productOf: (p: AdminPhoto) => Product | undefined, orderNumber: number) {
+  const jobs: Job[] = [];
+  const minis: AdminPhoto[] = [];
+  const cache = new Map<string, Promise<DecodedImage>>();
+  const cached = (url: string) => cache.get(url) ?? cache.set(url, loadImage(url)).get(url)!;
+
+  for (const photo of photos) {
+    const product = productOf(photo);
+    if (!product) throw new Error(`Tamanho ${photo.product_id} não encontrado.`);
+    if (product.id === MINI) {
+      for (let i = 0; i < photo.quantity; i++) minis.push(photo);
+      continue;
+    }
+    jobs.push({
+      folder: sizeFolder(product),
+      name: photo.base_name,
+      copies: photo.quantity,
+      photoIds: [photo.id],
+      // Arquivo pronto para impressão: corte, borda ou moldura, cor e legenda, como o cliente viu.
+      make: () => renderPrintFileFromUrl(photo.original_url, photo, product),
+    });
+  }
+
+  for (let i = 0; i < minis.length; i += MINI_SHEET.perSheet) {
+    const group = minis.slice(i, i + MINI_SHEET.perSheet);
+    jobs.push({
+      folder: MINI_SHEET_FOLDER,
+      name: `${orderNumber}_${MINI}_folha_${String(i / MINI_SHEET.perSheet + 1).padStart(3, "0")}`,
+      copies: 1,
+      photoIds: group.map((p) => p.id),
+      make: async () => {
+        const items = await Promise.all(
+          group.map(async (photo) => ({ source: await cached(photo.original_url), photo, product: productOf(photo)! })),
+        );
+        return renderMiniSheetFile(items);
+      },
+    });
+  }
+  /** Libera as fotos decodificadas para as folhas. */
+  const release = () => cache.forEach((p) => p.then((img) => img.close()).catch(() => {}));
+  return { jobs, release };
+}
+
 export function PhotoDownloads({
   orderId,
   orderNumber,
@@ -66,18 +120,13 @@ export function PhotoDownloads({
     () => !!(window as PickerWindow).showDirectoryPicker,
     () => true,
   );
-  const copies = photos.reduce((sum, p) => sum + p.quantity, 0);
 
-  async function renderOne(photo: AdminPhoto) {
-    const product = productOf(photo);
-    if (!product) throw new Error(`Tamanho ${photo.product_id} não encontrado.`);
-    // Arquivo pronto para impressão: corte, borda ou moldura, cor e legenda, como o cliente viu.
-    return { product, blob: await renderPrintFile(photo.original_url, photo, product) };
-  }
+  const files = planJobs(photos, productOf, orderNumber).jobs.reduce((sum, j) => sum + j.copies, 0);
 
   async function downloadOne(photo: AdminPhoto) {
-    const { blob } = await renderOne(photo);
-    save(blob, `${photo.base_name}.jpg`);
+    const product = productOf(photo);
+    if (!product) return;
+    save(await renderPrintFileFromUrl(photo.original_url, photo, product), `${photo.base_name}.jpg`);
   }
 
   /**
@@ -98,22 +147,23 @@ export function PhotoDownloads({
     setMessage(null);
     let failed = 0;
     let done = 0;
+    const { jobs, release } = planJobs(photos, productOf, orderNumber);
     try {
       const orderDir = await root.getDirectoryHandle(String(orderNumber), { create: true });
-      for (const photo of photos) {
+      for (const job of jobs) {
         try {
-          const { product, blob } = await renderOne(photo);
-          const dir = await orderDir.getDirectoryHandle(sizeFolder(product), { create: true });
-          for (let copy = 1; copy <= photo.quantity; copy++) {
-            const file = await dir.getFileHandle(`${photo.base_name}_${copy}.jpg`, { create: true });
+          const blob = await job.make();
+          const dir = await orderDir.getDirectoryHandle(job.folder, { create: true });
+          for (let copy = 1; copy <= job.copies; copy++) {
+            const file = await dir.getFileHandle(`${job.name}_${copy}.jpg`, { create: true });
             const stream = await file.createWritable();
             await stream.write(blob);
             await stream.close();
             done += 1;
-            setMessage(`${done} de ${copies} arquivos gravados…`);
+            setMessage(`${done} de ${files} arquivos gravados…`);
           }
         } catch (err) {
-          reportError("loja", err, { etapa: "baixar pedido em pastas", photo: photo.id, file: photo.base_name });
+          reportError("loja", err, { etapa: "baixar pedido em pastas", photos: job.photoIds, file: job.name });
           failed += 1;
         }
       }
@@ -122,11 +172,13 @@ export function PhotoDownloads({
       setBusy(null);
       setMessage("Não foi possível gravar na pasta escolhida.");
       return;
+    } finally {
+      release();
     }
 
     if (failed) {
       setBusy(null);
-      setMessage(`${failed} foto(s) falharam. Confira o CORS do bucket ou baixe os originais.`);
+      setMessage(`${failed} arquivo(s) falharam. Confira o CORS do bucket ou baixe os originais.`);
       return;
     }
 
@@ -159,7 +211,7 @@ export function PhotoDownloads({
           ) : (
             <FoldersIcon size={18} aria-hidden />
           )}
-          Baixar pedido em pastas ({copies})
+          Baixar pedido em pastas ({files})
         </button>
         <p aria-live="polite" className="text-sm font-semibold">
           {message ?? (canPickFolder ? null : "Para baixar em pastas, abra o painel no Chrome ou no Edge do computador.")}
@@ -181,7 +233,11 @@ export function PhotoDownloads({
               <p className="mt-2 font-bold">
                 {photo.quantity}× {product?.name ?? photo.product_id}
               </p>
-              {product && <p className="text-sm text-ink-2">Papel {realSizeLabel(product)} cm</p>}
+              {product && (
+                <p className="text-sm text-ink-2">
+                  {product.id === MINI ? "Folha 10,2x15,2 cm, 2 por folha" : `Papel ${realSizeLabel(product)} cm`}
+                </p>
+              )}
               <p className="text-sm text-ink-2">
                 {[photo.fit ? "foto inteira" : "", ...describeAdjust(photo.adjust)]
                   .filter(Boolean)
