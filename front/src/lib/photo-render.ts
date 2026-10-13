@@ -303,30 +303,60 @@ async function layoutCaption(
   };
 }
 
+/** Maior lado de canvas que o Chrome e o Edge desenham com segurança. */
+const MAX_CANVAS_SIDE = 16384;
+
 /**
- * Arquivo final para a loja, em JPEG: no mínimo 300 dpi (borda e legenda nítidas mesmo com foto
- * pequena), na resolução nativa da foto quando ela for maior, até ~40 megapixels.
+ * Resolução do arquivo de impressão, em dpi inteiro: a nativa da foto no papel (nenhum pixel
+ * do cliente se perde), nunca abaixo de 300 (borda e legenda nítidas mesmo com foto pequena)
+ * e no máximo o que o canvas do navegador aguenta.
+ */
+export function printFileDpi(source: { width: number; height: number }, photo: PhotoShape, product: Size) {
+  const layout = paperLayout(product, isLandscape(photo), photo.adjust);
+  const k = source.width / photo.width_px;
+  const native =
+    photo.fit || !photo.crop
+      ? Math.max(source.width / layout.window.w, source.height / layout.window.h)
+      : (photo.crop.width * k) / layout.window.w;
+  const dpi = Math.max(300, Math.ceil(native * 25.4));
+  const limit = Math.floor((MAX_CANVAS_SIDE * 25.4) / Math.max(layout.width, layout.height));
+  return Math.min(dpi, limit);
+}
+
+/**
+ * Grava a densidade (dpi) no cabeçalho JFIF do JPEG, para o arquivo abrir no software da
+ * impressora exatamente no tamanho do papel. O canvas gera o JPEG sem essa informação.
+ */
+export async function withJpegDpi(blob: Blob, dpi: number): Promise<Blob> {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return blob;
+  const density = [1, dpi >> 8, dpi & 0xff, dpi >> 8, dpi & 0xff]; // unidade 1 = pontos por polegada
+  const isJfif =
+    bytes[2] === 0xff && bytes[3] === 0xe0 && String.fromCharCode(...bytes.subarray(6, 11)) === "JFIF\0";
+  if (isJfif) {
+    bytes.set(density, 13);
+    return new Blob([bytes], { type: "image/jpeg" });
+  }
+  // Sem APP0: insere um JFIF 1.01 logo depois do SOI, como manda a especificação.
+  const app0 = new Uint8Array([0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, ...density, 0, 0]);
+  return new Blob([bytes.subarray(0, 2), app0, bytes.subarray(2)], { type: "image/jpeg" });
+}
+
+/**
+ * Arquivo final para a loja, em JPEG, na medida real do papel e com o dpi gravado no cabeçalho.
+ * Resolução: a da foto do cliente (ver printFileDpi).
  */
 export async function renderPrintFile(url: string, photo: PhotoShape, product: Size): Promise<Blob> {
   const source = await loadImage(url);
   try {
-    const layout = paperLayout(product, isLandscape(photo), photo.adjust);
-    const k = source.width / photo.width_px;
-    const native =
-      photo.fit || !photo.crop
-        ? Math.max(source.width / layout.window.w, source.height / layout.window.h)
-        : (photo.crop.width * k) / layout.window.w;
-    let pxPerMm = Math.max(native, 300 / 25.4);
-    const maxPixels = 40e6;
-    if (layout.width * layout.height * pxPerMm ** 2 > maxPixels) {
-      pxPerMm = Math.sqrt(maxPixels / (layout.width * layout.height));
-    }
-
+    const dpi = printFileDpi(source, photo, product);
     const canvas = document.createElement("canvas");
-    await renderPrint(canvas, source, photo, product, pxPerMm);
-    return await new Promise<Blob>((resolve, reject) =>
+    await renderPrint(canvas, source, photo, product, dpi / 25.4);
+    const jpeg = await new Promise<Blob>((resolve, reject) =>
       canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("canvas"))), "image/jpeg", 0.95),
     );
+    canvas.width = canvas.height = 0; // libera a memória antes da próxima foto
+    return await withJpegDpi(jpeg, dpi);
   } finally {
     source.close();
   }

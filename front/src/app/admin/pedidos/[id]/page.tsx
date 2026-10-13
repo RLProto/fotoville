@@ -31,7 +31,7 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
   const photos: AdminPhoto[] = await Promise.all(
     ((photoData ?? []) as Photo[]).map(async (photo, i) => {
       const ext = photo.storage_key.split(".").pop() ?? "jpg";
-      const base_name = `${order.number}_${photo.product_id}_${photo.quantity}x_${String(i + 1).padStart(3, "0")}`;
+      const base_name = `${order.number}_${photo.product_id}_${String(i + 1).padStart(3, "0")}`;
       return {
         ...photo,
         base_name,
@@ -176,7 +176,13 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
           {!hasStorage && (
             <p className="alert alert-warning mb-4">Armazenamento não configurado: os downloads estão indisponíveis.</p>
           )}
-          <PhotoDownloads photos={photos} products={products} />
+          <PhotoDownloads
+            orderId={order.id}
+            orderNumber={order.number}
+            status={order.status}
+            photos={photos}
+            products={products}
+          />
         </section>
       )}
     </>

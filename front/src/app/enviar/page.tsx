@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { OrderSteps } from "@/components/order-steps";
 import { getProducts } from "@/lib/catalog";
+import { nominalCm } from "@/lib/catalog-data";
 import { formatBRL } from "@/lib/format";
 import { minCopies } from "@/lib/pricing";
 import { SIZE_GROUPS } from "@/lib/size-groups";
@@ -30,7 +31,9 @@ function Measure({ w, h }: { w: number; h: number }) {
 function cardText(product: Product): { main: React.ReactNode; unit: string | null; notes: React.ReactNode[] } {
   const notes: React.ReactNode[] = [];
   if (product.kind === "print") {
-    return { main: <Measure w={product.width_cm} h={product.height_cm} />, unit: "cm", notes };
+    // O cliente vê a medida comercial (10x15); a real do papel (10,2x15,2) fica no recorte e na impressão.
+    const [w, h] = nominalCm(product);
+    return { main: <Measure w={w} h={h} />, unit: "cm", notes };
   }
   if (product.kind === "placa") {
     // Mesmo padrão dos outros: a medida em destaque, o tipo na linha pequena

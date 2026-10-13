@@ -6,11 +6,11 @@ type PhotoShape = Pick<Photo, "width_px" | "height_px" | "crop" | "fit" | "adjus
 /**
  * Moldura de cada formato instantâneo, em mm: margem dos lados, margem de cima e a proporção da janela
  * (altura/largura). A faixa de baixo, onde vai a legenda, fica com o resto do papel.
- * Medidas dos filmes originais: Polaroid 600/i-Type 88 x 107 com imagem 79 x 79;
- * Instax Mini 54 x 86 com imagem 46 x 62.
+ * Polaroid: papel 82 x 102 da impressora com janela 70 x 70 (6 mm dos lados e em cima, faixa de 26 embaixo).
+ * Polaroid ímã segue o filme original 88 x 107 com imagem 79 x 79; Instax Mini 54 x 86 com imagem 46 x 62.
  */
 export const INSTANT_FRAMES: Record<string, { side: number; top: number; ratio: number }> = {
-  polaroid: { side: 4.5, top: 6, ratio: 1 },
+  polaroid: { side: 6, top: 6, ratio: 1 },
   "polaroid-ima": { side: 4.5, top: 6, ratio: 1 },
   "mini-polaroid": { side: 4, top: 6, ratio: 62 / 46 },
 };
