@@ -165,6 +165,12 @@ export function PhotoDownloads({
           {message ?? (canPickFolder ? null : "Para baixar em pastas, abra o painel no Chrome ou no Edge do computador.")}
         </p>
       </div>
+      {canPickFolder && !message && (
+        <p className="mt-2 text-sm text-ink-2">
+          Escolha uma pasta sua, como Área de Trabalho\Pedidos. O navegador não grava direto na Área de Trabalho, em
+          Documentos nem em Downloads.
+        </p>
+      )}
 
       <ul className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
         {photos.map((photo) => {
