@@ -15,7 +15,7 @@ export function TierDialog({ product }: { product: Product }) {
     <>
       <button type="button" className="link mt-1 inline-flex min-h-11 items-center gap-1.5" onClick={() => dialogRef.current?.showModal()}>
         <TagIcon size={18} aria-hidden />
-        Desconto progressivo
+        Veja os descontos progressivos
       </button>
       <dialog
         ref={dialogRef}
@@ -25,7 +25,7 @@ export function TierDialog({ product }: { product: Product }) {
       >
         <div className="flex items-center justify-between gap-4 border-b border-rule px-5 py-3">
           <h2 id={titleId} className="text-lg font-bold">
-            Desconto progressivo
+            Descontos progressivos
           </h2>
           <button
             type="button"
