@@ -97,9 +97,6 @@ export default async function ContaPage() {
               userId={user.id}
               initial={{ name: profile?.full_name ?? "", whatsapp: profile?.whatsapp ?? "" }}
             />
-            <Link href="/nova-senha" className="mt-4 inline-flex min-h-11 items-center font-semibold text-action underline underline-offset-2">
-              Trocar senha
-            </Link>
           </section>
         </div>
       </div>
