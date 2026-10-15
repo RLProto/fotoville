@@ -19,6 +19,17 @@ import { ORDER_STATUS_LABEL, type Order, type OrderStatus } from "@/lib/types";
 
 const subscribeNoop = () => () => {};
 type SearchKind = "number" | "customer";
+
+/** Cor de cada situação na linha: faixa à esquerda e fundo leve, além do texto no seletor. */
+const ROW_TONE: Record<OrderStatus, { stripe: string; tint: string }> = {
+  pending: { stripe: "var(--color-blade-mustard)", tint: "color-mix(in srgb, var(--color-blade-mustard) 9%, transparent)" },
+  paid: { stripe: "var(--color-blade-plum)", tint: "color-mix(in srgb, var(--color-blade-plum) 7%, transparent)" },
+  in_production: { stripe: "var(--color-blade-rust)", tint: "color-mix(in srgb, var(--color-blade-rust) 9%, transparent)" },
+  ready_for_pickup: { stripe: "var(--color-success)", tint: "color-mix(in srgb, var(--color-success) 9%, transparent)" },
+  shipped: { stripe: "var(--color-blade-teal)", tint: "color-mix(in srgb, var(--color-blade-teal) 8%, transparent)" },
+  delivered: { stripe: "var(--color-action)", tint: "color-mix(in srgb, var(--color-action) 9%, transparent)" },
+  cancelled: { stripe: "var(--color-danger)", tint: "color-mix(in srgb, var(--color-danger) 7%, transparent)" },
+};
 const STATUSES = Object.keys(ORDER_STATUS_LABEL) as OrderStatus[];
 
 /**
@@ -211,8 +222,12 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
               const value = pending[order.id] ?? order.status;
               const changed = value !== order.status;
               return (
-                <tr key={order.id} className="border-b border-rule last:border-0 hover:bg-paper">
-                  <td className="px-3 py-3">
+                <tr
+                  key={order.id}
+                  className="border-b border-rule last:border-0"
+                  style={{ background: ROW_TONE[order.status].tint }}
+                >
+                  <td className="px-3 py-3" style={{ boxShadow: `inset 4px 0 0 ${ROW_TONE[order.status].stripe}` }}>
                     <input
                       type="checkbox"
                       aria-label={`Selecionar pedido ${order.number}`}
