@@ -60,6 +60,13 @@ export function isValidCpf(value: string) {
   return digit(9) === Number(d[9]) && digit(10) === Number(d[10]);
 }
 
+/** Aceita "1,99", "1.99", "R$ 2" ou "2". Devolve centavos ou null. */
+export function parseMoney(text: string) {
+  const clean = text.replace(/R\$|\s/g, "").replace(",", ".");
+  if (!/^\d+(\.\d{1,2})?$/.test(clean)) return null;
+  return Math.round(Number(clean) * 100);
+}
+
 export function plural(n: number, one: string, many: string) {
   return `${n} ${n === 1 ? one : many}`;
 }

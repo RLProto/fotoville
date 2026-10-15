@@ -2,7 +2,7 @@ import "server-only";
 import { randomInt } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CartLine } from "./cart";
-import { plural } from "./format";
+import { formatBRL, formatDate, plural } from "./format";
 import type { Coupon } from "./types";
 
 export type CouponResult =
@@ -11,21 +11,48 @@ export type CouponResult =
 
 export const normalizeCode = (code: string) => code.trim().toUpperCase().replace(/\s+/g, "");
 
-/** Calcula o desconto de um cupom sobre o carrinho, sem consumir nada. */
-export async function previewCoupon(admin: SupabaseClient, rawCode: string, lines: CartLine[]): Promise<CouponResult> {
+/** Respostas de `coupon_problem` no banco: por que o cupom percentual não vale. */
+export type CouponProblem = "not_found" | "inactive" | "expired" | "min_order" | "limit" | "customer";
+
+/** Mensagem para o cliente quando o cupom não vale. */
+export function couponProblemMessage(problem: CouponProblem, coupon: Coupon | null): string {
+  switch (problem) {
+    case "inactive":
+      return "Este cupom não está mais disponível.";
+    case "expired":
+      return coupon?.expires_at ? `Este cupom expirou em ${formatDate(coupon.expires_at)}.` : "Este cupom expirou.";
+    case "min_order":
+      return `Este cupom vale a partir de ${formatBRL(coupon?.min_order_cents ?? 0)} em fotos.`;
+    case "limit":
+      return "Este cupom já atingiu o limite de usos.";
+    case "customer":
+      return "Você já usou este cupom.";
+    default:
+      return "Cupom não encontrado. Confira o código.";
+  }
+}
+
+/** Calcula o desconto de um cupom sobre o carrinho do cliente, sem consumir nada. */
+export async function previewCoupon(
+  admin: SupabaseClient,
+  rawCode: string,
+  lines: CartLine[],
+  userId: string,
+): Promise<CouponResult> {
   const code = normalizeCode(rawCode);
   if (!code) return { ok: false, message: "Digite o código do cupom." };
 
   const { data } = await admin.from("coupons").select("*").eq("code", code).maybeSingle();
   const coupon = data as Coupon | null;
 
-  if (!coupon || !coupon.active) return { ok: false, message: "Cupom não encontrado. Confira o código." };
-  if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
-    return { ok: false, message: "Este cupom expirou." };
-  }
+  if (!coupon) return { ok: false, message: couponProblemMessage("not_found", null) };
 
   if (coupon.kind === "percent") {
     const subtotal = lines.reduce((sum, l) => sum + l.total_cents, 0);
+    // Mesmas regras que o checkout confere ao registrar o uso (validade, mínimo, limite, uma vez por cliente)
+    const { data: problem, error } = await admin.rpc("coupon_problem", { p_code: code, p_user: userId, p_subtotal: subtotal });
+    if (error) throw error;
+    if (problem) return { ok: false, message: couponProblemMessage(problem as CouponProblem, coupon) };
     const discount_cents = Math.floor((subtotal * (coupon.percent_off ?? 0)) / 100);
     return {
       ok: true,
@@ -35,6 +62,11 @@ export async function previewCoupon(admin: SupabaseClient, rawCode: string, line
       credits: 0,
       message: `${coupon.percent_off}% de desconto nas fotos.`,
     };
+  }
+
+  if (!coupon.active) return { ok: false, message: couponProblemMessage("not_found", null) };
+  if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
+    return { ok: false, message: couponProblemMessage("expired", coupon) };
   }
 
   const balance = coupon.credits_total - coupon.credits_used;

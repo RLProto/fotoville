@@ -174,6 +174,12 @@ export type Coupon = {
   expires_at: string | null;
   active: boolean;
   created_at: string;
+  /** Cupom percentual (aba Cupons): nota interna da loja. */
+  description: string | null;
+  min_order_cents: number;
+  /** Limite de usos; null é sem limite e 1 é uso único. */
+  max_uses: number | null;
+  once_per_customer: boolean;
 };
 
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {

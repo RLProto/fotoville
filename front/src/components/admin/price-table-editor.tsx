@@ -3,7 +3,7 @@
 import { CircleNotchIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { formatBRL } from "@/lib/format";
+import { formatBRL, parseMoney } from "@/lib/format";
 import { activeTiers, alignTiers } from "@/lib/pricing";
 import type { PriceRow, PriceTier } from "@/lib/types";
 
@@ -15,12 +15,6 @@ type Draft = { price: string; tiers: DraftTier[] };
 
 let nextKey = 1;
 const toInput = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
-/** Aceita "1,99", "1.99", "R$ 2" ou "2". Devolve centavos ou null. */
-function parseMoney(text: string) {
-  const clean = text.replace(/R\$|\s/g, "").replace(",", ".");
-  if (!/^\d+(\.\d{1,2})?$/.test(clean)) return null;
-  return Math.round(Number(clean) * 100);
-}
 function toDraft(row: PriceRow): Draft {
   const on = new Set(activeTiers(row).map((t) => t.min));
   return {

@@ -8,6 +8,7 @@ const ITEMS = [
   { href: "/admin/precos", label: "Preços", match: (p: string) => p.startsWith("/admin/precos") },
   { href: "/admin/perfis", label: "Perfis", match: (p: string) => p.startsWith("/admin/perfis") },
   { href: "/admin/clientes", label: "Clientes", match: (p: string) => p.startsWith("/admin/clientes") },
+  { href: "/admin/cupons", label: "Cupons", match: (p: string) => p.startsWith("/admin/cupons") },
   { href: "/admin/motoboy", label: "Motoboy", match: (p: string) => p.startsWith("/admin/motoboy") },
   { href: "/admin/estatisticas", label: "Estatísticas", match: (p: string) => p.startsWith("/admin/estatisticas") },
   { href: "/admin/armazenamento", label: "Armazenamento", match: (p: string) => p.startsWith("/admin/armazenamento") },

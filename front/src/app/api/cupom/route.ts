@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { fail, requireUser } from "@/lib/api";
+import { fail, requireUser, serverFail } from "@/lib/api";
 import { loadCartPhotos, summarizeCart } from "@/lib/cart";
 import { getProducts } from "@/lib/catalog";
 import { previewCoupon } from "@/lib/coupons";
@@ -20,7 +20,12 @@ export async function POST(request: Request) {
   const cart = summarizeCart(photos, products);
   if (!cart.lines.length) return fail("Seu carrinho está vazio.");
 
-  const result = await previewCoupon(createAdminClient(), parsed.data.code, cart.lines);
+  let result;
+  try {
+    result = await previewCoupon(createAdminClient(), parsed.data.code, cart.lines, auth.user.id);
+  } catch (err) {
+    return serverFail("checkout", "Não foi possível conferir o cupom agora. Tente de novo.", err, 500, { etapa: "conferir cupom" });
+  }
   if (!result.ok) return fail(result.message, 422);
   return NextResponse.json(result);
 }

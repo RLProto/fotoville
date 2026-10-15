@@ -3,14 +3,14 @@ import { z } from "zod";
 import { fail, reportServerError, requireUser, serverFail } from "@/lib/api";
 import { belowMinimum, loadCartPhotos, summarizeCart } from "@/lib/cart";
 import { getCustomerPriceProfile, getProducts } from "@/lib/catalog";
-import { previewCoupon } from "@/lib/coupons";
+import { type CouponProblem, couponProblemMessage, previewCoupon } from "@/lib/coupons";
 import { isValidCpf, onlyDigits } from "@/lib/format";
 import { createPreference, hasMercadoPago } from "@/lib/mercadopago";
 import { markOrderPaid } from "@/lib/orders";
 import { quoteShipping } from "@/lib/shipping";
 import { estimateParcel } from "@/lib/shipping/parcel";
 import { createAdminClient } from "@/lib/supabase/server";
-import type { Order } from "@/lib/types";
+import type { Coupon, Order } from "@/lib/types";
 
 const schema = z.object({
   customer: z.object({
@@ -84,7 +84,12 @@ export async function POST(request: Request) {
   let discount_cents = 0;
   let coupon: { code: string; credits: number; kind: string } | null = null;
   if (input.coupon?.trim()) {
-    const result = await previewCoupon(admin, input.coupon, cart.lines);
+    let result;
+    try {
+      result = await previewCoupon(admin, input.coupon, cart.lines, user.id);
+    } catch (err) {
+      return serverFail("checkout", "Não foi possível conferir o cupom agora. Tente de novo.", err, 500, { etapa: "conferir cupom" });
+    }
     if (!result.ok) return fail(result.message, 422);
     discount_cents = Math.min(result.discount_cents, cart.subtotal_cents);
     coupon = { code: result.code, credits: result.credits, kind: result.kind };
@@ -133,7 +138,21 @@ export async function POST(request: Request) {
       return fail("O saldo do cupom mudou. Aplique o cupom de novo.", 409);
     }
   }
-  if (coupon) {
+  if (coupon?.kind === "percent") {
+    // Confere de novo e registra o uso com o cupom travado: dois pedidos ao mesmo tempo não passam do limite
+    const { data: problem, error } = await admin.rpc("redeem_percent_coupon", {
+      p_code: coupon.code,
+      p_order: order.id,
+      p_subtotal: cart.subtotal_cents,
+      p_discount: discount_cents,
+    });
+    if (error || problem) {
+      await rollback();
+      if (error) return serverFail("checkout", "Não foi possível usar o cupom agora. Tente de novo.", error, 500, { etapa: "registrar cupom" });
+      const { data: row } = await admin.from("coupons").select("*").eq("code", coupon.code).maybeSingle();
+      return fail(couponProblemMessage(problem as CouponProblem, row as Coupon | null), 409);
+    }
+  } else if (coupon) {
     await admin
       .from("coupon_redemptions")
       .insert({ code: coupon.code, order_id: order.id, credits: coupon.credits, discount_cents });
