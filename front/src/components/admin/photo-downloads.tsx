@@ -105,7 +105,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
     setBusy(null);
     setConfirmDelete(false);
     if (res?.ok) {
-      setMessage(`${body?.deleted ?? 0} arquivo(s) apagados do bucket.`);
+      setMessage(`${body?.deleted ?? 0} arquivo(s) apagados do servidor.`);
       router.refresh();
     } else {
       setMessage(body?.error ?? "Não foi possível apagar as imagens.");
@@ -118,7 +118,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
     <div>
       {order.photos_deleted_at ? (
         <p className="alert alert-warning">
-          Imagens apagadas do bucket em {formatDate(order.photos_deleted_at)}. Só o histórico ficou.
+          Imagens apagadas do servidor em {formatDate(order.photos_deleted_at)}. Só o histórico ficou.
         </p>
       ) : blocked ? (
         <p className="alert alert-warning">{blocked}</p>
@@ -233,7 +233,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
                 disabled={busy !== null}
               >
                 {busy === "delete" && <CircleNotchIcon size={18} className="spinner" aria-hidden />}
-                Apagar {photos.length} imagem(ns) do bucket
+                Apagar {photos.length} imagem(ns) do servidor
               </button>
               <button type="button" className="btn btn-ghost" onClick={() => setConfirmDelete(false)} disabled={busy !== null}>
                 Cancelar
@@ -242,7 +242,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
           ) : (
             <button type="button" className="btn btn-danger-ghost" onClick={() => setConfirmDelete(true)} disabled={busy !== null}>
               <TrashIcon size={18} aria-hidden />
-              Apagar imagens do bucket
+              Apagar imagens do servidor
             </button>
           )}
           <p className="text-sm text-ink-2">

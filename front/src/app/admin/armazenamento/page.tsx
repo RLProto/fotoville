@@ -53,7 +53,7 @@ export default async function ArmazenamentoPage() {
       <>
         <h1 className="display-md text-3xl">Armazenamento</h1>
         <p className="alert alert-danger mt-6">
-          Não foi possível ler o uso do bucket{error ? `: ${error.message}` : "."} Rode a migração
+          Não foi possível ler o uso do servidor{error ? `: ${error.message}` : "."} Rode a migração
           2026-10-14_imagens_apagadas_e_armazenamento.sql.
         </p>
       </>
@@ -71,7 +71,7 @@ export default async function ArmazenamentoPage() {
   return (
     <>
       <h1 className="display-md text-3xl">Armazenamento</h1>
-      <p className="mt-1 text-ink-2">Bucket de fotos do Supabase. Os números são de agora.</p>
+      <p className="mt-1 text-ink-2">Fotos guardadas no servidor (Supabase). Os números são de agora.</p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <section className="card p-5" aria-label="Espaço em uso">
@@ -84,7 +84,7 @@ export default async function ArmazenamentoPage() {
             <div className={`h-full rounded-badge ${tone}`} style={{ width: `${Math.min(100, pct)}%` }} />
           </div>
         </section>
-        <section className="card p-5" aria-label="Arquivos no bucket">
+        <section className="card p-5" aria-label="Arquivos no servidor">
           <p className="text-sm font-semibold text-ink-2">Arquivos</p>
           <p className="mt-1 font-display text-3xl font-extrabold tabular-nums">{fmtInt(stats.total_files)}</p>
           <p className="text-sm text-ink-2">fotos e miniaturas</p>
@@ -100,7 +100,7 @@ export default async function ArmazenamentoPage() {
         <section className="card p-5" aria-label="Pedidos já limpos">
           <p className="text-sm font-semibold text-ink-2">Já limpos</p>
           <p className="mt-1 font-display text-3xl font-extrabold tabular-nums">{fmtInt(stats.orders_deleted)}</p>
-          <p className="text-sm text-ink-2">pedidos sem imagens no bucket</p>
+          <p className="text-sm text-ink-2">pedidos sem imagens no servidor</p>
         </section>
       </div>
 
@@ -134,7 +134,7 @@ export default async function ArmazenamentoPage() {
               <Link href="/admin?filtro=shipped" className="link">
                 Pedidos
               </Link>{" "}
-              e use &ldquo;Apagar imagens do bucket&rdquo;.
+              e use &ldquo;Apagar imagens do servidor&rdquo;.
             </p>
           )}
         </section>

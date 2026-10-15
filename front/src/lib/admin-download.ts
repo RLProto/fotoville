@@ -73,7 +73,7 @@ export function planJobs({ order, photos, products }: OrderDownload) {
     const product = productOf(photo);
     if (!product) throw new Error(`Tamanho ${photo.product_id} não encontrado.`);
     const url = photo.original_url;
-    if (!url) throw new Error("Imagens já apagadas do bucket.");
+    if (!url) throw new Error("Imagens já apagadas do servidor.");
     if (product.id === MINI) {
       for (let i = 0; i < photo.quantity; i++) minis.push(photo);
       continue;

@@ -248,7 +248,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                     ) : order.photos_deleted_at ? (
                       <span className="badge bg-paper text-ink-2">Apagadas</span>
                     ) : (
-                      <span className="badge bg-success-soft text-success">No bucket</span>
+                      <span className="badge bg-success-soft text-success">No servidor</span>
                     )}
                     {progress[order.id] && <span className="block tabular-nums text-ink-2">{progress[order.id]}</span>}
                   </td>
