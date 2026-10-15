@@ -24,8 +24,8 @@ type SearchKind = "number" | "customer";
 const STATUS_COLOR: Record<OrderStatus, string> = {
   pending: "#f2b705", // amarelo
   paid: "#9b59d0", // roxo
-  in_production: "#f0801a", // laranja
-  ready_for_pickup: "#2eaa5a", // verde
+  in_production: "#7ed957", // verde claro
+  ready_for_pickup: "#1f7a3c", // verde escuro
   shipped: "#13a3b8", // azul-petróleo
   delivered: "#2f6fde", // azul
   cancelled: "#e0352b", // vermelho
