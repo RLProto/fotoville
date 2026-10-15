@@ -7,14 +7,12 @@ import { useState, useSyncExternalStore } from "react";
 import {
   fetchOrderDownload,
   hasFolderPicker,
-  labelStart,
   patchOrder,
   pickFolder,
   writeOrder,
   type DirectoryHandle,
 } from "@/lib/admin-download";
 import { formatBRL, formatDate } from "@/lib/format";
-import { LABELS_PER_SHEET } from "@/lib/order-label";
 import { canDownload } from "@/lib/order-rules";
 import { reportError } from "@/lib/report-error";
 import { ORDER_STATUS_LABEL, type Order, type OrderStatus } from "@/lib/types";
@@ -29,9 +27,6 @@ const STATUSES = Object.keys(ORDER_STATUS_LABEL) as OrderStatus[];
 export function OrdersTable({ orders }: { orders: Order[] }) {
   const router = useRouter();
   const canPickFolder = useSyncExternalStore(subscribeNoop, hasFolderPicker, () => true);
-  const savedStart = useSyncExternalStore(subscribeNoop, labelStart.get, () => 1);
-  const [start, setStart] = useState<number | null>(null);
-  const labelFrom = start ?? savedStart;
 
   const [pending, setPending] = useState<Record<string, OrderStatus>>({});
   const [saving, setSaving] = useState<string | null>(null);
@@ -64,13 +59,12 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
   }
 
   /** Grava um pedido em `root` e, se estava pago, passa para "Em produção". Devolve o que gravou. */
-  async function downloadInto(root: DirectoryHandle, order: Order, from: number) {
+  async function downloadInto(root: DirectoryHandle, order: Order) {
     const note = (text: string) => setProgress((p) => ({ ...p, [order.id]: text }));
     note("Preparando…");
     try {
       const data = await fetchOrderDownload(order.id);
       const result = await writeOrder(root, data, {
-        labelStart: from,
         onProgress: (done, total) => note(`${done} de ${total}`),
       });
       if (result.failed) {
@@ -93,20 +87,16 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
     if (!root) return;
     setBusy(list.length === 1 ? list[0].id : "many");
     setMessage(null);
-    let from = labelFrom;
     let ok = 0;
     let failed = 0;
     for (const order of list) {
-      const result = await downloadInto(root, order, from);
+      const result = await downloadInto(root, order);
       if (result && !result.failed) {
         ok += 1;
-        from = labelStart.advance(from, result.labels);
       } else {
         failed += 1;
       }
     }
-    labelStart.set(from);
-    setStart(from);
     setBusy(null);
     setSelected(new Set());
     setMessage(
@@ -123,7 +113,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
 
   return (
     <div>
-      <div className="mt-6 flex flex-wrap items-end gap-x-5 gap-y-3">
+      <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
         <button
           type="button"
           className="btn btn-primary"
@@ -133,24 +123,6 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
           {busy === "many" ? <CircleNotchIcon size={18} className="spinner" aria-hidden /> : <FoldersIcon size={18} aria-hidden />}
           Baixar selecionados ({chosen.length})
         </button>
-        <div>
-          <label htmlFor="etiqueta-inicio" className="field-label">
-            Próxima etiqueta livre
-          </label>
-          <input
-            id="etiqueta-inicio"
-            type="number"
-            min={1}
-            max={LABELS_PER_SHEET}
-            value={labelFrom}
-            onChange={(e) => {
-              const n = Math.min(LABELS_PER_SHEET, Math.max(1, Number(e.target.value) || 1));
-              setStart(n);
-              labelStart.set(n);
-            }}
-            className="field-input w-24 tabular-nums"
-          />
-        </div>
         <p aria-live="polite" className="min-h-5 text-sm font-semibold">
           {message ?? (canPickFolder ? null : "Para baixar em pastas, abra o painel no Chrome ou no Edge do computador.")}
         </p>

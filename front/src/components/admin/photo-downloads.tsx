@@ -7,7 +7,6 @@ import { PrintPreview } from "@/components/print-preview";
 import {
   countFiles,
   hasFolderPicker,
-  labelStart,
   patchOrder,
   pickFolder,
   sizeName,
@@ -18,7 +17,6 @@ import {
 import { describeAdjust } from "@/lib/adjust";
 import { realSizeLabel } from "@/lib/catalog-data";
 import { formatDate } from "@/lib/format";
-import { LABELS_PER_SHEET } from "@/lib/order-label";
 import { canDeletePhotos, canDownload, downloadBlockedReason } from "@/lib/order-rules";
 import { renderPrintFileFromUrl } from "@/lib/photo-render";
 import { reportError } from "@/lib/report-error";
@@ -43,9 +41,6 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   // No servidor não há window nem localStorage: assume o padrão, e o navegador corrige ao montar.
   const canPickFolder = useSyncExternalStore(subscribeNoop, hasFolderPicker, () => true);
-  const savedStart = useSyncExternalStore(subscribeNoop, labelStart.get, () => 1);
-  const [start, setStart] = useState<number | null>(null);
-  const labelFrom = start ?? savedStart;
 
   const productOf = (p: AdminPhoto) => products.find((x) => x.id === p.product_id);
   const downloadable = canDownload(order);
@@ -65,7 +60,6 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
     setBusy("all");
     setMessage(null);
     const result = await writeOrder(root, data, {
-      labelStart: labelFrom,
       onProgress: (done, total) => setMessage(`${done} de ${total} arquivos gravados…`),
     }).catch((err) => {
       reportError("loja", err, { etapa: "baixar pedido em pastas", order: order.id });
@@ -76,9 +70,6 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
       setMessage("Não foi possível gravar na pasta escolhida.");
       return;
     }
-    const next = labelStart.advance(labelFrom, result.labels);
-    labelStart.set(next);
-    setStart(next);
     if (result.failed) {
       setBusy(null);
       setMessage(`${result.failed} arquivo(s) falharam. Confira o CORS do bucket ou baixe os originais.`);
@@ -123,7 +114,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
       ) : blocked ? (
         <p className="alert alert-warning">{blocked}</p>
       ) : (
-        <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
             className="btn btn-primary"
@@ -137,24 +128,6 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
             )}
             Baixar pedido em pastas ({files})
           </button>
-          <div>
-            <label htmlFor="etiqueta-inicio" className="field-label">
-              Próxima etiqueta livre
-            </label>
-            <input
-              id="etiqueta-inicio"
-              type="number"
-              min={1}
-              max={LABELS_PER_SHEET}
-              value={labelFrom}
-              onChange={(e) => {
-                const n = Math.min(LABELS_PER_SHEET, Math.max(1, Number(e.target.value) || 1));
-                setStart(n);
-                labelStart.set(n);
-              }}
-              className="field-input w-24 tabular-nums"
-            />
-          </div>
         </div>
       )}
       <p aria-live="polite" className="mt-2 min-h-5 text-sm font-semibold">
@@ -163,7 +136,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
       {downloadable && !message && (
         <p className="text-sm text-ink-2">
           {canPickFolder
-            ? `Pasta com o número do pedido, uma subpasta por tamanho, cópias contadas e o PDF das etiquetas (${LABELS_PER_SHEET} por folha A4, a partir da posição escolhida). Escolha uma pasta sua, como Área de Trabalho\\Pedidos.`
+            ? `Pasta com o número do pedido, uma subpasta por tamanho, cópias contadas e o PDF das etiquetas na folha A4. Escolha uma pasta sua, como Área de Trabalho\\Pedidos.`
             : "Para baixar em pastas, abra o painel no Chrome ou no Edge do computador."}
         </p>
       )}

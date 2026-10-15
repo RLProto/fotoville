@@ -5,7 +5,7 @@
  */
 import { formatCep, formatPhone } from "./format";
 import { loadImage, type DecodedImage } from "./decode-image";
-import { buildLabelsPdf, LABELS_PER_SHEET, type LabelData } from "./order-label";
+import { buildLabelsPdf, type LabelData } from "./order-label";
 import { MINI_SHEET, renderMiniSheetFile, renderPrintFileFromUrl } from "./photo-render";
 import type { Order, Photo, Product } from "./types";
 
@@ -140,27 +140,6 @@ export function labelsFor({ order, photos, products }: OrderDownload): LabelData
     }));
 }
 
-/** Posição da próxima etiqueta livre na folha, lembrada neste navegador. */
-export const labelStart = {
-  get(): number {
-    try {
-      const n = Number(localStorage.getItem("fotoville-etiqueta"));
-      return n >= 1 && n <= LABELS_PER_SHEET ? n : 1;
-    } catch {
-      return 1;
-    }
-  },
-  set(n: number) {
-    try {
-      localStorage.setItem("fotoville-etiqueta", String(n));
-    } catch {
-      // navegador sem armazenamento: começa da primeira
-    }
-  },
-  /** Posição seguinte depois de usar `used` etiquetas a partir de `from`. */
-  advance: (from: number, used: number) => ((from - 1 + used) % LABELS_PER_SHEET) + 1,
-};
-
 export type WriteResult = { files: number; labels: number; failed: number };
 
 /**
@@ -170,7 +149,7 @@ export type WriteResult = { files: number; labels: number; failed: number };
 export async function writeOrder(
   root: DirectoryHandle,
   data: OrderDownload,
-  options: { labelStart: number; onProgress?: (done: number, total: number) => void },
+  options: { onProgress?: (done: number, total: number) => void } = {},
 ): Promise<WriteResult> {
   const { jobs, release } = planJobs(data);
   const total = jobs.reduce((sum, j) => sum + j.copies, 0);
@@ -202,7 +181,7 @@ export async function writeOrder(
       }
     }
     try {
-      await write(orderDir, `etiquetas_${data.order.number}.pdf`, await buildLabelsPdf(labels, options.labelStart));
+      await write(orderDir, `etiquetas_${data.order.number}.pdf`, await buildLabelsPdf(labels));
     } catch (err) {
       failed += 1;
       reportDownloadError(err, { etapa: "gerar etiquetas", order: data.order.id });
