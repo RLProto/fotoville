@@ -74,7 +74,7 @@ export async function previewCoupon(
       discount_cents: percentDiscount(subtotal, percent_off),
       percent_off,
       credits: 0,
-      message: `${percent_off}% de desconto no pedido, frete incluído.`,
+      message: `${percent_off}% de desconto no pedido.`,
     };
   }
 

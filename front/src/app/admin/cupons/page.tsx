@@ -37,7 +37,6 @@ export default async function AdminCuponsPage() {
   return (
     <>
       <h1 className="display-md text-3xl">Cupons</h1>
-      <p className="mt-2 max-w-[62ch] text-ink-2">Desconto percentual sobre o pedido, frete incluído, aplicado pelo cliente no pagamento.</p>
 
       <div className="mt-6">
         <NewCouponForm />
