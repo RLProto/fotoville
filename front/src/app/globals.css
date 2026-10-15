@@ -134,6 +134,12 @@
     @apply mx-auto w-full max-w-[1200px] px-4 sm:px-6;
   }
 
+  /* Tabelas largas do painel: passam do container até 1500px, centradas na tela */
+  .wide {
+    width: min(1500px - 3rem, 100vw - 3rem);
+    margin-left: calc(50% - min(1500px - 3rem, 100vw - 3rem) / 2);
+  }
+
   /* Títulos: Archivo larga e pesada, como a impressão das embalagens de laboratório */
   .display {
     font-weight: 800;

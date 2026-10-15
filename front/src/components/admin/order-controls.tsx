@@ -35,7 +35,7 @@ export function OrderControls({
     <form onSubmit={submit} className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
       <div>
         <label htmlFor="status" className="field-label">
-          Situação
+          Status
         </label>
         <select
           id="status"

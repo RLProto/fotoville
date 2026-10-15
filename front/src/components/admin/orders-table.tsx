@@ -174,11 +174,11 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
       </div>
 
       <div className="card mt-4 overflow-x-auto">
-        <table className="w-full min-w-[60rem] text-left">
+        <table className="w-full min-w-[64rem] text-left text-sm">
           <caption className="sr-only">Pedidos</caption>
           <thead className="border-b border-rule text-sm text-ink-2">
             <tr>
-              <th scope="col" className="px-3 py-3">
+              <th scope="col" className="px-3 py-2">
                 <input
                   type="checkbox"
                   aria-label="Selecionar todos os pedidos que podem ser baixados"
@@ -199,7 +199,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                 onChange={setQuery}
                 onClose={closeSearch}
               />
-              <th scope="col" className="px-3 py-3 font-bold">
+              <th scope="col" className="px-3 py-2 font-bold">
                 Data
               </th>
               <SearchHeader
@@ -213,8 +213,8 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                 onChange={setQuery}
                 onClose={closeSearch}
               />
-              {["Entrega", "Total", "Situação", "Imagens", ""].map((h, i) => (
-                <th key={i} scope="col" className="px-3 py-3 font-bold">
+              {["Entrega", "Total", "Status", "Imagens", ""].map((h, i) => (
+                <th key={i} scope="col" className="px-3 py-2 font-bold">
                   {h}
                 </th>
               ))}
@@ -238,7 +238,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                   className="border-b border-rule last:border-0"
                   style={{ background: ROW_TONE[order.status].tint }}
                 >
-                  <td className="px-3 py-3" style={{ boxShadow: `inset 4px 0 0 ${ROW_TONE[order.status].stripe}` }}>
+                  <td className="px-3 py-1.5" style={{ boxShadow: `inset 4px 0 0 ${ROW_TONE[order.status].stripe}` }}>
                     <input
                       type="checkbox"
                       aria-label={`Selecionar pedido ${order.number}`}
@@ -255,7 +255,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                       }
                     />
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     <Link
                       href={`/admin/pedidos/${order.id}`}
                       className="font-bold text-action underline underline-offset-2"
@@ -263,19 +263,19 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                       #{order.number}
                     </Link>
                   </td>
-                  <td className="px-3 py-3 tabular-nums">{formatDate(order.created_at)}</td>
-                  <td className="max-w-[14rem] truncate px-3 py-3" title={order.customer?.email}>
+                  <td className="px-3 py-1.5 whitespace-nowrap tabular-nums">{formatDate(order.created_at)}</td>
+                  <td className="max-w-[13rem] truncate px-3 py-1.5" title={order.customer?.email}>
                     {order.customer?.name || order.customer?.email || "Sem nome"}
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     {order.shipping_label ?? (order.kind === "package" ? "Sem entrega" : "A definir")}
                   </td>
-                  <td className="px-3 py-3 font-semibold tabular-nums">{formatBRL(order.total_cents)}</td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-1.5 font-semibold whitespace-nowrap tabular-nums">{formatBRL(order.total_cents)}</td>
+                  <td className="px-3 py-1.5">
                     <div className="flex items-center gap-2">
                       <select
-                        aria-label={`Situação do pedido ${order.number}`}
-                        className="field-input h-9 min-h-9 py-0 text-sm"
+                        aria-label={`Status do pedido ${order.number}`}
+                        className="field-input h-8 min-h-8 min-w-[12.5rem] py-0 text-sm"
                         value={value}
                         disabled={saving === order.id}
                         onChange={(e) => setPending((p) => ({ ...p, [order.id]: e.target.value as OrderStatus }))}
@@ -299,7 +299,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                       )}
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-sm">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     {order.kind !== "prints" ? (
                       <span className="text-ink-3">—</span>
                     ) : order.photos_deleted_at ? (
@@ -309,16 +309,8 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                     )}
                     {progress[order.id] && <span className="block tabular-nums text-ink-2">{progress[order.id]}</span>}
                   </td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/admin/pedidos/${order.id}`}
-                        className="btn btn-ghost btn-sm whitespace-nowrap"
-                        aria-label={`Detalhes do pedido ${order.number}`}
-                      >
-                        <ArrowSquareOutIcon size={16} aria-hidden />
-                        Detalhes
-                      </Link>
+                  <td className="px-3 py-1.5">
+                    <div className="flex items-center justify-end gap-1">
                       {pick && (
                         <button
                           type="button"
@@ -326,6 +318,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                           disabled={busy !== null || !canPickFolder}
                           onClick={() => downloadMany([order])}
                           aria-label={`Baixar pedido ${order.number} em pastas`}
+                          title="Baixar em pastas"
                         >
                           {busy === order.id ? (
                             <CircleNotchIcon size={16} className="spinner" aria-hidden />
@@ -335,6 +328,14 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                           Baixar
                         </button>
                       )}
+                      <Link
+                        href={`/admin/pedidos/${order.id}`}
+                        className="inline-flex size-9 items-center justify-center rounded-control text-ink-2 hover:bg-action-soft hover:text-action"
+                        aria-label={`Detalhes do pedido ${order.number}`}
+                        title="Detalhes"
+                      >
+                        <ArrowSquareOutIcon size={18} aria-hidden />
+                      </Link>
                     </div>
                   </td>
                 </tr>
