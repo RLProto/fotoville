@@ -2,46 +2,27 @@ import { CaretLeftIcon } from "@phosphor-icons/react/ssr";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { OrderControls } from "@/components/admin/order-controls";
-import { PhotoDownloads, type AdminPhoto } from "@/components/admin/photo-downloads";
+import { PhotoDownloads } from "@/components/admin/photo-downloads";
 import { StatusBadge } from "@/components/order-status";
-import { PRODUCTS } from "@/lib/catalog-data";
+import { loadOrderDownload } from "@/lib/admin-orders";
 import { formatBRL, formatCep, formatCpf, formatDate, formatPhone } from "@/lib/format";
-import { hasStorage, presignDownload } from "@/lib/storage";
+import { hasStorage } from "@/lib/storage";
 import { createAdminClient, getProfile } from "@/lib/supabase/server";
-import type { Order, OrderItem, Photo, Product } from "@/lib/types";
+import type { Order, OrderItem } from "@/lib/types";
 
 export default async function AdminPedidoPage({ params }: { params: Promise<{ id: string }> }) {
   if (!(await getProfile())?.is_admin) notFound();
 
   const { id } = await params;
   const admin = createAdminClient();
-  const [{ data: orderData }, { data: items }, { data: photoData }, { data: productData }] = await Promise.all([
+  const [{ data: orderData }, { data: items }] = await Promise.all([
     admin.from("orders").select("*").eq("id", id).maybeSingle(),
     admin.from("order_items").select("*").eq("order_id", id),
-    admin.from("photos").select("*").eq("order_id", id).order("product_id").order("created_at"),
-    admin.from("products").select("*"), // inclui produtos desativados de pedidos antigos
   ]);
   if (!orderData) notFound();
 
   const order = orderData as Order;
-  const products = (productData?.length
-    ? productData.map((p) => ({ ...p, width_cm: Number(p.width_cm), height_cm: Number(p.height_cm) }))
-    : PRODUCTS) as Product[];
-
-  const photos: AdminPhoto[] = await Promise.all(
-    ((photoData ?? []) as Photo[]).map(async (photo, i) => {
-      const ext = photo.storage_key.split(".").pop() ?? "jpg";
-      const base_name = `${order.number}_${photo.product_id}_${String(i + 1).padStart(3, "0")}`;
-      return {
-        ...photo,
-        base_name,
-        thumb_url: hasStorage ? await presignDownload(photo.thumb_key ?? photo.storage_key) : null,
-        original_url: hasStorage
-          ? await presignDownload(photo.storage_key, { downloadName: `${base_name}_original.${ext}` })
-          : "#",
-      };
-    }),
-  );
+  const download = await loadOrderDownload(admin, order);
 
   const address = order.shipping_address;
   const customer = order.customer;
@@ -176,13 +157,7 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
           {!hasStorage && (
             <p className="alert alert-warning mb-4">Armazenamento não configurado: os downloads estão indisponíveis.</p>
           )}
-          <PhotoDownloads
-            orderId={order.id}
-            orderNumber={order.number}
-            status={order.status}
-            photos={photos}
-            products={products}
-          />
+          <PhotoDownloads data={download} />
         </section>
       )}
     </>

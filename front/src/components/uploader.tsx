@@ -4,6 +4,7 @@ import {
   ArrowsOutCardinalIcon,
   CircleNotchIcon,
   CopyIcon,
+  FrameCornersIcon,
   ImagesIcon,
   MagicWandIcon,
   MinusIcon,
@@ -25,6 +26,7 @@ import { fileDetail, reportError } from "@/lib/report-error";
 import { whatsappLink } from "@/lib/site";
 import type { Adjust, Crop, Finish, PhotoView, Product } from "@/lib/types";
 import { ACCEPTED_TYPES, MAX_FILE_BYTES, putWithProgress, readImage, runPool } from "@/lib/upload-client";
+import { BorderAll } from "./border-all";
 import { CopiesInput, MAX_COPIES } from "./copies-input";
 import { PhotoEditor } from "./photo-editor";
 import { PrintShape } from "./print-shape";
@@ -435,6 +437,42 @@ export function Uploader({
     setAutoBusy(false);
   }
 
+  const [borderBusy, setBorderBusy] = useState(false);
+  const [borderOpen, setBorderOpen] = useState(false);
+  /** Borda que todas as fotos já têm igual (para o botão mostrar o estado). */
+  const commonBorder =
+    photos.length > 0 &&
+    photos[0].adjust?.border &&
+    photos.every((p) => p.adjust?.border?.color === photos[0].adjust?.border?.color && p.adjust?.border?.mm === photos[0].adjust?.border?.mm)
+      ? photos[0].adjust!.border
+      : null;
+
+  /** Grava a mesma borda (ou nenhuma) em todas as fotos. O corte de cada uma segue a nova janela. */
+  async function borderAll(border: Adjust["border"]) {
+    const before = photos;
+    setBorderBusy(true);
+    const next = new Map<string, Adjust | null>();
+    for (const p of before) {
+      const adjust = { ...(p.adjust ?? DEFAULT_ADJUST), border };
+      next.set(p.id, isNeutralAdjust(adjust) ? null : adjust);
+    }
+    setPhotos((list) => list.map((p) => ({ ...p, adjust: next.get(p.id) ?? null })));
+    try {
+      await Promise.all(
+        [...next].map(([id, adjust]) => api(`/api/photos/${id}`, { method: "PATCH", body: JSON.stringify({ adjust }) })),
+      );
+      const message = border ? "Borda aplicada a todas." : "Borda tirada de todas.";
+      setNotice(message);
+      setToast(message);
+      router.refresh();
+    } catch (err) {
+      reportError("ajuste", err, { etapa: "borda em todas", count: next.size });
+      setPhotos(before);
+      setNotice("Não foi possível aplicar a todas. Tente de novo.");
+    }
+    setBorderBusy(false);
+  }
+
   const editingIndex = editing ? photos.findIndex((p) => p.id === editing.id) : -1;
   const nextToEdit = editingIndex >= 0 ? photos[editingIndex + 1] : undefined;
 
@@ -666,6 +704,19 @@ export function Uploader({
                     )}
                     Ajuste automático
                   </button>
+                  {product.kind !== "polaroid" && (
+                    <button
+                      type="button"
+                      aria-pressed={borderOpen}
+                      aria-expanded={borderOpen}
+                      aria-controls="borda-todas"
+                      className={`btn ${borderOpen || commonBorder ? "btn-primary" : "btn-outline"}`}
+                      onClick={() => setBorderOpen((v) => !v)}
+                    >
+                      <FrameCornersIcon size={18} aria-hidden />
+                      Borda
+                    </button>
+                  )}
                   {confirmClear ? (
                     <span className="flex flex-wrap items-center gap-2" role="group" aria-label="Confirmar remoção de todas as fotos">
                       <button type="button" className="btn bg-danger text-white hover:bg-danger/90" onClick={clearAll} disabled={clearing}>
@@ -685,6 +736,9 @@ export function Uploader({
                 </div>
               </div>
 
+              {borderOpen && product.kind !== "polaroid" && (
+                <BorderAll current={commonBorder} busy={borderBusy} onApply={borderAll} onClose={() => setBorderOpen(false)} />
+              )}
               {framing && (
                 <p className="mt-4 text-sm font-semibold text-action" role="status">
                   Arraste cada foto para enquadrar.

@@ -1,33 +1,27 @@
 "use client";
 
-import { CircleNotchIcon, DownloadSimpleIcon, FoldersIcon, ScissorsIcon } from "@phosphor-icons/react";
+import { CircleNotchIcon, DownloadSimpleIcon, FoldersIcon, ScissorsIcon, TrashIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 import { PrintPreview } from "@/components/print-preview";
+import {
+  countFiles,
+  hasFolderPicker,
+  labelStart,
+  patchOrder,
+  pickFolder,
+  sizeName,
+  writeOrder,
+  type AdminPhoto,
+  type OrderDownload,
+} from "@/lib/admin-download";
 import { describeAdjust } from "@/lib/adjust";
 import { realSizeLabel } from "@/lib/catalog-data";
-import { loadImage, type DecodedImage } from "@/lib/decode-image";
-import { MINI_SHEET, renderMiniSheetFile, renderPrintFileFromUrl } from "@/lib/photo-render";
+import { formatDate } from "@/lib/format";
+import { LABELS_PER_SHEET } from "@/lib/order-label";
+import { canDeletePhotos, canDownload, downloadBlockedReason } from "@/lib/order-rules";
+import { renderPrintFileFromUrl } from "@/lib/photo-render";
 import { reportError } from "@/lib/report-error";
-import type { OrderStatus, Photo, Product } from "@/lib/types";
-
-export type AdminPhoto = Photo & {
-  thumb_url: string | null;
-  original_url: string;
-  /** Nome base do arquivo: pedido_tamanho_índice */
-  base_name: string;
-};
-
-/** API de acesso a pastas (Chrome e Edge no computador). Fora do lib.dom do TypeScript. */
-type DirectoryHandle = {
-  getDirectoryHandle(name: string, options?: { create?: boolean }): Promise<DirectoryHandle>;
-  getFileHandle(name: string, options?: { create?: boolean }): Promise<{
-    createWritable(): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void> }>;
-  }>;
-};
-type PickerWindow = Window & {
-  showDirectoryPicker?: (options?: { id?: string; mode?: "read" | "readwrite"; startIn?: string }) => Promise<DirectoryHandle>;
-};
 
 function save(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
@@ -38,158 +32,61 @@ function save(blob: Blob, name: string) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-/** Pasta de cada tamanho: a medida real do papel; nos especiais, com o nome para não confundir. */
-function sizeFolder(product: Product) {
-  const size = realSizeLabel(product);
-  return product.kind === "print" ? size : `${size} ${product.name}`;
-}
+const subscribeNoop = () => () => {};
 
-const MINI = "mini-polaroid";
-const MINI_SHEET_FOLDER = `${realSizeLabel({ width_cm: 10.2, height_cm: 15.2 })} Mini Polaroid`;
-
-/** Um arquivo a gravar na pasta do pedido. `copies` grava o mesmo arquivo mais de uma vez. */
-type Job = { folder: string; name: string; copies: number; photoIds: string[]; make: () => Promise<Blob> };
-
-/**
- * Arquivos do pedido: um por foto (gravado tantas vezes quantas cópias), menos a Mini Polaroid,
- * que sai em folhas 10x15 com duas Minis cada, já contando as cópias.
- */
-function planJobs(photos: AdminPhoto[], productOf: (p: AdminPhoto) => Product | undefined, orderNumber: number) {
-  const jobs: Job[] = [];
-  const minis: AdminPhoto[] = [];
-  const cache = new Map<string, Promise<DecodedImage>>();
-  const cached = (url: string) => cache.get(url) ?? cache.set(url, loadImage(url)).get(url)!;
-
-  for (const photo of photos) {
-    const product = productOf(photo);
-    if (!product) throw new Error(`Tamanho ${photo.product_id} não encontrado.`);
-    if (product.id === MINI) {
-      for (let i = 0; i < photo.quantity; i++) minis.push(photo);
-      continue;
-    }
-    jobs.push({
-      folder: sizeFolder(product),
-      name: photo.base_name,
-      copies: photo.quantity,
-      photoIds: [photo.id],
-      // Arquivo pronto para impressão: corte, borda ou moldura, cor e legenda, como o cliente viu.
-      make: () => renderPrintFileFromUrl(photo.original_url, photo, product),
-    });
-  }
-
-  for (let i = 0; i < minis.length; i += MINI_SHEET.perSheet) {
-    const group = minis.slice(i, i + MINI_SHEET.perSheet);
-    jobs.push({
-      folder: MINI_SHEET_FOLDER,
-      name: `${orderNumber}_${MINI}_folha_${String(i / MINI_SHEET.perSheet + 1).padStart(3, "0")}`,
-      copies: 1,
-      photoIds: group.map((p) => p.id),
-      make: async () => {
-        const items = await Promise.all(
-          group.map(async (photo) => ({ source: await cached(photo.original_url), photo, product: productOf(photo)! })),
-        );
-        return renderMiniSheetFile(items);
-      },
-    });
-  }
-  /** Libera as fotos decodificadas para as folhas. */
-  const release = () => cache.forEach((p) => p.then((img) => img.close()).catch(() => {}));
-  return { jobs, release };
-}
-
-export function PhotoDownloads({
-  orderId,
-  orderNumber,
-  status,
-  photos,
-  products,
-}: {
-  orderId: string;
-  orderNumber: number;
-  status: OrderStatus;
-  photos: AdminPhoto[];
-  products: Product[];
-}) {
+/** Fotos do pedido no painel: download em pastas com etiquetas, arquivo avulso, original, e limpeza do bucket. */
+export function PhotoDownloads({ data }: { data: OrderDownload }) {
+  const { order, photos, products } = data;
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const productOf = (p: AdminPhoto) => products.find((x) => x.id === p.product_id);
-  // No servidor não há window: assume que dá, e o navegador corrige logo depois de montar.
-  const canPickFolder = useSyncExternalStore(
-    () => () => {},
-    () => !!(window as PickerWindow).showDirectoryPicker,
-    () => true,
-  );
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  // No servidor não há window nem localStorage: assume o padrão, e o navegador corrige ao montar.
+  const canPickFolder = useSyncExternalStore(subscribeNoop, hasFolderPicker, () => true);
+  const savedStart = useSyncExternalStore(subscribeNoop, labelStart.get, () => 1);
+  const [start, setStart] = useState<number | null>(null);
+  const labelFrom = start ?? savedStart;
 
-  const files = planJobs(photos, productOf, orderNumber).jobs.reduce((sum, j) => sum + j.copies, 0);
+  const productOf = (p: AdminPhoto) => products.find((x) => x.id === p.product_id);
+  const downloadable = canDownload(order);
+  const blocked = downloadBlockedReason(order);
+  const files = downloadable ? countFiles(data) : 0;
 
   async function downloadOne(photo: AdminPhoto) {
     const product = productOf(photo);
-    if (!product) return;
+    if (!product || !photo.original_url) return;
     save(await renderPrintFileFromUrl(photo.original_url, photo, product), `${photo.base_name}.jpg`);
   }
 
-  /**
-   * Grava o pedido inteiro numa pasta do computador: <nº do pedido>/<medida real>/<arquivo>.jpg,
-   * uma cópia por arquivo. Ao terminar sem falhas, pedido pago passa a "Em produção".
-   */
+  /** Grava o pedido numa pasta do computador e, se estava pago, passa para "Em produção". */
   async function downloadFolder() {
-    const picker = (window as PickerWindow).showDirectoryPicker;
-    if (!picker) return;
-    let root: DirectoryHandle;
-    try {
-      root = await picker({ id: "fotoville-pedidos", mode: "readwrite", startIn: "desktop" });
-    } catch {
-      return; // janela fechada sem escolher
-    }
-
+    const root = await pickFolder();
+    if (!root) return;
     setBusy("all");
     setMessage(null);
-    let failed = 0;
-    let done = 0;
-    const { jobs, release } = planJobs(photos, productOf, orderNumber);
-    try {
-      const orderDir = await root.getDirectoryHandle(String(orderNumber), { create: true });
-      for (const job of jobs) {
-        try {
-          const blob = await job.make();
-          const dir = await orderDir.getDirectoryHandle(job.folder, { create: true });
-          for (let copy = 1; copy <= job.copies; copy++) {
-            const file = await dir.getFileHandle(`${job.name}_${copy}.jpg`, { create: true });
-            const stream = await file.createWritable();
-            await stream.write(blob);
-            await stream.close();
-            done += 1;
-            setMessage(`${done} de ${files} arquivos gravados…`);
-          }
-        } catch (err) {
-          reportError("loja", err, { etapa: "baixar pedido em pastas", photos: job.photoIds, file: job.name });
-          failed += 1;
-        }
-      }
-    } catch (err) {
-      reportError("loja", err, { etapa: "baixar pedido em pastas", order: orderId });
+    const result = await writeOrder(root, data, {
+      labelStart: labelFrom,
+      onProgress: (done, total) => setMessage(`${done} de ${total} arquivos gravados…`),
+    }).catch((err) => {
+      reportError("loja", err, { etapa: "baixar pedido em pastas", order: order.id });
+      return null;
+    });
+    if (!result) {
       setBusy(null);
       setMessage("Não foi possível gravar na pasta escolhida.");
       return;
-    } finally {
-      release();
     }
-
-    if (failed) {
+    const next = labelStart.advance(labelFrom, result.labels);
+    labelStart.set(next);
+    setStart(next);
+    if (result.failed) {
       setBusy(null);
-      setMessage(`${failed} arquivo(s) falharam. Confira o CORS do bucket ou baixe os originais.`);
+      setMessage(`${result.failed} arquivo(s) falharam. Confira o CORS do bucket ou baixe os originais.`);
       return;
     }
-
-    let note = `${done} arquivo(s) gravados na pasta ${orderNumber}.`;
-    if (status === "paid") {
-      const res = await fetch(`/api/admin/pedidos/${orderId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "in_production" }),
-      }).catch(() => null);
-      if (res?.ok) {
+    let note = `${result.files} arquivo(s) e ${result.labels} etiqueta(s) na pasta ${order.number}.`;
+    if (order.status === "paid") {
+      if (await patchOrder(order.id, { status: "in_production" })) {
         note += " Pedido em produção.";
         router.refresh();
       } else {
@@ -200,27 +97,74 @@ export function PhotoDownloads({
     setMessage(note);
   }
 
+  async function deletePhotos() {
+    setBusy("delete");
+    setMessage(null);
+    const res = await fetch(`/api/admin/pedidos/${order.id}/fotos`, { method: "DELETE" }).catch(() => null);
+    const body = res ? await res.json().catch(() => null) : null;
+    setBusy(null);
+    setConfirmDelete(false);
+    if (res?.ok) {
+      setMessage(`${body?.deleted ?? 0} arquivo(s) apagados do bucket.`);
+      router.refresh();
+    } else {
+      setMessage(body?.error ?? "Não foi possível apagar as imagens.");
+    }
+  }
+
   if (!photos.length) return <p className="text-ink-2">Este pedido não tem fotos.</p>;
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="button" className="btn btn-primary" onClick={downloadFolder} disabled={busy !== null || !canPickFolder}>
-          {busy === "all" ? (
-            <CircleNotchIcon size={18} className="spinner" aria-hidden />
-          ) : (
-            <FoldersIcon size={18} aria-hidden />
-          )}
-          Baixar pedido em pastas ({files})
-        </button>
-        <p aria-live="polite" className="text-sm font-semibold">
-          {message ?? (canPickFolder ? null : "Para baixar em pastas, abra o painel no Chrome ou no Edge do computador.")}
+      {order.photos_deleted_at ? (
+        <p className="alert alert-warning">
+          Imagens apagadas do bucket em {formatDate(order.photos_deleted_at)}. Só o histórico ficou.
         </p>
-      </div>
-      {canPickFolder && !message && (
-        <p className="mt-2 text-sm text-ink-2">
-          Escolha uma pasta sua, como Área de Trabalho\Pedidos. O navegador não grava direto na Área de Trabalho, em
-          Documentos nem em Downloads.
+      ) : blocked ? (
+        <p className="alert alert-warning">{blocked}</p>
+      ) : (
+        <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={downloadFolder}
+            disabled={busy !== null || !canPickFolder}
+          >
+            {busy === "all" ? (
+              <CircleNotchIcon size={18} className="spinner" aria-hidden />
+            ) : (
+              <FoldersIcon size={18} aria-hidden />
+            )}
+            Baixar pedido em pastas ({files})
+          </button>
+          <div>
+            <label htmlFor="etiqueta-inicio" className="field-label">
+              Próxima etiqueta livre
+            </label>
+            <input
+              id="etiqueta-inicio"
+              type="number"
+              min={1}
+              max={LABELS_PER_SHEET}
+              value={labelFrom}
+              onChange={(e) => {
+                const n = Math.min(LABELS_PER_SHEET, Math.max(1, Number(e.target.value) || 1));
+                setStart(n);
+                labelStart.set(n);
+              }}
+              className="field-input w-24 tabular-nums"
+            />
+          </div>
+        </div>
+      )}
+      <p aria-live="polite" className="mt-2 min-h-5 text-sm font-semibold">
+        {message}
+      </p>
+      {downloadable && !message && (
+        <p className="text-sm text-ink-2">
+          {canPickFolder
+            ? `Pasta com o número do pedido, uma subpasta por tamanho, cópias contadas e o PDF das etiquetas (${LABELS_PER_SHEET} por folha A4, a partir da posição escolhida). Escolha uma pasta sua, como Área de Trabalho\\Pedidos.`
+            : "Para baixar em pastas, abra o painel no Chrome ou no Edge do computador."}
         </p>
       )}
 
@@ -231,52 +175,81 @@ export function PhotoDownloads({
             <li key={photo.id} className="card flex flex-col p-3">
               {product && <PrintPreview src={photo.thumb_url} alt={photo.file_name} photo={photo} product={product} />}
               <p className="mt-2 font-bold">
-                {photo.quantity}× {product?.name ?? photo.product_id}
+                {photo.quantity}× {product ? sizeName(product) : photo.product_id}
               </p>
               {product && (
                 <p className="text-sm text-ink-2">
-                  {product.id === MINI ? "Folha 10,2x15,2 cm, 2 por folha" : `Papel ${realSizeLabel(product)} cm`}
+                  {product.id === "mini-polaroid" ? "Folha 10,2x15,2 cm, 2 por folha" : `Papel ${realSizeLabel(product)} cm`}
                 </p>
               )}
               <p className="text-sm text-ink-2">
-                {[photo.fit ? "foto inteira" : "", ...describeAdjust(photo.adjust)]
-                  .filter(Boolean)
-                  .join(", ")}
+                {[photo.fit ? "foto inteira" : "", ...describeAdjust(photo.adjust)].filter(Boolean).join(", ")}
               </p>
               <p className="truncate text-sm text-ink-2" title={photo.file_name}>
                 {photo.file_name}
               </p>
-              <div className="mt-2 flex flex-col gap-1.5">
-                <button
-                  type="button"
-                  className="btn btn-outline btn-sm"
-                  disabled={busy !== null}
-                  onClick={async () => {
-                    setBusy(photo.id);
-                    setMessage(null);
-                    await downloadOne(photo).catch((err) => {
-                      reportError("loja", err, { etapa: "baixar recortada", photo: photo.id, file: photo.base_name });
-                      setMessage("Falha ao recortar. Confira o CORS do bucket ou baixe o original.");
-                    });
-                    setBusy(null);
-                  }}
-                >
-                  {busy === photo.id ? (
-                    <CircleNotchIcon size={16} className="spinner" aria-hidden />
-                  ) : (
-                    <ScissorsIcon size={16} aria-hidden />
-                  )}
-                  Recortada
-                </button>
-                <a href={photo.original_url} className="btn btn-ghost btn-sm">
-                  <DownloadSimpleIcon size={16} aria-hidden />
-                  Original
-                </a>
-              </div>
+              {downloadable && photo.original_url && (
+                <div className="mt-2 flex flex-col gap-1.5">
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    disabled={busy !== null}
+                    onClick={async () => {
+                      setBusy(photo.id);
+                      setMessage(null);
+                      await downloadOne(photo).catch((err) => {
+                        reportError("loja", err, { etapa: "baixar recortada", photo: photo.id, file: photo.base_name });
+                        setMessage("Falha ao recortar. Confira o CORS do bucket ou baixe o original.");
+                      });
+                      setBusy(null);
+                    }}
+                  >
+                    {busy === photo.id ? (
+                      <CircleNotchIcon size={16} className="spinner" aria-hidden />
+                    ) : (
+                      <ScissorsIcon size={16} aria-hidden />
+                    )}
+                    Recortada
+                  </button>
+                  <a href={photo.original_url} className="btn btn-ghost btn-sm">
+                    <DownloadSimpleIcon size={16} aria-hidden />
+                    Original
+                  </a>
+                </div>
+              )}
             </li>
           );
         })}
       </ul>
+
+      {canDeletePhotos(order) && (
+        <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-rule pt-5">
+          {confirmDelete ? (
+            <span className="flex flex-wrap items-center gap-2" role="group" aria-label="Confirmar limpeza das imagens">
+              <button
+                type="button"
+                className="btn bg-danger text-white hover:bg-danger/90"
+                onClick={deletePhotos}
+                disabled={busy !== null}
+              >
+                {busy === "delete" && <CircleNotchIcon size={18} className="spinner" aria-hidden />}
+                Apagar {photos.length} imagem(ns) do bucket
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={() => setConfirmDelete(false)} disabled={busy !== null}>
+                Cancelar
+              </button>
+            </span>
+          ) : (
+            <button type="button" className="btn btn-danger-ghost" onClick={() => setConfirmDelete(true)} disabled={busy !== null}>
+              <TrashIcon size={18} aria-hidden />
+              Apagar imagens do bucket
+            </button>
+          )}
+          <p className="text-sm text-ink-2">
+            Libera espaço. O pedido continua no painel, sem as fotos. Baixe antes, se ainda precisar.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

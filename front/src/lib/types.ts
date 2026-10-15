@@ -141,6 +141,8 @@ export type Order = {
   shipping_address: Address | null;
   parcel: Parcel | null;
   tracking_code: string | null;
+  /** Quando a loja apagou as imagens do pedido do bucket (as linhas de `photos` ficam). */
+  photos_deleted_at: string | null;
   mp_preference_id: string | null;
   mp_init_point: string | null;
   mp_payment_id: string | null;
