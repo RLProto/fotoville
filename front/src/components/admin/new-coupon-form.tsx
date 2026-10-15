@@ -69,11 +69,14 @@ export function NewCouponForm() {
     );
   }
 
+  const suffix = "pointer-events-none absolute inset-y-0 flex items-center text-sm font-semibold text-ink-2";
+
   return (
-    <form onSubmit={create} className="card p-5" noValidate>
+    <form onSubmit={create} className="card max-w-3xl p-5 sm:p-6" noValidate>
       <h2 className="text-lg font-bold">Novo cupom</h2>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <div>
+
+      <div className="mt-5 grid gap-5 sm:grid-cols-6">
+        <div className="sm:col-span-4">
           <label htmlFor="cupom-codigo" className="field-label">
             Código
           </label>
@@ -83,33 +86,34 @@ export function NewCouponForm() {
             autoComplete="off"
             spellCheck={false}
             maxLength={COUPON_CODE_MAX}
+            placeholder="NATAL10"
             value={code}
             onChange={(e) => setCode(cleanCouponCode(e.target.value))}
-            aria-describedby="cupom-codigo-dica"
           />
-          <p id="cupom-codigo-dica" className="field-hint">
-            Letras e números, de 3 a 20.
-          </p>
+          <p className="field-hint">3 a 20 letras e números.</p>
         </div>
-        <div>
+        <div className="sm:col-span-2">
           <label htmlFor="cupom-desconto" className="field-label">
             Desconto
           </label>
-          <div className="flex items-center gap-2">
+          <div className="relative">
             <input
               id="cupom-desconto"
               inputMode="numeric"
-              className="field-input w-24 text-right tabular-nums"
+              className="field-input pr-9 text-right tabular-nums"
               value={percent}
               onChange={(e) => setPercent(e.target.value.replace(/\D/g, "").slice(0, 3))}
             />
-            <span className="font-semibold">%</span>
+            <span className={`${suffix} right-3.5`} aria-hidden>
+              %
+            </span>
           </div>
-          <p className="field-hint">Sobre o pedido, frete incluído.</p>
+          <p className="field-hint">Inclui o frete.</p>
         </div>
-        <div className="sm:col-span-2">
+
+        <div className="sm:col-span-6">
           <label htmlFor="cupom-descricao" className="field-label">
-            Descrição
+            Descrição <span className="font-normal text-ink-3">(opcional)</span>
           </label>
           <input
             id="cupom-descricao"
@@ -119,77 +123,83 @@ export function NewCouponForm() {
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
-        <div>
+
+        <div className="sm:col-span-2">
           <label htmlFor="cupom-minimo" className="field-label">
             Pedido mínimo
           </label>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-ink-2">R$</span>
+          <div className="relative">
+            <span className={`${suffix} left-3.5`} aria-hidden>
+              R$
+            </span>
             <input
               id="cupom-minimo"
               inputMode="decimal"
-              className="field-input w-32 text-right tabular-nums"
+              className="field-input pl-10 text-right tabular-nums"
               placeholder="0,00"
               value={minOrder}
               onChange={(e) => setMinOrder(e.target.value)}
             />
           </div>
-          <p className="field-hint">Em fotos. Vazio: sem mínimo.</p>
+          <p className="field-hint">Só as fotos. Vazio: sem mínimo.</p>
         </div>
-        <div>
+        <div className="sm:col-span-2">
           <label htmlFor="cupom-validade" className="field-label">
             Válido até
           </label>
           <input
             id="cupom-validade"
             type="date"
-            className="field-input w-44"
+            className="field-input"
             min={todayBrasilia()}
             value={expiresOn}
             onChange={(e) => setExpiresOn(e.target.value)}
           />
-          <p className="field-hint">Vale até o fim do dia. Vazio: sem validade.</p>
+          <p className="field-hint">Vazio: sem validade.</p>
         </div>
-        <fieldset className="sm:col-span-2">
-          <legend className="field-label">Usos</legend>
-          <label className="flex min-h-11 items-center gap-2">
-            <input type="checkbox" className="size-4 accent-action" checked={singleUse} onChange={(e) => setSingleUse(e.target.checked)} />
-            Uso único (vale para um pedido só)
+        <div className="sm:col-span-2">
+          <label htmlFor="cupom-limite" className="field-label">
+            Limite de usos
           </label>
-          {!singleUse && (
-            <>
-              <label className="flex min-h-11 items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-action"
-                  checked={oncePerCustomer}
-                  onChange={(e) => setOncePerCustomer(e.target.checked)}
-                />
-                Uma vez por cliente
-              </label>
-              <div className="mt-2">
-                <label htmlFor="cupom-limite" className="field-label">
-                  Limite de usos
-                </label>
-                <input
-                  id="cupom-limite"
-                  inputMode="numeric"
-                  className="field-input w-32 text-right tabular-nums"
-                  placeholder="Sem limite"
-                  value={maxUses}
-                  onChange={(e) => setMaxUses(e.target.value.replace(/\D/g, "").slice(0, 7))}
-                />
-              </div>
-            </>
-          )}
+          <input
+            id="cupom-limite"
+            inputMode="numeric"
+            className="field-input text-right tabular-nums disabled:bg-paper disabled:text-ink-3"
+            placeholder="Sem limite"
+            disabled={singleUse}
+            value={singleUse ? "1" : maxUses}
+            onChange={(e) => setMaxUses(e.target.value.replace(/\D/g, "").slice(0, 7))}
+          />
+          <p className="field-hint">Total de pedidos.</p>
+        </div>
+
+        <fieldset className="sm:col-span-6">
+          <legend className="sr-only">Regras de uso</legend>
+          <div className="flex flex-wrap gap-x-8">
+            <label className="flex min-h-11 items-center gap-2">
+              <input type="checkbox" className="size-4 accent-action" checked={singleUse} onChange={(e) => setSingleUse(e.target.checked)} />
+              Uso único
+            </label>
+            <label className={`flex min-h-11 items-center gap-2 ${singleUse ? "text-ink-3" : ""}`}>
+              <input
+                type="checkbox"
+                className="size-4 accent-action"
+                checked={!singleUse && oncePerCustomer}
+                disabled={singleUse}
+                onChange={(e) => setOncePerCustomer(e.target.checked)}
+              />
+              Uma vez por cliente
+            </label>
+          </div>
         </fieldset>
       </div>
+
       {error && (
         <p className="field-error" role="alert">
           {error}
         </p>
       )}
-      <div className="mt-5 flex flex-wrap gap-2">
+      <div className="mt-5 flex flex-wrap gap-2 border-t border-rule pt-5">
         <button type="submit" className="btn btn-primary" disabled={loading}>
           {loading && <CircleNotchIcon size={18} className="spinner" aria-hidden />}
           Criar cupom
