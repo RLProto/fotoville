@@ -3,7 +3,6 @@
 import { CircleNotchIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { formatBRL } from "@/lib/format";
 
 export type ZoneRow = { id?: string; district: string; price_cents: number; active: boolean };
 type Draft = { key: number; id?: string; district: string; price: string; active: boolean };
@@ -197,8 +196,7 @@ export function MotoboyZonesEditor({ initial, defaultCents }: { initial: ZoneRow
           {error && <span className="text-danger">{error}</span>}
           {!error && state !== "saved" && (
             <span className="text-ink-2">
-              {active} {active === 1 ? "bairro ativo" : "bairros ativos"}, a partir de{" "}
-              {formatBRL(Math.min(defaultCents, ...rows.map((r) => parseMoney(r.price) ?? defaultCents)))}.
+              {active} {active === 1 ? "bairro ativo" : "bairros ativos"}.
             </span>
           )}
         </p>
