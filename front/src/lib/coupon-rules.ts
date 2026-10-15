@@ -29,12 +29,15 @@ export const COUPON_STATUS_LABEL: Record<CouponStatus, string> = {
   esgotado: "Esgotado",
 };
 
-/** Regra de uso, para o painel. O limite total aparece junto da contagem ("3 de 10"). */
-export function couponLimitLabel(coupon: Pick<Coupon, "max_uses" | "once_per_customer">) {
+/** Limite de usos, para o painel. O limite total aparece junto da contagem ("3 de 10"). */
+export function couponLimitLabel(coupon: Pick<Coupon, "max_uses">) {
   if (coupon.max_uses === 1) return "Uso único";
-  if (coupon.once_per_customer) return "Uma vez por cliente";
   return coupon.max_uses === null ? "Sem limite" : "";
 }
+
+/** Cada cliente usa uma vez só? Uso único também, porque o cupom vale para um pedido só. */
+export const oncePerCustomer = (coupon: Pick<Coupon, "max_uses" | "once_per_customer">) =>
+  coupon.once_per_customer || coupon.max_uses === 1;
 
 /** Situação do cupom para o painel. `uses`: pedidos não cancelados com o cupom. */
 export function couponStatus(coupon: Pick<Coupon, "active" | "expires_at" | "max_uses">, uses: number): CouponStatus {

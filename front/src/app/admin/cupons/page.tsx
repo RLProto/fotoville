@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { CouponActiveToggle } from "@/components/admin/coupon-active-toggle";
 import { CouponStatusBadge } from "@/components/admin/coupon-status-badge";
 import { NewCouponForm } from "@/components/admin/new-coupon-form";
-import { couponLimitLabel, couponStatus } from "@/lib/coupon-rules";
+import { couponLimitLabel, couponStatus, oncePerCustomer } from "@/lib/coupon-rules";
 import { formatBRL, formatDate } from "@/lib/format";
 import { createAdminClient, getProfile } from "@/lib/supabase/server";
 import type { Coupon } from "@/lib/types";
@@ -49,11 +49,11 @@ export default async function AdminCuponsPage() {
         <p className="card mt-6 p-8 text-center text-lg text-ink-2">Nenhum cupom ainda.</p>
       ) : (
         <div className="card mt-6 overflow-x-auto">
-          <table className="w-full min-w-[60rem] text-left">
+          <table className="w-full min-w-[66rem] text-left">
             <caption className="sr-only">Cupons</caption>
             <thead className="border-b border-rule text-sm text-ink-2">
               <tr>
-                {["Cupom", "Desconto", "Pedido mínimo", "Válido até", "Usos", "Situação", "Criado em", ""].map((h, i) => (
+                {["Cupom", "Desconto", "Pedido mínimo", "Válido até", "Usos", "Uma vez por cliente", "Situação", "Criado em", ""].map((h, i) => (
                   <th key={i} scope="col" className="px-4 py-3 font-bold">
                     {h}
                   </th>
@@ -80,6 +80,7 @@ export default async function AdminCuponsPage() {
                       <span className="block tabular-nums">{c.max_uses === null ? used : `${used} de ${c.max_uses}`}</span>
                       <span className="block text-sm text-ink-2">{couponLimitLabel(c)}</span>
                     </td>
+                    <td className="px-4 py-3">{oncePerCustomer(c) ? "Sim" : "Não"}</td>
                     <td className="px-4 py-3">
                       <CouponStatusBadge status={couponStatus(c, used)} />
                     </td>
