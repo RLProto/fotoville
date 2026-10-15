@@ -1,7 +1,7 @@
 "use client";
 
 import { CircleNotchIcon, LockIcon, StorefrontIcon, TruckIcon } from "@phosphor-icons/react";
-import { useId, useRef, useState } from "react";
+import { useId, useEffect, useRef, useState } from "react";
 import { formatBRL, formatCep, formatCpf, formatPhone, isValidCpf, onlyDigits } from "@/lib/format";
 import { reportError } from "@/lib/report-error";
 import { whatsappLink } from "@/lib/site";
@@ -86,6 +86,11 @@ export function CheckoutForm({
 
   /** Identifica a cotação mais recente, para descartar respostas de um CEP já trocado. */
   const quoteSeq = useRef(0);
+  /** Endereço como está agora, para as respostas assíncronas (ViaCEP) não lerem um estado antigo. */
+  const addressRef = useRef(address);
+  useEffect(() => {
+    addressRef.current = address;
+  }, [address]);
 
   /** Cota o frete para o CEP, com cidade e bairro (o motoboy depende do bairro). */
   function quote(digits: string, place: { district: string; city: string }, seq: number) {
@@ -124,26 +129,26 @@ export function CheckoutForm({
       .then((res) => res.json())
       .then((data) => {
         if (seq !== quoteSeq.current) return;
+        const typed = addressRef.current;
         const found = data.erro
           ? null
           : { street: data.logradouro || "", district: data.bairro || "", city: data.localidade || "", state: data.uf || "" };
-        let place = { district: address.district, city: address.city };
-        setAddress((a) => {
-          const next = found
-            ? {
-                ...a,
-                street: found.street || a.street,
-                district: found.district || a.district,
-                city: found.city || a.city,
-                state: found.state || a.state,
-              }
-            : a;
-          place = { district: next.district, city: next.city };
-          return next;
-        });
-        quote(digits, place, seq);
+        const next = found
+          ? {
+              ...typed,
+              street: found.street || typed.street,
+              district: found.district || typed.district,
+              city: found.city || typed.city,
+              state: found.state || typed.state,
+            }
+          : typed;
+        if (found) setAddress(next);
+        quote(digits, { district: next.district, city: next.city }, seq);
       })
-      .catch(() => seq === quoteSeq.current && quote(digits, { district: address.district, city: address.city }, seq));
+      .catch(() => {
+        const typed = addressRef.current;
+        if (seq === quoteSeq.current) quote(digits, { district: typed.district, city: typed.city }, seq);
+      });
   }
 
   /** Bairro ou cidade mudados à mão: cota de novo, porque o motoboy depende deles. */
