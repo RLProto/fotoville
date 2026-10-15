@@ -8,9 +8,12 @@ import { useEffect, useState } from "react";
 export function MobileMenu({
   items,
   loggedIn,
+  isAdmin = false,
 }: {
   items: { href: string; label: string }[];
   loggedIn: boolean;
+  /** Mostra o link do painel da loja. */
+  isAdmin?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -22,7 +25,11 @@ export function MobileMenu({
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const links = [...items, { href: loggedIn ? "/conta" : "/entrar", label: loggedIn ? "Minha conta" : "Entrar" }];
+  const links = [
+    ...items,
+    ...(isAdmin ? [{ href: "/admin", label: "Painel da loja" }] : []),
+    { href: loggedIn ? "/conta" : "/entrar", label: loggedIn ? "Minha conta" : "Entrar" },
+  ];
 
   return (
     <div className="md:hidden">

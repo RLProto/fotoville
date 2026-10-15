@@ -1,8 +1,8 @@
-import { HandbagIcon, UserIcon } from "@phosphor-icons/react/ssr";
+import { HandbagIcon, StorefrontIcon, UserIcon } from "@phosphor-icons/react/ssr";
 import Image from "next/image";
 import Link from "next/link";
 import { hasSupabase } from "@/lib/site";
-import { createClient, getUser } from "@/lib/supabase/server";
+import { createClient, getProfile, getUser } from "@/lib/supabase/server";
 import { MobileMenu } from "./mobile-menu";
 import { NavLinks } from "./nav-links";
 
@@ -22,7 +22,8 @@ async function cartCount(userId: string) {
 
 export async function Header() {
   const user = hasSupabase ? await getUser() : null;
-  const count = user ? await cartCount(user.id) : 0;
+  const [count, profile] = user ? await Promise.all([cartCount(user.id), getProfile()]) : [0, null];
+  const isAdmin = Boolean(profile?.is_admin);
 
   return (
     <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur-sm">
@@ -47,6 +48,17 @@ export async function Header() {
         </nav>
 
         <div className="flex shrink-0 items-center gap-1">
+          {isAdmin && (
+            // Entre 768 e 1023 px não cabe ao lado do menu; até 1279 px fica só o ícone
+            <Link
+              href="/admin"
+              title="Painel da loja"
+              className="hidden min-h-11 items-center gap-2 rounded-control px-3 font-medium text-ink-2 transition-colors duration-150 hover:bg-ink/[0.05] hover:text-ink sm:inline-flex md:max-lg:hidden"
+            >
+              <StorefrontIcon size={20} aria-hidden />
+              <span className="lg:max-xl:sr-only">Painel da loja</span>
+            </Link>
+          )}
           <Link
             href={user ? "/conta" : "/entrar"}
             className="hidden min-h-11 items-center gap-2 rounded-control px-3 font-medium text-ink-2 transition-colors duration-150 hover:bg-ink/[0.05] hover:text-ink sm:inline-flex"
@@ -70,7 +82,7 @@ export async function Header() {
           <Link href="/enviar" className="btn btn-accent btn-sm ml-1 hidden md:inline-flex">
             Enviar fotos
           </Link>
-          <MobileMenu items={NAV} loggedIn={Boolean(user)} />
+          <MobileMenu items={NAV} loggedIn={Boolean(user)} isAdmin={isAdmin} />
         </div>
       </div>
       <div className="blade-strip h-[3px]" aria-hidden />
