@@ -108,7 +108,6 @@ export function NewCouponForm() {
               %
             </span>
           </div>
-          <p className="field-hint">Inclui o frete.</p>
         </div>
 
         <div className="sm:col-span-6">
@@ -141,7 +140,7 @@ export function NewCouponForm() {
               onChange={(e) => setMinOrder(e.target.value)}
             />
           </div>
-          <p className="field-hint">Só as fotos. Vazio: sem mínimo.</p>
+          <p className="field-hint">Vazio: sem mínimo.</p>
         </div>
         <div className="sm:col-span-2">
           <label htmlFor="cupom-validade" className="field-label">
@@ -170,7 +169,6 @@ export function NewCouponForm() {
             value={singleUse ? "1" : maxUses}
             onChange={(e) => setMaxUses(e.target.value.replace(/\D/g, "").slice(0, 7))}
           />
-          <p className="field-hint">Total de pedidos.</p>
         </div>
 
         <fieldset className="sm:col-span-6">
