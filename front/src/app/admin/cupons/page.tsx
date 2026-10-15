@@ -54,7 +54,7 @@ export default async function AdminCuponsPage() {
             <thead className="border-b border-rule text-sm text-ink-2">
               <tr>
                 {["Cupom", "Desconto", "Pedido mínimo", "Válido até", "Usos", "Uma vez por cliente", "Situação", "Criado em", ""].map((h, i) => (
-                  <th key={i} scope="col" className="px-4 py-3 font-bold">
+                  <th key={i} scope="col" className={`px-4 py-3 font-bold ${h === "Uma vez por cliente" ? "text-center" : ""}`}>
                     {h}
                   </th>
                 ))}
@@ -80,7 +80,7 @@ export default async function AdminCuponsPage() {
                       <span className="block tabular-nums">{c.max_uses === null ? used : `${used} de ${c.max_uses}`}</span>
                       <span className="block text-sm text-ink-2">{couponLimitLabel(c)}</span>
                     </td>
-                    <td className="px-4 py-3">{oncePerCustomer(c) ? "Sim" : "Não"}</td>
+                    <td className="px-4 py-3 text-center">{oncePerCustomer(c) ? "Sim" : "Não"}</td>
                     <td className="px-4 py-3">
                       <CouponStatusBadge status={couponStatus(c, used)} />
                     </td>
