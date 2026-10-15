@@ -3,7 +3,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cache } from "react";
 import { PACKAGES, PRODUCTS } from "./catalog-data";
 import { logError } from "./error-log";
-import { alignTiers, parseTiers } from "./pricing";
+import { activeTiers, alignTiers, parseTiers } from "./pricing";
 import { hasSupabase } from "./site";
 import { createAdminClient, getUser } from "./supabase/server";
 import type { CustomerPriceProfile, Package, Product } from "./types";
@@ -75,6 +75,7 @@ export const getCustomerPriceProfile = cache(async (): Promise<CustomerPriceProf
 /**
  * Põe a tabela do perfil por cima da tabela da loja. Tamanho sem preço no perfil fica com o da loja.
  * As faixas do perfil seguem as quantidades da loja (1, 20, 50...): o perfil só muda o preço de cada faixa.
+ * Faixa desligada no perfil (mesmo preço da anterior) não aparece para o cliente.
  */
 export function applyPriceProfile(products: Product[], profile: CustomerPriceProfile | null): Product[] {
   if (!profile) return products;
@@ -84,7 +85,7 @@ export function applyPriceProfile(products: Product[], profile: CustomerPricePro
     return {
       ...p,
       price_cents: own.price_cents,
-      price_tiers: alignTiers(own, p.price_tiers),
+      price_tiers: activeTiers({ price_cents: own.price_cents, price_tiers: alignTiers(own, p.price_tiers) }),
       store: { price_cents: p.price_cents, price_tiers: p.price_tiers },
     };
   });

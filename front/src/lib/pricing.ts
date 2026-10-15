@@ -31,6 +31,16 @@ export function alignTiers(row: Priced, storeTiers: PriceTier[]): PriceTier[] {
   return storeTiers.map((t) => ({ min: t.min, price_cents: unitPrice(row, t.min) }));
 }
 
+/** Só as faixas que baixam o preço. Faixa com o mesmo preço da anterior é faixa desligada no perfil. */
+export function activeTiers(row: Priced): PriceTier[] {
+  let price = row.price_cents;
+  return row.price_tiers.filter((t) => {
+    if (t.price_cents >= price) return false;
+    price = t.price_cents;
+    return true;
+  });
+}
+
 /** Próxima faixa de desconto ainda não alcançada, ou null. */
 export function nextTier(product: Priced, quantity: number): PriceTier | null {
   const current = unitPrice(product, quantity);
