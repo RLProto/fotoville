@@ -22,8 +22,8 @@ type SearchKind = "number" | "customer";
 
 /** Cor de cada situação na linha: faixa à esquerda e fundo da mesma cor, além do texto no seletor. */
 const STATUS_COLOR: Record<OrderStatus, string> = {
-  pending: "#f2b705", // amarelo
-  paid: "#9b59d0", // roxo
+  pending: "#8a8f9c", // cinza
+  paid: "#f2b705", // amarelo
   in_production: "#7ed957", // verde claro
   ready_for_pickup: "#1f7a3c", // verde escuro
   shipped: "#13a3b8", // azul-petróleo
