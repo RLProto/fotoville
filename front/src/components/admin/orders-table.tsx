@@ -20,16 +20,22 @@ import { ORDER_STATUS_LABEL, type Order, type OrderStatus } from "@/lib/types";
 const subscribeNoop = () => () => {};
 type SearchKind = "number" | "customer";
 
-/** Cor de cada situação na linha: faixa à esquerda e fundo leve, além do texto no seletor. */
-const ROW_TONE: Record<OrderStatus, { stripe: string; tint: string }> = {
-  pending: { stripe: "var(--color-blade-mustard)", tint: "color-mix(in srgb, var(--color-blade-mustard) 9%, transparent)" },
-  paid: { stripe: "var(--color-blade-plum)", tint: "color-mix(in srgb, var(--color-blade-plum) 7%, transparent)" },
-  in_production: { stripe: "var(--color-blade-rust)", tint: "color-mix(in srgb, var(--color-blade-rust) 9%, transparent)" },
-  ready_for_pickup: { stripe: "var(--color-success)", tint: "color-mix(in srgb, var(--color-success) 9%, transparent)" },
-  shipped: { stripe: "var(--color-blade-teal)", tint: "color-mix(in srgb, var(--color-blade-teal) 8%, transparent)" },
-  delivered: { stripe: "var(--color-action)", tint: "color-mix(in srgb, var(--color-action) 9%, transparent)" },
-  cancelled: { stripe: "var(--color-danger)", tint: "color-mix(in srgb, var(--color-danger) 7%, transparent)" },
+/** Cor de cada situação na linha: faixa à esquerda e fundo da mesma cor, além do texto no seletor. */
+const STATUS_COLOR: Record<OrderStatus, string> = {
+  pending: "#f2b705", // amarelo
+  paid: "#9b59d0", // roxo
+  in_production: "#f0801a", // laranja
+  ready_for_pickup: "#2eaa5a", // verde
+  shipped: "#13a3b8", // azul-petróleo
+  delivered: "#2f6fde", // azul
+  cancelled: "#e0352b", // vermelho
 };
+const ROW_TONE = Object.fromEntries(
+  (Object.keys(STATUS_COLOR) as OrderStatus[]).map((status) => [
+    status,
+    { stripe: STATUS_COLOR[status], tint: `color-mix(in srgb, ${STATUS_COLOR[status]} 18%, white)` },
+  ]),
+) as Record<OrderStatus, { stripe: string; tint: string }>;
 const STATUSES = Object.keys(ORDER_STATUS_LABEL) as OrderStatus[];
 
 /**
