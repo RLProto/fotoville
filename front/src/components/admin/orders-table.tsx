@@ -254,7 +254,6 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                     <Link href={`/admin/pedidos/${order.id}`} className="font-bold text-action underline underline-offset-2">
                       #{order.number}
                     </Link>
-                    {order.kind === "package" && <span className="block text-xs text-ink-2">Pacote</span>}
                   </td>
                   <td className="px-3 py-3 tabular-nums">{formatDate(order.created_at)}</td>
                   <td className="max-w-[14rem] truncate px-3 py-3" title={order.customer?.email}>
