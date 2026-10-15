@@ -2,6 +2,7 @@ import { CaretLeftIcon } from "@phosphor-icons/react/ssr";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { OrderControls } from "@/components/admin/order-controls";
+import { OrderHistory, type OrderEvent } from "@/components/admin/order-history";
 import { PhotoDownloads } from "@/components/admin/photo-downloads";
 import { StatusBadge } from "@/components/order-status";
 import { loadOrderDownload } from "@/lib/admin-orders";
@@ -15,9 +16,10 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
 
   const { id } = await params;
   const admin = createAdminClient();
-  const [{ data: orderData }, { data: items }] = await Promise.all([
+  const [{ data: orderData }, { data: items }, { data: eventData }] = await Promise.all([
     admin.from("orders").select("*").eq("id", id).maybeSingle(),
     admin.from("order_items").select("*").eq("order_id", id),
+    admin.from("order_events").select("status, created_at").eq("order_id", id).order("created_at"),
   ]);
   if (!orderData) notFound();
 
@@ -42,9 +44,17 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
         {order.paid_at && `, pago em ${formatDate(order.paid_at)}${order.payment_method ? ` (${order.payment_method})` : ""}`}
       </p>
 
-      <section className="card mt-6 p-5" aria-label="Atualizar pedido">
-        <OrderControls orderId={order.id} status={order.status} trackingCode={order.tracking_code} />
-      </section>
+      <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_20rem]">
+        <section className="card p-5" aria-label="Atualizar pedido">
+          <OrderControls orderId={order.id} status={order.status} trackingCode={order.tracking_code} />
+        </section>
+        <section className="card p-5" aria-labelledby="historico">
+          <h2 id="historico" className="mb-3 text-lg font-bold">
+            Linha do tempo
+          </h2>
+          <OrderHistory order={order} events={(eventData ?? []) as OrderEvent[]} />
+        </section>
+      </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <section className="card p-5" aria-labelledby="cliente">

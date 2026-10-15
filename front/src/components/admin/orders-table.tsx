@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleNotchIcon, FoldersIcon, MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
+import { ArrowSquareOutIcon, CircleNotchIcon, FoldersIcon, MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useSyncExternalStore } from "react";
@@ -160,11 +160,16 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
           disabled={busy !== null || !canPickFolder || chosen.length === 0}
           onClick={() => downloadMany(chosen)}
         >
-          {busy === "many" ? <CircleNotchIcon size={18} className="spinner" aria-hidden /> : <FoldersIcon size={18} aria-hidden />}
+          {busy === "many" ? (
+            <CircleNotchIcon size={18} className="spinner" aria-hidden />
+          ) : (
+            <FoldersIcon size={18} aria-hidden />
+          )}
           Baixar selecionados ({chosen.length})
         </button>
         <p aria-live="polite" className="min-h-5 text-sm font-semibold">
-          {message ?? (canPickFolder ? null : "Para baixar em pastas, abra o painel no Chrome ou no Edge do computador.")}
+          {message ??
+            (canPickFolder ? null : "Para baixar em pastas, abra o painel no Chrome ou no Edge do computador.")}
         </p>
       </div>
 
@@ -251,7 +256,10 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                     />
                   </td>
                   <td className="px-3 py-3">
-                    <Link href={`/admin/pedidos/${order.id}`} className="font-bold text-action underline underline-offset-2">
+                    <Link
+                      href={`/admin/pedidos/${order.id}`}
+                      className="font-bold text-action underline underline-offset-2"
+                    >
                       #{order.number}
                     </Link>
                   </td>
@@ -259,7 +267,9 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                   <td className="max-w-[14rem] truncate px-3 py-3" title={order.customer?.email}>
                     {order.customer?.name || order.customer?.email || "Sem nome"}
                   </td>
-                  <td className="px-3 py-3">{order.shipping_label ?? (order.kind === "package" ? "Sem entrega" : "A definir")}</td>
+                  <td className="px-3 py-3">
+                    {order.shipping_label ?? (order.kind === "package" ? "Sem entrega" : "A definir")}
+                  </td>
                   <td className="px-3 py-3 font-semibold tabular-nums">{formatBRL(order.total_cents)}</td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
@@ -300,22 +310,32 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                     {progress[order.id] && <span className="block tabular-nums text-ink-2">{progress[order.id]}</span>}
                   </td>
                   <td className="px-3 py-3">
-                    {pick && (
-                      <button
-                        type="button"
-                        className="btn btn-outline btn-sm whitespace-nowrap"
-                        disabled={busy !== null || !canPickFolder}
-                        onClick={() => downloadMany([order])}
-                        aria-label={`Baixar pedido ${order.number} em pastas`}
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/admin/pedidos/${order.id}`}
+                        className="btn btn-ghost btn-sm whitespace-nowrap"
+                        aria-label={`Detalhes do pedido ${order.number}`}
                       >
-                        {busy === order.id ? (
-                          <CircleNotchIcon size={16} className="spinner" aria-hidden />
-                        ) : (
-                          <FoldersIcon size={16} aria-hidden />
-                        )}
-                        Baixar
-                      </button>
-                    )}
+                        <ArrowSquareOutIcon size={16} aria-hidden />
+                        Detalhes
+                      </Link>
+                      {pick && (
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-sm whitespace-nowrap"
+                          disabled={busy !== null || !canPickFolder}
+                          onClick={() => downloadMany([order])}
+                          aria-label={`Baixar pedido ${order.number} em pastas`}
+                        >
+                          {busy === order.id ? (
+                            <CircleNotchIcon size={16} className="spinner" aria-hidden />
+                          ) : (
+                            <FoldersIcon size={16} aria-hidden />
+                          )}
+                          Baixar
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
