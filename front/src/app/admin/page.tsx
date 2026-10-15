@@ -46,9 +46,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       {orders.length === 0 ? (
         <p className="card mt-6 p-8 text-center text-lg text-ink-2">Nenhum pedido neste filtro.</p>
       ) : (
-        <div className="wide">
-          <OrdersTable orders={orders} />
-        </div>
+        <OrdersTable orders={orders} />
       )}
     </>
   );

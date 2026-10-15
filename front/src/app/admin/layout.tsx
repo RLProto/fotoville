@@ -18,7 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .eq("env", "production");
 
   return (
-    <div className="container-page py-8">
+    <div className="mx-auto w-full max-w-[1500px] px-4 py-8 sm:px-6">
       <AdminNav openErrors={count ?? 0} />
       <div className="mt-8">{children}</div>
     </div>
