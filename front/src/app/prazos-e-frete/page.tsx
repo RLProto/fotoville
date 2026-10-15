@@ -4,13 +4,14 @@ import { site, whatsappLink } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Prazos e frete",
-  description: `Produção em até ${site.productionDays} dias úteis, entrega pelos Correios em todo o Brasil ou retirada grátis em Joinville.`,
+  description: `Produção em até ${site.productionDays} dias úteis, entrega pelos Correios em todo o Brasil, motoboy em Joinville ou retirada grátis na loja.`,
 };
 
 export default function PrazosPage() {
   const rows = [
     { label: "Produção", value: `Até ${site.productionDays} dias úteis`, note: "Depois do pagamento aprovado." },
     { label: "Entrega", value: "Correios, PAC ou SEDEX", note: "Prazo e valor aparecem antes de pagar." },
+    { label: "Motoboy", value: "Em Joinville", note: "Nos principais bairros. O valor aparece ao informar o endereço." },
     {
       label: "Retirada",
       value: "Grátis na loja",

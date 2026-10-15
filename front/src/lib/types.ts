@@ -101,7 +101,7 @@ export type Customer = { name: string; cpf: string; whatsapp: string; email: str
 export type Parcel = { weight_g: number; length_cm: number; width_cm: number; height_cm: number };
 
 export type ShippingOption = {
-  service: "pac" | "sedex" | "retirada";
+  service: "pac" | "sedex" | "motoboy" | "retirada";
   label: string;
   price_cents: number;
   /** Dias úteis de transporte, sem contar a produção. */

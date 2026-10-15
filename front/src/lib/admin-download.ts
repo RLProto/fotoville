@@ -121,7 +121,7 @@ export function labelsFor({ order, photos, products }: OrderDownload): LabelData
       : [
           `${address.street}, ${address.number}${address.complement ? ` - ${address.complement}` : ""}`,
           `${address.district}, ${address.city}/${address.state}`,
-          `CEP ${formatCep(address.cep)}`,
+          `CEP ${formatCep(address.cep)}${order.shipping_service === "motoboy" ? "  -  MOTOBOY" : ""}`,
         ];
   if (customer?.whatsapp) lines.push(`WhatsApp ${formatPhone(customer.whatsapp)}`);
 

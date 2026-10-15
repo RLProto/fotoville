@@ -18,7 +18,7 @@ const schema = z.object({
     cpf: z.string(),
     whatsapp: z.string(),
   }),
-  service: z.enum(["pac", "sedex", "retirada"]),
+  service: z.enum(["pac", "sedex", "motoboy", "retirada"]),
   address: z
     .object({
       cep: z.string(),
@@ -67,8 +67,14 @@ export async function POST(request: Request) {
   let shipping = { service: "retirada", label: "Retirar na loja", price_cents: 0, days: 0, estimated: false };
   if (delivery) {
     try {
-      const option = (await quoteShipping(cep, parcel)).find((o) => o.service === input.service);
-      if (!option) return fail("Esta opção de entrega não está disponível para este CEP. Escolha outra.");
+      const option = (await quoteShipping(cep, parcel, input.address)).find((o) => o.service === input.service);
+      if (!option) {
+        return fail(
+          input.service === "motoboy"
+            ? "O motoboy não atende este bairro. Confira o bairro ou escolha outra entrega."
+            : "Esta opção de entrega não está disponível para este CEP. Escolha outra.",
+        );
+      }
       shipping = option;
     } catch (err) {
       return serverFail("frete", "Não foi possível calcular o frete agora. Tente de novo em instantes.", err, 502, { cep });

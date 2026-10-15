@@ -87,6 +87,23 @@ export function CheckoutForm({
   /** Identifica a cotação mais recente, para descartar respostas de um CEP já trocado. */
   const quoteSeq = useRef(0);
 
+  /** Cota o frete para o CEP, com cidade e bairro (o motoboy depende do bairro). */
+  function quote(digits: string, place: { district: string; city: string }, seq: number) {
+    setOptions(null);
+    setQuoteError(null);
+    setQuoting(true);
+    post<{ options: ShippingOption[] }>("/api/frete", { cep: digits, district: place.district, city: place.city })
+      .then(({ options }) => {
+        if (seq !== quoteSeq.current) return;
+        const delivery = options.filter((o) => o.service !== "retirada");
+        setOptions(delivery);
+        // Mantém a escolha anterior quando ela continua disponível
+        setService((s) => (s && delivery.some((o) => o.service === s) ? s : (delivery[0]?.service ?? null)));
+      })
+      .catch((err) => seq === quoteSeq.current && setQuoteError(err.message))
+      .finally(() => seq === quoteSeq.current && setQuoting(false));
+  }
+
   // CEP completo: preenche o endereço (ViaCEP) e cota o frete para o carrinho.
   function onCepChange(value: string) {
     const cep = formatCep(value);
@@ -102,29 +119,39 @@ export function CheckoutForm({
     setQuoting(digits.length === 8);
     if (digits.length !== 8) return;
 
+    // O bairro vem do ViaCEP antes da cotação; sem ViaCEP, cota só pelo CEP e o cliente digita o endereço.
     fetch(`https://viacep.com.br/ws/${digits}/json/`)
       .then((res) => res.json())
       .then((data) => {
-        if (seq !== quoteSeq.current || data.erro) return;
-        setAddress((a) => ({
-          ...a,
-          street: data.logradouro || a.street,
-          district: data.bairro || a.district,
-          city: data.localidade || a.city,
-          state: data.uf || a.state,
-        }));
-      })
-      .catch(() => {}); // sem ViaCEP o cliente digita o endereço
-
-    post<{ options: ShippingOption[] }>("/api/frete", { cep: digits })
-      .then(({ options }) => {
         if (seq !== quoteSeq.current) return;
-        const delivery = options.filter((o) => o.service !== "retirada");
-        setOptions(delivery);
-        setService(delivery[0]?.service ?? null);
+        const found = data.erro
+          ? null
+          : { street: data.logradouro || "", district: data.bairro || "", city: data.localidade || "", state: data.uf || "" };
+        let place = { district: address.district, city: address.city };
+        setAddress((a) => {
+          const next = found
+            ? {
+                ...a,
+                street: found.street || a.street,
+                district: found.district || a.district,
+                city: found.city || a.city,
+                state: found.state || a.state,
+              }
+            : a;
+          place = { district: next.district, city: next.city };
+          return next;
+        });
+        quote(digits, place, seq);
       })
-      .catch((err) => seq === quoteSeq.current && setQuoteError(err.message))
-      .finally(() => seq === quoteSeq.current && setQuoting(false));
+      .catch(() => seq === quoteSeq.current && quote(digits, { district: address.district, city: address.city }, seq));
+  }
+
+  /** Bairro ou cidade mudados à mão: cota de novo, porque o motoboy depende deles. */
+  const requoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function onPlaceChange(next: { district: string; city: string }) {
+    if (cepDigits.length !== 8) return;
+    if (requoteTimer.current) clearTimeout(requoteTimer.current);
+    requoteTimer.current = setTimeout(() => quote(cepDigits, next, ++quoteSeq.current), 600);
   }
 
   const selected = mode === "retirada" ? null : (options?.find((o) => o.service === service) ?? null);
@@ -246,7 +273,7 @@ export function CheckoutForm({
           <div className="clear-both grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Como você quer receber">
             {(
               [
-                { value: "entrega", title: "Receber em casa", text: "Correios, PAC ou SEDEX", Icon: TruckIcon },
+                { value: "entrega", title: "Receber em casa", text: "Correios ou motoboy em Joinville", Icon: TruckIcon },
                 { value: "retirada", title: "Retirar na loja", text: "Grátis, em Joinville", Icon: StorefrontIcon },
               ] as const
             ).map(({ value, title, text, Icon }) => (
@@ -389,6 +416,7 @@ export function CheckoutForm({
                         onChange={(e) => {
                           setAddress({ ...address, district: e.target.value });
                           clear("district");
+                          onPlaceChange({ district: e.target.value, city: address.city });
                         }}
                       />
                     )}

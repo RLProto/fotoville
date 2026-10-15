@@ -5,13 +5,21 @@ import { site } from "../site";
 import type { Parcel, ShippingOption } from "../types";
 import { correiosQuote, hasCorreios } from "./correios";
 import { estimateFromTable } from "./estimate-table";
+import { loadMotoboyZones, motoboyOption } from "./motoboy";
 
 const ORIGIN_CEP = onlyDigits(process.env.SHIPPING_ORIGIN_CEP ?? site.address.cep);
 
 const LABELS = { pac: "Correios PAC", sedex: "Correios SEDEX" } as const;
 
-/** Opções de entrega para um CEP. Sempre inclui retirada na loja. */
-export async function quoteShipping(cepDestino: string, parcel: Parcel): Promise<ShippingOption[]> {
+/**
+ * Opções de entrega para um CEP. Sempre inclui retirada na loja. Com cidade e bairro, inclui
+ * motoboy quando o bairro está na lista do painel (só em Joinville).
+ */
+export async function quoteShipping(
+  cepDestino: string,
+  parcel: Parcel,
+  place: { district?: string | null; city?: string | null } = {},
+): Promise<ShippingOption[]> {
   const cep = onlyDigits(cepDestino);
   if (cep.length !== 8) throw new Error("CEP inválido");
 
@@ -35,6 +43,9 @@ export async function quoteShipping(cepDestino: string, parcel: Parcel): Promise
       return { service, label: LABELS[service], ...estimateFromTable(service, cep, parcel), estimated: true };
     }),
   );
+
+  const motoboy = motoboyOption(place, await loadMotoboyZones());
+  if (motoboy) options.unshift(motoboy);
 
   options.push({
     service: "retirada",

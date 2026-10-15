@@ -31,7 +31,7 @@ export function OrderTimeline({ order }: { order: Pick<Order, "status" | "kind" 
           { status: "in_production", label: "Em produção" },
           order.shipping_service === "retirada"
             ? { status: "ready_for_pickup", label: "Pronto para retirada" }
-            : { status: "shipped", label: "Enviado" },
+            : { status: "shipped", label: order.shipping_service === "motoboy" ? "Saiu com o motoboy" : "Enviado" },
           { status: "delivered", label: order.shipping_service === "retirada" ? "Retirado" : "Entregue" },
         ];
 

@@ -7,9 +7,13 @@ import { onlyDigits } from "@/lib/format";
 import { quoteShipping } from "@/lib/shipping";
 import { estimateParcel } from "@/lib/shipping/parcel";
 
-const schema = z.object({ cep: z.string() });
+const schema = z.object({
+  cep: z.string(),
+  district: z.string().max(80).optional(),
+  city: z.string().max(80).optional(),
+});
 
-/** Cota o frete do carrinho atual para um CEP. Peso e volume são estimados pelo pedido. */
+/** Cota o frete do carrinho atual para um CEP (e bairro, para o motoboy). Peso e volume são estimados pelo pedido. */
 export async function POST(request: Request) {
   const auth = await requireUser();
   if ("error" in auth) return auth.error;
@@ -24,7 +28,8 @@ export async function POST(request: Request) {
 
   const parcel = estimateParcel(cart.parcelItems);
   try {
-    const options = await quoteShipping(cep, parcel);
+    const place = parsed.success ? { district: parsed.data.district, city: parsed.data.city } : {};
+    const options = await quoteShipping(cep, parcel, place);
     return NextResponse.json({ options, parcel });
   } catch (err) {
     return serverFail("frete", "Não foi possível calcular o frete agora. Tente de novo em instantes.", err, 502, { cep });

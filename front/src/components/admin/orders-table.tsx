@@ -1,9 +1,9 @@
 "use client";
 
-import { CircleNotchIcon, FoldersIcon } from "@phosphor-icons/react";
+import { CircleNotchIcon, FoldersIcon, MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import {
   fetchOrderDownload,
   hasFolderPicker,
@@ -18,14 +18,37 @@ import { reportError } from "@/lib/report-error";
 import { ORDER_STATUS_LABEL, type Order, type OrderStatus } from "@/lib/types";
 
 const subscribeNoop = () => () => {};
+type SearchKind = "number" | "customer";
 const STATUSES = Object.keys(ORDER_STATUS_LABEL) as OrderStatus[];
 
 /**
  * Lista de pedidos do painel: situação editável na linha, download em pastas por pedido ou em lote
  * (um seletor de pasta para todos), e o estado das imagens no bucket.
  */
-export function OrdersTable({ orders }: { orders: Order[] }) {
+export function OrdersTable({ orders: all }: { orders: Order[] }) {
   const router = useRouter();
+  // Busca pelo cabeçalho da coluna: número do pedido ou nome/e-mail do cliente, sem recarregar
+  const [searching, setSearching] = useState<SearchKind | null>(null);
+  const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  const q = query.trim().toLowerCase();
+  const orders =
+    !searching || !q
+      ? all
+      : all.filter((o) =>
+          searching === "number"
+            ? String(o.number).startsWith(q.replace("#", ""))
+            : `${o.customer?.name ?? ""} ${o.customer?.email ?? ""}`.toLowerCase().includes(q),
+        );
+  function openSearch(kind: SearchKind) {
+    setSearching(kind);
+    setQuery("");
+    setTimeout(() => searchRef.current?.focus(), 0);
+  }
+  function closeSearch() {
+    setSearching(null);
+    setQuery("");
+  }
   const canPickFolder = useSyncExternalStore(subscribeNoop, hasFolderPicker, () => true);
 
   const [pending, setPending] = useState<Record<string, OrderStatus>>({});
@@ -143,7 +166,32 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                   onChange={toggleAll}
                 />
               </th>
-              {["Pedido", "Data", "Cliente", "Entrega", "Total", "Situação", "Imagens", ""].map((h, i) => (
+              <SearchHeader
+                label="Pedido"
+                kind="number"
+                placeholder="Nº"
+                searching={searching}
+                query={query}
+                inputRef={searchRef}
+                onOpen={openSearch}
+                onChange={setQuery}
+                onClose={closeSearch}
+              />
+              <th scope="col" className="px-3 py-3 font-bold">
+                Data
+              </th>
+              <SearchHeader
+                label="Cliente"
+                kind="customer"
+                placeholder="Nome ou e-mail"
+                searching={searching}
+                query={query}
+                inputRef={searchRef}
+                onOpen={openSearch}
+                onChange={setQuery}
+                onClose={closeSearch}
+              />
+              {["Entrega", "Total", "Situação", "Imagens", ""].map((h, i) => (
                 <th key={i} scope="col" className="px-3 py-3 font-bold">
                   {h}
                 </th>
@@ -151,6 +199,13 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
             </tr>
           </thead>
           <tbody>
+            {orders.length === 0 && (
+              <tr>
+                <td colSpan={9} className="px-3 py-8 text-center text-ink-2">
+                  Nenhum pedido para &ldquo;{query.trim()}&rdquo;.
+                </td>
+              </tr>
+            )}
             {orders.map((order) => {
               const pick = canDownload(order);
               const value = pending[order.id] ?? order.status;
@@ -252,5 +307,72 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
         Baixar um pedido pago passa ele para em produção. Pendentes e cancelados não liberam download.
       </p>
     </div>
+  );
+}
+
+/** Cabeçalho de coluna com lupa: clicado, vira um campo de busca na própria coluna. */
+function SearchHeader({
+  label,
+  kind,
+  placeholder,
+  searching,
+  query,
+  inputRef,
+  onOpen,
+  onChange,
+  onClose,
+}: {
+  label: string;
+  kind: SearchKind;
+  placeholder: string;
+  searching: SearchKind | null;
+  query: string;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onOpen: (kind: SearchKind) => void;
+  onChange: (value: string) => void;
+  onClose: () => void;
+}) {
+  const open = searching === kind;
+  return (
+    <th scope="col" className="px-3 py-2 font-bold">
+      {open ? (
+        <div className="relative">
+          <MagnifyingGlassIcon
+            size={16}
+            className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-2"
+            aria-hidden
+          />
+          <input
+            ref={inputRef}
+            type="text"
+            aria-label={`Buscar por ${label.toLowerCase()}`}
+            placeholder={placeholder}
+            value={query}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => e.key === "Escape" && onClose()}
+            className="field-input h-9 min-h-9 w-44 py-0 pr-9 pl-8 text-sm font-normal"
+            autoComplete="off"
+          />
+          <button
+            type="button"
+            aria-label="Fechar busca"
+            onClick={onClose}
+            className="absolute top-1/2 right-1 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-control hover:bg-action-soft"
+          >
+            <XIcon size={14} aria-hidden />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => onOpen(kind)}
+          aria-label={`Buscar por ${label.toLowerCase()}`}
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-control px-1 font-bold hover:text-action"
+        >
+          {label}
+          <MagnifyingGlassIcon size={15} className="text-ink-2" aria-hidden />
+        </button>
+      )}
+    </th>
   );
 }
