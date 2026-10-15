@@ -105,7 +105,7 @@ export function NewCouponForm() {
             />
             <span className="font-semibold">%</span>
           </div>
-          <p className="field-hint">Sobre as fotos, sem o frete.</p>
+          <p className="field-hint">Sobre o pedido, frete incluído.</p>
         </div>
         <div className="sm:col-span-2">
           <label htmlFor="cupom-descricao" className="field-label">

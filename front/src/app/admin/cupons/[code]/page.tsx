@@ -39,7 +39,7 @@ export default async function AdminCupomPage({ params }: { params: Promise<{ cod
   const given = valid.reduce((sum, u) => sum + u.discount_cents, 0);
 
   const facts: [string, string][] = [
-    ["Desconto", `${coupon.percent_off}% nas fotos`],
+    ["Desconto", `${coupon.percent_off}% no pedido, frete incluído`],
     ["Pedido mínimo", coupon.min_order_cents ? `${formatBRL(coupon.min_order_cents)} em fotos` : "Sem mínimo"],
     ["Válido até", coupon.expires_at ? formatDate(coupon.expires_at) : "Sem validade"],
     ["Usos", coupon.max_uses === null ? `${valid.length}, sem limite` : `${valid.length} de ${coupon.max_uses}`],

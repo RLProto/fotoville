@@ -2,11 +2,24 @@ import "server-only";
 import { randomInt } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CartLine } from "./cart";
+import { percentDiscount } from "./coupon-rules";
 import { formatBRL, formatDate, plural } from "./format";
 import type { Coupon } from "./types";
 
+/**
+ * Cupom que vale. `discount_cents` do cupom percentual cobre só as fotos: o desconto final inclui o frete,
+ * que o checkout soma com `percent_off` quando a entrega está escolhida.
+ */
 export type CouponResult =
-  | { ok: true; code: string; kind: Coupon["kind"]; discount_cents: number; credits: number; message: string }
+  | {
+      ok: true;
+      code: string;
+      kind: Coupon["kind"];
+      discount_cents: number;
+      percent_off: number | null;
+      credits: number;
+      message: string;
+    }
   | { ok: false; message: string };
 
 export const normalizeCode = (code: string) => code.trim().toUpperCase().replace(/\s+/g, "");
@@ -53,14 +66,15 @@ export async function previewCoupon(
     const { data: problem, error } = await admin.rpc("coupon_problem", { p_code: code, p_user: userId, p_subtotal: subtotal });
     if (error) throw error;
     if (problem) return { ok: false, message: couponProblemMessage(problem as CouponProblem, coupon) };
-    const discount_cents = Math.floor((subtotal * (coupon.percent_off ?? 0)) / 100);
+    const percent_off = coupon.percent_off ?? 0;
     return {
       ok: true,
       code,
       kind: "percent",
-      discount_cents,
+      discount_cents: percentDiscount(subtotal, percent_off),
+      percent_off,
       credits: 0,
-      message: `${coupon.percent_off}% de desconto nas fotos.`,
+      message: `${percent_off}% de desconto no pedido, frete incluído.`,
     };
   }
 
@@ -91,6 +105,7 @@ export async function previewCoupon(
     code,
     kind: "credits",
     discount_cents,
+    percent_off: null,
     credits,
     message: `Cobre ${plural(credits, "foto", "fotos")}. Saldo depois deste pedido: ${plural(remaining, "foto", "fotos")}.`,
   };

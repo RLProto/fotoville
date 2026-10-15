@@ -8,11 +8,14 @@ export const COUPON_CODE_MAX = 20;
 export function cleanCouponCode(text: string) {
   return text
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/\p{M}/gu, "") // acentos soltos pelo NFD
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "")
     .slice(0, COUPON_CODE_MAX);
 }
+
+/** Desconto do cupom percentual sobre o pedido inteiro (fotos e frete), arredondado para baixo. */
+export const percentDiscount = (orderCents: number, percent: number) => Math.floor((orderCents * percent) / 100);
 
 /** Validade escolhida no painel (dia) vira o fim desse dia em Brasília. */
 export const endOfDayBrasilia = (day: string) => `${day}T23:59:59.999-03:00`;

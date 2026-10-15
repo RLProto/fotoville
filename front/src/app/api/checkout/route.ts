@@ -3,6 +3,7 @@ import { z } from "zod";
 import { fail, reportServerError, requireUser, serverFail } from "@/lib/api";
 import { belowMinimum, loadCartPhotos, summarizeCart } from "@/lib/cart";
 import { getCustomerPriceProfile, getProducts } from "@/lib/catalog";
+import { percentDiscount } from "@/lib/coupon-rules";
 import { type CouponProblem, couponProblemMessage, previewCoupon } from "@/lib/coupons";
 import { isValidCpf, onlyDigits } from "@/lib/format";
 import { createPreference, hasMercadoPago } from "@/lib/mercadopago";
@@ -91,7 +92,11 @@ export async function POST(request: Request) {
       return serverFail("checkout", "Não foi possível conferir o cupom agora. Tente de novo.", err, 500, { etapa: "conferir cupom" });
     }
     if (!result.ok) return fail(result.message, 422);
-    discount_cents = Math.min(result.discount_cents, cart.subtotal_cents);
+    // Cupom percentual desconta o pedido inteiro, frete incluído; o de créditos cobre só fotos
+    discount_cents =
+      result.percent_off !== null
+        ? percentDiscount(cart.subtotal_cents + shipping.price_cents, result.percent_off)
+        : Math.min(result.discount_cents, cart.subtotal_cents);
     coupon = { code: result.code, credits: result.credits, kind: result.kind };
   }
 
@@ -191,7 +196,7 @@ export async function POST(request: Request) {
 
   const orderUrl = `/pedido/${order.id}`;
 
-  // Pedido coberto inteiro pelo cupom e com retirada: não há o que pagar.
+  // Pedido coberto inteiro pelo cupom: não há o que pagar.
   if (total_cents === 0) {
     await markOrderPaid(admin, order.id, { id: null, method: "cupom" });
     return NextResponse.json({ orderId: order.id, redirect: orderUrl });

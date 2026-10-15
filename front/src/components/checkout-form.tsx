@@ -2,13 +2,14 @@
 
 import { CircleNotchIcon, LockIcon, StorefrontIcon, TruckIcon } from "@phosphor-icons/react";
 import { useId, useEffect, useRef, useState } from "react";
+import { percentDiscount } from "@/lib/coupon-rules";
 import { formatBRL, formatCep, formatCpf, formatPhone, isValidCpf, onlyDigits } from "@/lib/format";
 import { reportError } from "@/lib/report-error";
 import { whatsappLink } from "@/lib/site";
 import type { ShippingOption } from "@/lib/types";
 
 type Line = { key: string; label: string; total_cents: number };
-type Coupon = { code: string; discount_cents: number; message: string };
+type Coupon = { code: string; discount_cents: number; percent_off: number | null; message: string };
 type Errors = Partial<Record<string, string>>;
 
 const UFS = "AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split(" ");
@@ -161,7 +162,12 @@ export function CheckoutForm({
 
   const selected = mode === "retirada" ? null : (options?.find((o) => o.service === service) ?? null);
   const shippingCents = mode === "retirada" ? 0 : (selected?.price_cents ?? null);
-  const discountCents = Math.min(coupon?.discount_cents ?? 0, subtotalCents);
+  // Cupom percentual desconta o pedido inteiro, frete incluído; o de créditos cobre só fotos
+  const discountCents = !coupon
+    ? 0
+    : coupon.percent_off !== null
+      ? percentDiscount(subtotalCents + (shippingCents ?? 0), coupon.percent_off)
+      : Math.min(coupon.discount_cents, subtotalCents);
   const totalCents = subtotalCents - discountCents + (shippingCents ?? 0);
 
   async function applyCoupon() {
@@ -476,18 +482,18 @@ export function CheckoutForm({
               <dd className="font-semibold tabular-nums">{formatBRL(line.total_cents)}</dd>
             </div>
           ))}
-          {discountCents > 0 && (
-            <div className="flex flex-wrap justify-between gap-x-4 text-success">
-              <dt className="font-semibold">Cupom</dt>
-              <dd className="font-semibold tabular-nums">− {formatBRL(discountCents)}</dd>
-            </div>
-          )}
           <div className="flex flex-wrap justify-between gap-x-4">
             <dt className="text-ink/85">Frete</dt>
             <dd className="font-semibold tabular-nums">
               {shippingCents === null ? "Informe o CEP" : shippingCents === 0 ? "Grátis" : formatBRL(shippingCents)}
             </dd>
           </div>
+          {discountCents > 0 && (
+            <div className="flex flex-wrap justify-between gap-x-4 text-success">
+              <dt className="font-semibold">Cupom</dt>
+              <dd className="font-semibold tabular-nums">− {formatBRL(discountCents)}</dd>
+            </div>
+          )}
           <div className="flex flex-wrap justify-between gap-x-4 border-t border-rule pt-3 text-xl">
             {/* Sem frete calculado, a soma ainda não é o total */}
             <dt className="font-bold">{shippingCents === null ? "Subtotal" : "Total"}</dt>
