@@ -324,9 +324,6 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
           </tbody>
         </table>
       </div>
-      <p className="mt-2 text-sm text-ink-2">
-        Baixar um pedido pago passa ele para em produção. Pendentes e cancelados não liberam download.
-      </p>
     </div>
   );
 }
