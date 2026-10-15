@@ -48,7 +48,7 @@ export const getProfile = cache(async () => {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, whatsapp, cpf, is_admin")
+    .select("id, full_name, whatsapp, cpf, is_admin, is_super_admin")
     .eq("id", user.id)
     .maybeSingle();
   return data as {
@@ -57,5 +57,7 @@ export const getProfile = cache(async () => {
     whatsapp: string | null;
     cpf: string | null;
     is_admin: boolean;
+    /** Vê a aba Erros do painel. */
+    is_super_admin: boolean;
   } | null;
 });

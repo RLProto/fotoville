@@ -44,7 +44,7 @@ function device(ua: string | null) {
 }
 
 export default async function ErrorsPage({ searchParams }: { searchParams: Promise<{ filtro?: string }> }) {
-  if (!(await getProfile())?.is_admin) notFound();
+  if (!(await getProfile())?.is_super_admin) notFound();
 
   const asked = (await searchParams).filtro;
   const filter: Filter = asked === "todos" || asked === "teste" ? asked : "abertos";

@@ -14,13 +14,14 @@ const ITEMS = [
   { href: "/admin/erros", label: "Erros", match: (p: string) => p.startsWith("/admin/erros") },
 ];
 
-/** Abas do painel da loja, com a contagem de erros em aberto no site. */
-export function AdminNav({ openErrors }: { openErrors: number }) {
+/** Abas do painel da loja. `openErrors`: erros em aberto no site, ou null para quem não vê a aba Erros. */
+export function AdminNav({ openErrors }: { openErrors: number | null }) {
   const pathname = usePathname();
+  const items = openErrors === null ? ITEMS.filter((item) => item.href !== "/admin/erros") : ITEMS;
   return (
     <nav aria-label="Painel da loja" className="-mx-4 overflow-x-auto border-b border-rule px-4 sm:mx-0 sm:px-0">
       <ul className="flex min-w-max gap-1">
-        {ITEMS.map((item) => {
+        {items.map((item) => {
           const current = item.match(pathname);
           return (
             <li key={item.href}>
@@ -32,7 +33,7 @@ export function AdminNav({ openErrors }: { openErrors: number }) {
                 }`}
               >
                 {item.label}
-                {item.href === "/admin/erros" && openErrors > 0 && (
+                {item.href === "/admin/erros" && !!openErrors && (
                   <span className="badge bg-danger-soft text-danger tabular-nums">{openErrors}</span>
                 )}
               </Link>

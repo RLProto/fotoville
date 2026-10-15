@@ -50,10 +50,14 @@ export async function requireUser() {
   return { user, supabase: await createClient() } as const;
 }
 
-export async function requireAdmin() {
+export async function requireAdmin({ superAdmin = false } = {}) {
   const auth = await requireUser();
   if ("error" in auth) return auth;
-  const { data } = await auth.supabase.from("profiles").select("is_admin").eq("id", auth.user.id).maybeSingle();
-  if (!data?.is_admin) return { error: fail("Acesso restrito.", 403) } as const;
+  const { data } = await auth.supabase
+    .from("profiles")
+    .select("is_admin, is_super_admin")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+  if (!data?.is_admin || (superAdmin && !data.is_super_admin)) return { error: fail("Acesso restrito.", 403) } as const;
   return auth;
 }

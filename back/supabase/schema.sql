@@ -14,6 +14,8 @@ create table if not exists public.profiles (
   is_admin boolean not null default false,
   created_at timestamptz not null default now()
 );
+-- Super admin: vê a aba Erros do painel
+alter table public.profiles add column if not exists is_super_admin boolean not null default false;
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -314,3 +316,4 @@ create policy "cupons proprios" on public.coupons
 -- Para tornar alguém administrador (rode manualmente):
 -- update public.profiles set is_admin = true
 --  where id = (select id from auth.users where email = 'email@exemplo.com');
+-- Super admin (aba Erros): o mesmo, com is_admin = true, is_super_admin = true

@@ -10,7 +10,7 @@ const resolveSchema = z.object({
 
 /** Marca como resolvidas todas as ocorrências abertas de um erro (mesma área e mensagem). */
 export async function PATCH(request: Request) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin({ superAdmin: true });
   if ("error" in auth) return auth.error;
 
   const parsed = resolveSchema.safeParse(await request.json().catch(() => null));
