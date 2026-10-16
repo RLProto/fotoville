@@ -6,12 +6,13 @@ import { OrderSteps } from "@/components/order-steps";
 import { PrintPreview } from "@/components/print-preview";
 import { RemoveGroupButton } from "@/components/remove-group-button";
 import { loadCartPhotos, summarizeCart } from "@/lib/cart";
+import { cartCleanupEnabled, cartDeleteAfter, formatCartDay } from "@/lib/cart-retention";
 import { getProducts } from "@/lib/catalog";
 import { formatBRL, plural } from "@/lib/format";
 import { minCopies, nearTier, regularPrice, unitPrice } from "@/lib/pricing";
 import { whatsappLink } from "@/lib/site";
 import { withThumbUrls } from "@/lib/storage";
-import { createClient, getUser } from "@/lib/supabase/server";
+import { createAdminClient, createClient, getUser } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Carrinho" };
 
@@ -56,6 +57,7 @@ export default async function CarrinhoPage() {
   );
 
 
+  const savedUntil = cartCleanupEnabled ? await cartSavedUntil(user.id, photos.at(-1)!.created_at) : null;
   const blocked = groups.some((g) => g.missing > 0);
   const finish = (className: string) =>
     blocked ? (
@@ -157,6 +159,7 @@ export default async function CarrinhoPage() {
             </div>
           </dl>
           <p className="mt-3 text-sm text-ink-2">Frete e cupom na próxima etapa.</p>
+          {savedUntil && <p className="mt-1 text-sm text-ink-2">Fotos salvas até {formatCartDay(savedUntil)}.</p>}
           {finish("btn btn-accent btn-lg mt-5 w-full")}
           {blocked && <p className="mt-2 text-sm text-warning">Complete o mínimo de fotos para continuar.</p>}
           <p className="mt-4 border-t border-rule pt-3 text-center text-sm">
@@ -180,4 +183,15 @@ export default async function CarrinhoPage() {
       </div>
     </div>
   );
+}
+
+/** Prazo do carrinho: o do aviso já enviado, se houver, ou o contado da foto mais recente. */
+async function cartSavedUntil(userId: string, lastActivity: string) {
+  const { data } = await createAdminClient()
+    .from("cart_notices")
+    .select("delete_after")
+    .eq("user_id", userId)
+    .eq("last_activity", lastActivity)
+    .maybeSingle();
+  return data?.delete_after ?? cartDeleteAfter(lastActivity);
 }

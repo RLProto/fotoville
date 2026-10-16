@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { site } from "@/lib/site";
+import { CART_RETENTION_DAYS, cartCleanupEnabled } from "@/lib/cart-retention";
 
 export const metadata: Metadata = { title: "Política de privacidade" };
 
@@ -37,7 +38,7 @@ export default function PrivacidadePage() {
         <h2>Para que usamos</h2>
         <ul>
           <li>Produzir, enviar e acompanhar os seus pedidos.</li>
-          <li>Falar com você sobre o pedido, por e-mail ou WhatsApp.</li>
+          <li>Falar com você sobre o pedido e sobre as fotos guardadas no carrinho, por e-mail ou WhatsApp.</li>
           <li>Cumprir obrigações legais e fiscais.</li>
         </ul>
         <p>Não vendemos seus dados e não usamos suas fotos para nenhuma outra finalidade.</p>
@@ -60,7 +61,11 @@ export default function PrivacidadePage() {
         <h2>Suas fotos</h2>
         <p>
           As fotos ficam em armazenamento privado, acessível só por você e pela equipe que produz o pedido. Fotos
-          no carrinho podem ser apagadas por você a qualquer momento. Fotos de pedidos concluídos são mantidas
+          no carrinho podem ser apagadas por você a qualquer momento
+          {cartCleanupEnabled
+            ? ` e são apagadas ${CART_RETENTION_DAYS} dias depois da última enviada, com aviso pelo WhatsApp antes`
+            : ""}
+          . Fotos de pedidos concluídos são mantidas
           pelo tempo necessário para atender eventuais reimpressões e depois são excluídas.
         </p>
 

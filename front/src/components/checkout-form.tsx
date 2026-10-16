@@ -261,7 +261,7 @@ export function CheckoutForm({
                 />
               )}
             </Field>
-            <Field label="WhatsApp" name="whatsapp" error={errors.whatsapp} hint="Para avisos do pedido.">
+            <Field label="WhatsApp" name="whatsapp" error={errors.whatsapp} hint="Para avisos do pedido e do carrinho.">
               {(props) => (
                 <input
                   {...props}

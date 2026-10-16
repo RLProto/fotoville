@@ -36,3 +36,23 @@ Site de loja é uso comercial: o Vercel exige o plano **Pro**.
    ```
 
 Os endereços do site antigo (`/catalog/15`, `/user/login` etc.) já redirecionam para as páginas novas.
+
+## Carrinho esquecido (aviso pelo WhatsApp)
+
+As fotos ficam no carrinho por 30 dias desde a mais recente (`front/src/lib/cart-retention.ts`). Três dias antes,
+o job diário (`/api/cron/carrinho`, 10h de Brasília) avisa pelo WhatsApp; depois do prazo, apaga do bucket.
+Fica desligado até `CARRINHO_LIMPEZA=1`.
+
+1. **Vercel:** `CRON_SECRET` (qualquer texto longo). Sem ele o job não roda.
+2. **Meta:** conta Business verificada com o CNPJ, app com o produto WhatsApp e um número só para a API. Copie
+   `WHATSAPP_TOKEN` (usuário do sistema, permanente), `WHATSAPP_PHONE_NUMBER_ID` e `WHATSAPP_APP_SECRET`.
+3. **WhatsApp Manager > Modelos:** crie `carrinho_expira`, categoria **Utilidade**, idioma Português (BR):
+   - Corpo: `Fotoville: as fotos do seu carrinho ficam salvas até {{1}}. Depois dessa data, são apagadas.`
+     (exemplo de {{1}}: `20 de novembro`)
+   - Botões: URL `Ver carrinho` → `https://SEU-DOMINIO/carrinho`; resposta rápida `Parar avisos`.
+4. **Webhook:** `https://SEU-DOMINIO/api/webhooks/whatsapp`, token de verificação = `WHATSAPP_VERIFY_TOKEN`,
+   campo *messages*. "Parar avisos" desliga os avisos do cliente; falhas de entrega vão para `/admin/erros`.
+5. **Ligar:** `CARRINHO_LIMPEZA=1` no Vercel e novo deploy. O carrinho e a política de privacidade passam a
+   mostrar o prazo.
+
+Sem número ou sem as chaves da Meta, o aviso fica registrado em `cart_notices` sem envio e o prazo vale do mesmo jeito.
