@@ -34,7 +34,8 @@ import { QuickFrame } from "./quick-frame";
 
 
 type Presigned = { name: string; key: string; thumbKey: string; uploadUrl: string; thumbUploadUrl: string };
-type Failure = { name: string; message: string };
+/** Foto que não foi enviada. `file` presente: a falha foi de rede ou do servidor, e dá para tentar de novo. */
+type Failure = { name: string; message: string; file?: File };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   let res: Response;
@@ -173,6 +174,42 @@ export function Uploader({
     return () => clearTimeout(timer);
   }, [toast]);
 
+  const uploading = Boolean(progress);
+  // Envio em andamento: o navegador pergunta antes de fechar ou recarregar a página
+  useEffect(() => {
+    if (!uploading) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [uploading]);
+  // Envio em andamento: a tela do celular não apaga (com a tela apagada, o envio para)
+  useEffect(() => {
+    if (!uploading || !("wakeLock" in navigator)) return;
+    let lock: WakeLockSentinel | null = null;
+    let active = true;
+    const acquire = () => {
+      if (document.visibilityState !== "visible") return;
+      navigator.wakeLock
+        .request("screen")
+        .then((sentinel) => {
+          if (active) lock = sentinel;
+          else void sentinel.release();
+        })
+        .catch(() => {});
+    };
+    acquire();
+    // O sistema solta a trava quando a aba sai da frente: volta a travar quando ela volta
+    document.addEventListener("visibilitychange", acquire);
+    return () => {
+      active = false;
+      document.removeEventListener("visibilitychange", acquire);
+      lock?.release().catch(() => {});
+    };
+  }, [uploading]);
+
   function pickFiles() {
     openPicker();
   }
@@ -291,6 +328,8 @@ export function Uploader({
       3,
       async ({ file, index }) => {
         let step = "leitura da imagem";
+        /** O servidor recusou o arquivo (formato, tamanho): tentar de novo não adianta. */
+        let rejectedByServer = false;
         try {
           const { width, height, thumb } = await readImage(file);
           step = "preparar envio";
@@ -299,7 +338,10 @@ export function Uploader({
             body: JSON.stringify({ files: [{ name: file.name, type: file.type, size: file.size }] }),
           });
           const target = uploads[0];
-          if (target.error) throw new Error(target.error);
+          if (target.error) {
+            rejectedByServer = true;
+            throw new Error(target.error);
+          }
 
           step = "envio ao armazenamento";
           await Promise.all([
@@ -331,13 +373,15 @@ export function Uploader({
           sent += 1;
         } catch (err) {
           reportError("envio", err, { ...fileDetail(file), etapa: step, product: product.id });
-          const message =
-            err instanceof DOMException && err.name === "NotReadableError"
-              ? "A foto ficou indisponível durante o envio. Selecione de novo."
-              : err instanceof Error
-                ? err.message
-                : "Não foi enviada. Tente de novo.";
-          setFailures((list) => [...list, { name: file.name, message }]);
+          const unreadable = err instanceof DOMException && err.name === "NotReadableError";
+          const message = unreadable
+            ? "A foto ficou indisponível durante o envio. Selecione de novo."
+            : err instanceof Error
+              ? err.message
+              : "Não foi enviada. Tente de novo.";
+          // Foto que não abre ou formato recusado não melhora tentando de novo; queda de conexão, sim
+          const retry = !unreadable && step !== "leitura da imagem" && !rejectedByServer;
+          setFailures((list) => [...list, { name: file.name, message, file: retry ? file : undefined }]);
         } finally {
           ratios[index] = 1;
           done += 1;
@@ -725,7 +769,7 @@ export function Uploader({
           {failures.length > 0 && (
             <div className="alert alert-danger mt-4" role="alert">
               <WarningIcon size={20} aria-hidden className="mt-0.5 shrink-0" />
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="font-bold">{plural(failures.length, "foto não foi enviada", "fotos não foram enviadas")}</p>
                 <ul className="mt-1 space-y-0.5">
                   {failures.map((f, i) => (
@@ -734,6 +778,20 @@ export function Uploader({
                     </li>
                   ))}
                 </ul>
+                {failures.some((f) => f.file) && (
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm mt-2"
+                    disabled={Boolean(progress)}
+                    onClick={() => {
+                      const files = failures.flatMap((f) => (f.file ? [f.file] : []));
+                      setFailures((list) => list.filter((f) => !f.file));
+                      void send(files, product.finishes[0]);
+                    }}
+                  >
+                    Tentar de novo
+                  </button>
+                )}
               </div>
             </div>
           )}
