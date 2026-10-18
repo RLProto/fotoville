@@ -8,6 +8,7 @@ import { belowMinimum, loadCartPhotos, summarizeCart } from "@/lib/cart";
 import { getProducts } from "@/lib/catalog";
 import { site } from "@/lib/site";
 import { createClient, getProfile, getUser } from "@/lib/supabase/server";
+import type { Address } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Entrega e pagamento" };
 
@@ -15,10 +16,20 @@ export default async function CheckoutPage() {
   const user = await getUser();
   if (!user) redirect("/entrar?proximo=/checkout");
 
-  const [photos, products, profile] = await Promise.all([
-    loadCartPhotos(await createClient(), user.id),
+  const supabase = await createClient();
+  const [photos, products, profile, { data: last }] = await Promise.all([
+    loadCartPhotos(supabase, user.id),
     getProducts(),
     getProfile(),
+    // Último pedido de fotos: quem pede de novo já encontra a entrega preenchida
+    supabase
+      .from("orders")
+      .select("shipping_service, shipping_address")
+      .eq("user_id", user.id)
+      .eq("kind", "prints")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
   const cart = summarizeCart(photos, products);
   // Carrinho vazio ou com tamanho abaixo do mínimo: o carrinho mostra o que falta
@@ -46,6 +57,8 @@ export default async function CheckoutPage() {
           name: profile?.full_name ?? "",
           cpf: profile?.cpf ?? "",
           whatsapp: profile?.whatsapp ?? "",
+          mode: last?.shipping_service === "retirada" ? "retirada" : "entrega",
+          address: (last?.shipping_address as Address | null) ?? null,
         }}
       />
     </div>

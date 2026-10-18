@@ -1,12 +1,12 @@
 "use client";
 
 import { CircleNotchIcon, LockIcon, StorefrontIcon, TruckIcon } from "@phosphor-icons/react";
-import { useId, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { percentDiscount } from "@/lib/coupon-rules";
 import { formatBRL, formatCep, formatCpf, formatPhone, isValidCpf, onlyDigits } from "@/lib/format";
 import { reportError } from "@/lib/report-error";
 import { whatsappLink } from "@/lib/site";
-import type { ShippingOption } from "@/lib/types";
+import type { Address, ShippingOption } from "@/lib/types";
 
 type Line = { key: string; label: string; total_cents: number };
 type Coupon = { code: string; discount_cents: number; percent_off: number | null; message: string };
@@ -49,7 +49,14 @@ export function CheckoutForm({
   subtotalCents: number;
   productionDays: number;
   pickupAddress: string;
-  initial: { name: string; cpf: string; whatsapp: string };
+  initial: {
+    name: string;
+    cpf: string;
+    whatsapp: string;
+    /** Do último pedido: quem pede de novo já encontra a entrega preenchida. */
+    mode?: "entrega" | "retirada";
+    address?: Address | null;
+  };
 }) {
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -58,19 +65,26 @@ export function CheckoutForm({
     cpf: formatCpf(initial.cpf),
     whatsapp: formatPhone(initial.whatsapp),
   });
-  const [mode, setMode] = useState<"entrega" | "retirada">("entrega");
+  const [mode, setMode] = useState<"entrega" | "retirada">(initial.mode ?? "entrega");
   const [address, setAddress] = useState({
-    cep: "",
-    street: "",
-    number: "",
-    complement: "",
-    district: "",
-    city: "",
-    state: "",
+    cep: formatCep(initial.address?.cep ?? ""),
+    street: initial.address?.street ?? "",
+    number: initial.address?.number ?? "",
+    complement: initial.address?.complement ?? "",
+    district: initial.address?.district ?? "",
+    city: initial.address?.city ?? "",
+    state: initial.address?.state ?? "",
+  });
+  /** Endereço do último pedido com CEP completo: o frete é cotado ao abrir, sem o cliente mexer no CEP. */
+  const [prefill] = useState(() => {
+    const digits = onlyDigits(initial.address?.cep ?? "");
+    return initial.address && digits.length === 8
+      ? { digits, place: { district: initial.address.district, city: initial.address.city } }
+      : null;
   });
   const [options, setOptions] = useState<ShippingOption[] | null>(null);
   const [service, setService] = useState<ShippingOption["service"] | null>(null);
-  const [quoting, setQuoting] = useState(false);
+  const [quoting, setQuoting] = useState(Boolean(prefill));
   const [quoteError, setQuoteError] = useState<string | null>(null);
 
   const [couponInput, setCouponInput] = useState("");
@@ -93,11 +107,8 @@ export function CheckoutForm({
     addressRef.current = address;
   }, [address]);
 
-  /** Cota o frete para o CEP, com cidade e bairro (o motoboy depende do bairro). */
-  function quote(digits: string, place: { district: string; city: string }, seq: number) {
-    setOptions(null);
-    setQuoteError(null);
-    setQuoting(true);
+  /** Pede a cotação ao servidor e aplica a resposta, se ela ainda for a mais recente. */
+  const requestQuote = useCallback((digits: string, place: { district: string; city: string }, seq: number) => {
     post<{ options: ShippingOption[] }>("/api/frete", { cep: digits, district: place.district, city: place.city })
       .then(({ options }) => {
         if (seq !== quoteSeq.current) return;
@@ -108,6 +119,30 @@ export function CheckoutForm({
       })
       .catch((err) => seq === quoteSeq.current && setQuoteError(err.message))
       .finally(() => seq === quoteSeq.current && setQuoting(false));
+  }, []);
+
+  /** Cota o frete para o CEP, com cidade e bairro (o motoboy depende do bairro). */
+  function quote(digits: string, place: { district: string; city: string }, seq: number) {
+    setOptions(null);
+    setQuoteError(null);
+    setQuoting(true);
+    requestQuote(digits, place, seq);
+  }
+
+  useEffect(() => {
+    if (prefill) requestQuote(prefill.digits, prefill.place, ++quoteSeq.current);
+  }, [prefill, requestQuote]);
+
+  /** Bairro ou cidade mudados à mão: cota de novo, porque o motoboy depende deles. */
+  const requoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function onPlaceChange(next: { district: string; city: string }) {
+    if (cepDigits.length !== 8) return;
+    if (requoteTimer.current) clearTimeout(requoteTimer.current);
+    requoteTimer.current = setTimeout(() => {
+      // Com o CEP de agora: se ele mudou nesses 600 ms, a cotação do CEP novo já está a caminho
+      const digits = onlyDigits(addressRef.current.cep);
+      if (digits.length === 8) quote(digits, next, ++quoteSeq.current);
+    }, 600);
   }
 
   // CEP completo: preenche o endereço (ViaCEP) e cota o frete para o carrinho.
@@ -118,6 +153,8 @@ export function CheckoutForm({
     clear("cep");
     if (digits === cepDigits) return;
 
+    // Recotação do bairro ainda pendente era do CEP antigo: a do CEP novo sai abaixo
+    if (requoteTimer.current) clearTimeout(requoteTimer.current);
     const seq = ++quoteSeq.current;
     setOptions(null);
     setService(null);
@@ -150,14 +187,6 @@ export function CheckoutForm({
         const typed = addressRef.current;
         if (seq === quoteSeq.current) quote(digits, { district: typed.district, city: typed.city }, seq);
       });
-  }
-
-  /** Bairro ou cidade mudados à mão: cota de novo, porque o motoboy depende deles. */
-  const requoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  function onPlaceChange(next: { district: string; city: string }) {
-    if (cepDigits.length !== 8) return;
-    if (requoteTimer.current) clearTimeout(requoteTimer.current);
-    requoteTimer.current = setTimeout(() => quote(cepDigits, next, ++quoteSeq.current), 600);
   }
 
   const selected = mode === "retirada" ? null : (options?.find((o) => o.service === service) ?? null);
@@ -441,6 +470,7 @@ export function CheckoutForm({
                         onChange={(e) => {
                           setAddress({ ...address, city: e.target.value });
                           clear("city");
+                          onPlaceChange({ district: address.district, city: e.target.value });
                         }}
                       />
                     )}
