@@ -56,12 +56,22 @@ export function presignDownload(key: string, opts: { downloadName?: string; expi
   );
 }
 
-export async function deleteObjects(keys: string[]) {
-  const list = keys.filter(Boolean);
-  if (!list.length) return;
-  await s3().send(
-    new DeleteObjectsCommand({ Bucket: bucket(), Delete: { Objects: list.map((Key) => ({ Key })) } }),
-  );
+/** O S3 aceita até 1.000 chaves por chamada de DeleteObjects. */
+const DELETE_BATCH = 1000;
+
+/** Apaga os arquivos do bucket, em lotes. Arquivo que não existe conta como apagado. */
+export async function deleteObjects(keys: (string | null | undefined)[]) {
+  const list = keys.filter((k): k is string => Boolean(k));
+  for (let i = 0; i < list.length; i += DELETE_BATCH) {
+    const batch = list.slice(i, i + DELETE_BATCH);
+    const result = await s3().send(
+      new DeleteObjectsCommand({ Bucket: bucket(), Delete: { Objects: batch.map((Key) => ({ Key })), Quiet: true } }),
+    );
+    if (result.Errors?.length) {
+      const first = result.Errors[0];
+      throw new Error(`${result.Errors.length} arquivo(s) não apagado(s): ${first.Key} (${first.Code} ${first.Message})`);
+    }
+  }
 }
 
 /** Anexa a URL temporária da miniatura a cada foto. */

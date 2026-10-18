@@ -40,8 +40,7 @@ export async function DELETE(_request: Request, { params }: Ctx) {
   const { data: photos } = await admin.from("photos").select("storage_key, thumb_key").eq("order_id", id);
   const keys = (photos ?? []).flatMap((p) => [p.storage_key, p.thumb_key]).filter((k): k is string => Boolean(k));
   try {
-    // O S3 aceita até 1.000 chaves por chamada
-    for (let i = 0; i < keys.length; i += 1000) await deleteObjects(keys.slice(i, i + 1000));
+    await deleteObjects(keys);
   } catch (err) {
     return serverFail("painel", "Não foi possível apagar as imagens. Tente de novo.", err, 500, { order: id });
   }

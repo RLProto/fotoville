@@ -114,9 +114,7 @@ async function purge(admin: Admin, cart: StaleCart, result: Record<string, numbe
   if (error) throw new Error(error.message);
   if (!photos?.length) return;
 
-  const keys = photos.flatMap((p) => [p.storage_key, p.thumb_key]).filter((k): k is string => Boolean(k));
-  // O S3 aceita até 1.000 chaves por chamada
-  for (let i = 0; i < keys.length; i += 1000) await deleteObjects(keys.slice(i, i + 1000));
+  await deleteObjects(photos.flatMap((p) => [p.storage_key, p.thumb_key]));
 
   await admin
     .from("cart_notices")
