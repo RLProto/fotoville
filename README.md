@@ -26,6 +26,12 @@ Site de loja é uso comercial: o Vercel exige o plano **Pro**.
 
 1. **Supabase > Authentication > URL Configuration:** *Site URL* com o domínio e, em *Redirect URLs*,
    `https://SEU-DOMINIO/**`. Sem isso, os links de confirmação e de nova senha voltam para o endereço errado.
+   **Emails > Templates:** para os links funcionarem em qualquer aparelho (cadastro no computador, e-mail aberto
+   no celular), troque o `href` do botão:
+   - *Confirm signup*: `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email`
+   - *Reset password*: `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=recovery`
+
+   O padrão `{{ .ConfirmationURL }}` também funciona, mas só no mesmo navegador em que o cliente pediu o link.
 2. **Banco:** rode `back/supabase/migrations/2026-10-03_price_tiers.sql` no SQL Editor (pendente no banco atual).
 3. **Mercado Pago > Webhooks:** `https://SEU-DOMINIO/api/webhooks/mercadopago`, evento *Pagamentos*. Copie a
    assinatura para `MP_WEBHOOK_SECRET` no Vercel e faça um novo deploy.
