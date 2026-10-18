@@ -1,10 +1,6 @@
 import { hasSupabase } from "@/lib/site";
 
-/** Aceita só caminhos internos, para o redirecionamento pós-login não virar open redirect. */
-export function safeNext(value: string | string[] | undefined, fallback = "/conta") {
-  const path = Array.isArray(value) ? value[0] : value;
-  return path && path.startsWith("/") && !path.startsWith("//") && !path.includes("\\") ? path : fallback;
-}
+export { safeNext } from "@/lib/safe-next";
 
 /** Por que a conta é pedida agora, conforme o destino depois do acesso. */
 export function accessReason(next: string) {
