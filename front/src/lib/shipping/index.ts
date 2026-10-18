@@ -44,7 +44,7 @@ export async function quoteShipping(
     }),
   );
 
-  const motoboy = motoboyOption(place, await loadMotoboyZones());
+  const motoboy = motoboyOption(cep, place, await loadMotoboyZones());
   if (motoboy) options.unshift(motoboy);
 
   options.push({
