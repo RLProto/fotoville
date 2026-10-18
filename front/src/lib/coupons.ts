@@ -3,6 +3,7 @@ import { randomInt } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CartLine } from "./cart";
 import { percentDiscount } from "./coupon-rules";
+import { describeError, logError } from "./error-log";
 import { formatBRL, formatDate, plural } from "./format";
 import type { Coupon } from "./types";
 
@@ -20,7 +21,8 @@ export type CouponResult =
       credits: number;
       message: string;
     }
-  | { ok: false; message: string };
+  /** `miss`: o código não existe (conta para o limite de tentativas). */
+  | { ok: false; message: string; miss?: boolean };
 
 export const normalizeCode = (code: string) => code.trim().toUpperCase().replace(/\s+/g, "");
 
@@ -58,7 +60,7 @@ export async function previewCoupon(
   const { data } = await admin.from("coupons").select("*").eq("code", code).maybeSingle();
   const coupon = data as Coupon | null;
 
-  if (!coupon) return { ok: false, message: couponProblemMessage("not_found", null) };
+  if (!coupon) return { ok: false, message: couponProblemMessage("not_found", null), miss: true };
 
   if (coupon.kind === "percent") {
     const subtotal = lines.reduce((sum, l) => sum + l.total_cents, 0);
@@ -110,6 +112,43 @@ export async function previewCoupon(
     message: `Cobre ${plural(credits, "foto", "fotos")}. Saldo depois deste pedido: ${plural(remaining, "foto", "fotos")}.`,
   };
 }
+
+/** Códigos inexistentes aceitos por janela: barra quem tenta adivinhar cupom em sequência. */
+const MISS_WINDOW_MS = 15 * 60 * 1000;
+const MISSES_PER_USER = 10;
+const MISSES_PER_IP = 30;
+
+/**
+ * O cliente (ou o endereço de internet dele) errou códigos demais nos últimos minutos?
+ * Se a contagem falhar, deixa passar: o limite protege, mas não pode derrubar o cupom.
+ */
+export async function tooManyCouponMisses(admin: SupabaseClient, userId: string, ip: string | null) {
+  const since = new Date(Date.now() - MISS_WINDOW_MS).toISOString();
+  const count = async (column: "user_id" | "ip", value: string) => {
+    const { count, error } = await admin
+      .from("coupon_misses")
+      .select("id", { count: "exact", head: true })
+      .eq(column, value)
+      .gte("created_at", since);
+    if (error) throw error;
+    return count ?? 0;
+  };
+  try {
+    const [byUser, byIp] = await Promise.all([count("user_id", userId), ip ? count("ip", ip) : 0]);
+    return byUser >= MISSES_PER_USER || byIp >= MISSES_PER_IP;
+  } catch (err) {
+    await logError({ source: "server", scope: "cupom", level: "warning", ...describeError(err), detail: { etapa: "contar tentativas" } });
+    return false;
+  }
+}
+
+/** Registra um código digitado que não existe. */
+export async function recordCouponMiss(admin: SupabaseClient, userId: string, ip: string | null) {
+  const { error } = await admin.from("coupon_misses").insert({ user_id: userId, ip });
+  if (error) await logError({ source: "server", scope: "cupom", level: "warning", message: error.message, detail: { etapa: "registrar tentativa" } });
+}
+
+export const TOO_MANY_MISSES = "Muitas tentativas. Aguarde alguns minutos e tente de novo.";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sem 0/O e 1/I
 

@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { fail, reportServerError, requireUser, serverFail } from "@/lib/api";
+import { clientIp, fail, reportServerError, requireUser, serverFail } from "@/lib/api";
 import { belowMinimum, type CartCount, countCart, loadCartPhotos, sameCount, summarizeCart } from "@/lib/cart";
 import { getChargeProducts } from "@/lib/catalog";
 import { percentDiscount } from "@/lib/coupon-rules";
-import { type CouponProblem, couponProblemMessage, previewCoupon } from "@/lib/coupons";
+import {
+  type CouponProblem,
+  couponProblemMessage,
+  previewCoupon,
+  recordCouponMiss,
+  TOO_MANY_MISSES,
+  tooManyCouponMisses,
+} from "@/lib/coupons";
 import { isValidCpf, onlyDigits } from "@/lib/format";
 import { createPreference, hasMercadoPago } from "@/lib/mercadopago";
 import { markOrderPaid } from "@/lib/orders";
@@ -91,13 +98,18 @@ export async function POST(request: Request) {
   let discount_cents = 0;
   let coupon: { code: string; credits: number; kind: string } | null = null;
   if (input.coupon?.trim()) {
+    const ip = clientIp(request);
+    if (await tooManyCouponMisses(admin, user.id, ip)) return fail(TOO_MANY_MISSES, 429);
     let result;
     try {
       result = await previewCoupon(admin, input.coupon, cart.lines, user.id);
     } catch (err) {
       return serverFail("checkout", "Não foi possível conferir o cupom agora. Tente de novo.", err, 500, { etapa: "conferir cupom" });
     }
-    if (!result.ok) return fail(result.message, 422);
+    if (!result.ok) {
+      if (result.miss) await recordCouponMiss(admin, user.id, ip);
+      return fail(result.message, 422);
+    }
     // Cupom percentual desconta o pedido inteiro, frete incluído; o de créditos cobre só fotos
     discount_cents =
       result.percent_off !== null

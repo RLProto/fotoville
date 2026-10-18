@@ -42,6 +42,11 @@ export function serverFail(scope: string, message: string, err?: unknown, status
   return fail(message, status);
 }
 
+/** Endereço de internet de quem chamou (no Vercel, o primeiro de x-forwarded-for é o do cliente). */
+export function clientIp(request: Request) {
+  return request.headers.get("x-forwarded-for")?.split(",")[0].trim() || request.headers.get("x-real-ip") || null;
+}
+
 /** Exige usuário logado numa rota de API. Retorna o usuário e o cliente com a sessão dele. */
 export async function requireUser() {
   if (!hasSupabase) return { error: fail("Banco de dados não configurado.", 503) } as const;
