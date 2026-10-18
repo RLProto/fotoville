@@ -49,7 +49,9 @@ As fotos ficam no carrinho por 30 dias desde a mais recente (`front/src/lib/cart
 o job diário (`/api/cron/carrinho`, 10h de Brasília) avisa pelo WhatsApp; depois do prazo, apaga do bucket.
 Fica desligado até `CARRINHO_LIMPEZA=1`.
 
-1. **Vercel:** `CRON_SECRET` (qualquer texto longo). Sem ele o job não roda.
+1. **Vercel:** `CRON_SECRET` (qualquer texto longo). Sem ele o job não roda. Só com ele, o job já apaga todo dia
+   os arquivos do bucket que nenhuma foto usa (envio interrompido), com mais de 2 dias; o carrinho continua
+   intocado até `CARRINHO_LIMPEZA=1`.
 2. **Meta:** conta Business verificada com o CNPJ, app com o produto WhatsApp e um número só para a API. Copie
    `WHATSAPP_TOKEN` (usuário do sistema, permanente), `WHATSAPP_PHONE_NUMBER_ID` e `WHATSAPP_APP_SECRET`.
 3. **WhatsApp Manager > Modelos:** crie `carrinho_expira`, categoria **Utilidade**, idioma Português (BR):

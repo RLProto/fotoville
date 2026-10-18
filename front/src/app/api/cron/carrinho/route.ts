@@ -20,18 +20,22 @@ type StaleCart = {
 };
 
 /**
- * Job diário do Vercel (vercel.json > crons). Avisa pelo WhatsApp quem tem fotos paradas no carrinho
- * perto do prazo e apaga, do bucket e do banco, os carrinhos cujo aviso já venceu.
+ * Job diário do Vercel (vercel.json > crons). Apaga do bucket os arquivos sem foto no banco e, com
+ * CARRINHO_LIMPEZA=1, avisa pelo WhatsApp quem tem fotos paradas no carrinho perto do prazo e apaga,
+ * do bucket e do banco, os carrinhos cujo aviso já venceu.
  * O Vercel manda `Authorization: Bearer CRON_SECRET`.
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) return fail("CRON_SECRET não configurado.", 503);
   if (request.headers.get("authorization") !== `Bearer ${secret}`) return fail("Acesso restrito.", 401);
-  if (!cartCleanupEnabled) return NextResponse.json({ skipped: "CARRINHO_LIMPEZA desligado" });
   if (!hasStorage) return fail("Armazenamento não configurado.", 503);
 
   const admin = createAdminClient();
+  // Não depende do prazo do carrinho: são arquivos que nenhuma foto usa
+  const orfaos = await purgeOrphans(admin);
+  if (!cartCleanupEnabled) return NextResponse.json({ skipped: "CARRINHO_LIMPEZA desligado", orfaos });
+
   const { data, error } = await admin.rpc("stale_carts", { idle_since: noticeIdleSince() });
   if (error) {
     await logError({ source: "server", scope: "carrinho", message: error.message, detail: { etapa: "stale_carts" } });
@@ -59,10 +63,36 @@ export async function GET(request: Request) {
       });
     }
   }
-  return NextResponse.json(result);
+  return NextResponse.json({ ...result, orfaos });
 }
 
 type Admin = ReturnType<typeof createAdminClient>;
+
+/**
+ * Apaga do bucket arquivos que nenhuma foto usa (envio que caiu entre o arquivo e o registro, ou remoção
+ * que não apagou o arquivo). A lista vem do banco: só da pasta dos clientes e com mais de 2 dias.
+ */
+async function purgeOrphans(admin: Admin) {
+  const { data, error } = await admin.rpc("orphan_objects", { p_bucket: process.env.S3_BUCKET, p_limit: 1000 });
+  if (error) {
+    await logError({ source: "server", scope: "armazenamento", message: error.message, detail: { etapa: "listar órfãos" } });
+    return 0;
+  }
+  const names = ((data ?? []) as { name: string }[]).map((r) => r.name);
+  if (!names.length) return 0;
+  try {
+    await deleteObjects(names);
+  } catch (err) {
+    await logError({
+      source: "server",
+      scope: "armazenamento",
+      message: err instanceof Error ? err.message : String(err),
+      detail: { etapa: "apagar órfãos", arquivos: names.length },
+    });
+    return 0;
+  }
+  return names.length;
+}
 
 async function notify(admin: Admin, cart: StaleCart, now: number, result: Record<string, number>) {
   const deleteAfter = cartDeleteAfter(cart.last_activity, now);
