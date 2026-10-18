@@ -15,6 +15,14 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // Só o que não quebra nada: o site em moldura só dentro dele mesmo, sem <base> nem <object> de fora, e
+          // formulários só para o próprio site. Scripts ficam de fora por ora (o Next precisaria de nonce).
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'self'; base-uri 'self'; object-src 'none'; form-action 'self'",
+          },
+          // Recursos do aparelho que o site não usa. Câmera fica liberada: o envio de fotos pode abri-la no celular.
+          { key: "Permissions-Policy", value: "microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()" },
         ],
       },
     ];
