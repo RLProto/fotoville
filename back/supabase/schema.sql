@@ -445,3 +445,360 @@ create policy "cupons proprios" on public.coupons
 -- update public.profiles set is_admin = true
 --  where id = (select id from auth.users where email = 'email@exemplo.com');
 -- Super admin (aba Erros): o mesmo, com is_admin = true, is_super_admin = true
+
+-- ---------------------------------------------------------------------------
+-- Daqui para baixo: o conteúdo das migrações de back/supabase/migrations, na ordem.
+-- O bot do WhatsApp (esquema monitor) fica só em 2026-10-04_whatsapp_monitor.sql: depende de pg_cron,
+-- pg_net e da chave no Vault. O limite do bucket está em 2026-10-18_bucket_limites.sql.
+-- ---------------------------------------------------------------------------
+
+-- 2026-10-14_imagens_apagadas_e_armazenamento.sql
+-- Painel da loja: limpeza das imagens de pedidos já produzidos e saúde do armazenamento.
+--
+-- orders.photos_deleted_at: quando a loja apagou as imagens do pedido do bucket. As linhas de
+-- `photos` ficam (histórico de corte, cópias e ajustes); só os arquivos somem.
+alter table public.orders add column if not exists photos_deleted_at timestamptz;
+
+-- Uso do armazenamento para a aba "Armazenamento" do painel. Só o servidor (service role) chama.
+-- Lê storage.objects, que é o que conta na cota do projeto, e agrupa as fotos por situação:
+-- em carrinhos, em pedidos aguardando pagamento, em produção, ou concluídos (já podem ser apagadas).
+create or replace function public.admin_storage_stats() returns jsonb
+language plpgsql security definer set search_path = public, storage, pg_temp as $$
+declare
+  quota bigint := 100000000000; -- 100 GB, o mesmo padrão do bot do WhatsApp
+  result jsonb;
+begin
+  begin
+    select quota_bytes into quota from monitor.settings limit 1;
+  exception when others then
+    null; -- bot não instalado: fica o padrão
+  end;
+
+  with sizes as (
+    select p.order_id, p.created_at,
+      coalesce((o.metadata ->> 'size')::bigint, 0) + coalesce((t.metadata ->> 'size')::bigint, 0) as bytes,
+      (o.id is not null) as stored
+    from public.photos p
+    left join storage.objects o on o.name = p.storage_key
+    left join storage.objects t on t.name = p.thumb_key
+  ),
+  by_group as (
+    select
+      case
+        when s.order_id is null then 'carrinho'
+        when ord.status = 'pending' then 'aguardando'
+        when ord.status in ('paid', 'in_production', 'ready_for_pickup') then 'producao'
+        else 'concluido'
+      end as grupo,
+      count(*) as fotos,
+      sum(s.bytes) as bytes
+    from sizes s
+    left join public.orders ord on ord.id = s.order_id
+    where s.stored
+    group by 1
+  ),
+  months as (
+    select to_char(date_trunc('month', created_at), 'YYYY-MM') as mes, count(*) as fotos, sum(bytes) as bytes
+    from sizes
+    where created_at >= date_trunc('month', now()) - interval '5 months'
+    group by 1
+    order by 1
+  )
+  select jsonb_build_object(
+    'quota_bytes', quota,
+    'total_bytes', (select coalesce(sum((metadata ->> 'size')::bigint), 0) from storage.objects),
+    'total_files', (select count(*) from storage.objects),
+    'groups', (select coalesce(jsonb_agg(jsonb_build_object('grupo', grupo, 'fotos', fotos, 'bytes', bytes)), '[]'::jsonb) from by_group),
+    'months', (select coalesce(jsonb_agg(jsonb_build_object('mes', mes, 'fotos', fotos, 'bytes', bytes)), '[]'::jsonb) from months),
+    'orders_deleted', (select count(*) from public.orders where photos_deleted_at is not null),
+    'orders_deletable', (
+      select count(*) from public.orders o
+      where o.photos_deleted_at is null
+        and o.status in ('in_production', 'shipped', 'ready_for_pickup', 'delivered', 'cancelled')
+        and exists (select 1 from public.photos p where p.order_id = o.id)
+    )
+  ) into result;
+  return result;
+end $$;
+
+revoke all on function public.admin_storage_stats() from public, anon, authenticated;
+grant execute on function public.admin_storage_stats() to service_role;
+
+-- 2026-10-14_motoboy.sql
+-- Entrega por motoboy dentro de Joinville: um preço por bairro, editável no painel (aba Motoboy).
+-- O cliente só vê a opção quando a cidade do endereço é Joinville e o bairro está nesta lista.
+-- district_key é o nome sem acento, minúsculo e com espaços simples: é por ele que o bairro
+-- digitado (ou vindo do ViaCEP) é comparado.
+create table if not exists public.motoboy_zones (
+  id uuid primary key default gen_random_uuid(),
+  district text not null check (length(trim(district)) between 2 and 60),
+  district_key text not null unique,
+  price_cents integer not null check (price_cents >= 0),
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- Sem políticas: só o servidor (service role) lê e grava.
+alter table public.motoboy_zones enable row level security;
+
+-- Os 20 bairros mais populosos (Censo 2022, IBGE), a R$ 19,90. Pode rodar de novo: não duplica.
+insert into public.motoboy_zones (district, district_key, price_cents)
+values
+  ('Aventureiro', 'aventureiro', 1990),
+  ('Costa e Silva', 'costa e silva', 1990),
+  ('Paranaguamirim', 'paranaguamirim', 1990),
+  ('Vila Nova', 'vila nova', 1990),
+  ('Jardim Iririú', 'jardim iririu', 1990),
+  ('Iririú', 'iririu', 1990),
+  ('Jardim Paraíso', 'jardim paraiso', 1990),
+  ('Floresta', 'floresta', 1990),
+  ('Itaum', 'itaum', 1990),
+  ('Boa Vista', 'boa vista', 1990),
+  ('Comasa', 'comasa', 1990),
+  ('Jarivatuba', 'jarivatuba', 1990),
+  ('Nova Brasília', 'nova brasilia', 1990),
+  ('Bucarein', 'bucarein', 1990),
+  ('Centro', 'centro', 1990),
+  ('América', 'america', 1990),
+  ('Glória', 'gloria', 1990),
+  ('Saguaçu', 'saguacu', 1990),
+  ('Bom Retiro', 'bom retiro', 1990),
+  ('Fátima', 'fatima', 1990)
+on conflict (district_key) do nothing;
+
+-- 2026-10-15_estatisticas.sql
+-- Aba Estatísticas do painel: visitas por dia (contador próprio), pedidos, cadastros e vendas.
+--
+-- page_views: uma linha por página aberta no site (fora do painel). `visitor` é um hash do dia com
+-- IP e navegador, calculado no servidor e sem volta: serve só para contar visitantes únicos no dia.
+-- Nem IP nem cookie ficam guardados.
+create table if not exists public.page_views (
+  id bigint generated always as identity primary key,
+  day date not null,
+  path text not null,
+  visitor text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists page_views_day_idx on public.page_views (day);
+
+-- Sem políticas: só o servidor (service role) grava e lê.
+alter table public.page_views enable row level security;
+
+-- Séries por dia e totais do período, em horário de Brasília. Só o servidor chama.
+create or replace function public.admin_stats(days integer default 30) returns jsonb
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  tz constant text := 'America/Sao_Paulo';
+  first_day date := (now() at time zone tz)::date - (greatest(1, least(days, 365)) - 1);
+  result jsonb;
+begin
+  with dias as (
+    select d::date as day from generate_series(first_day, (now() at time zone tz)::date, interval '1 day') as d
+  ),
+  visitas as (
+    select day, count(*) as views, count(distinct visitor) as visitors
+    from public.page_views where day >= first_day group by day
+  ),
+  pedidos as (
+    select (created_at at time zone tz)::date as day, count(*) as orders
+    from public.orders where (created_at at time zone tz)::date >= first_day group by 1
+  ),
+  pagos as (
+    select (paid_at at time zone tz)::date as day, count(*) as paid, sum(total_cents) as revenue_cents
+    from public.orders where paid_at is not null and (paid_at at time zone tz)::date >= first_day group by 1
+  ),
+  cadastros as (
+    select (created_at at time zone tz)::date as day, count(*) as signups
+    from public.profiles where (created_at at time zone tz)::date >= first_day group by 1
+  ),
+  serie as (
+    select d.day,
+      coalesce(v.views, 0) as views, coalesce(v.visitors, 0) as visitors,
+      coalesce(p.orders, 0) as orders, coalesce(g.paid, 0) as paid, coalesce(g.revenue_cents, 0) as revenue_cents,
+      coalesce(c.signups, 0) as signups
+    from dias d
+    left join visitas v on v.day = d.day
+    left join pedidos p on p.day = d.day
+    left join pagos g on g.day = d.day
+    left join cadastros c on c.day = d.day
+    order by d.day
+  ),
+  pagos_periodo as (
+    select * from public.orders where paid_at is not null and (paid_at at time zone tz)::date >= first_day
+  ),
+  tamanhos as (
+    select i.product_id, coalesce(pr.name, i.description) as name, sum(i.quantity) as copies
+    from public.order_items i
+    join pagos_periodo o on o.id = i.order_id
+    left join public.products pr on pr.id = i.product_id
+    where o.kind = 'prints'
+    group by i.product_id, coalesce(pr.name, i.description)
+    order by copies desc
+    limit 8
+  ),
+  entregas as (
+    select coalesce(shipping_service, 'nenhuma') as service, count(*) as orders
+    from pagos_periodo group by 1 order by orders desc
+  )
+  select jsonb_build_object(
+    'days', (select jsonb_agg(jsonb_build_object(
+        'day', to_char(day, 'YYYY-MM-DD'), 'views', views, 'visitors', visitors,
+        'orders', orders, 'paid', paid, 'revenue_cents', revenue_cents, 'signups', signups)) from serie),
+    'totals', (select jsonb_build_object(
+        'views', sum(views), 'visitors', (select count(distinct visitor) from public.page_views where day >= first_day),
+        'orders', sum(orders), 'paid', sum(paid), 'revenue_cents', sum(revenue_cents), 'signups', sum(signups)) from serie),
+    'sizes', (select coalesce(jsonb_agg(jsonb_build_object('id', product_id, 'name', name, 'copies', copies)), '[]'::jsonb) from tamanhos),
+    'delivery', (select coalesce(jsonb_agg(jsonb_build_object('service', service, 'orders', orders)), '[]'::jsonb) from entregas),
+    'tracking_since', (select to_char(min(day), 'YYYY-MM-DD') from public.page_views)
+  ) into result;
+  return result;
+end $$;
+
+revoke all on function public.admin_stats(integer) from public, anon, authenticated;
+grant execute on function public.admin_stats(integer) to service_role;
+
+-- 2026-10-15_historico_do_pedido.sql
+-- Histórico do pedido: quando entrou em cada situação, para a linha do tempo no painel.
+-- Um gatilho grava a cada mudança de status, por qualquer caminho (webhook, painel, manual).
+create table if not exists public.order_events (
+  id bigint generated always as identity primary key,
+  order_id uuid not null references public.orders (id) on delete cascade,
+  status text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists order_events_order_idx on public.order_events (order_id, created_at);
+
+-- Sem políticas: só o servidor (service role) lê.
+alter table public.order_events enable row level security;
+
+create or replace function public.log_order_status() returns trigger
+language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  if tg_op = 'INSERT' then
+    insert into public.order_events (order_id, status, created_at) values (new.id, new.status, new.created_at);
+  elsif new.status is distinct from old.status then
+    insert into public.order_events (order_id, status, created_at)
+    values (new.id, new.status, case when new.status = 'paid' and new.paid_at is not null then new.paid_at else now() end);
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists orders_log_status on public.orders;
+create trigger orders_log_status
+  after insert or update of status on public.orders
+  for each row execute function public.log_order_status();
+
+-- Pedidos antigos: a criação e o pagamento têm data conhecida; as outras situações não.
+insert into public.order_events (order_id, status, created_at)
+select id, 'pending', created_at from public.orders o
+where not exists (select 1 from public.order_events e where e.order_id = o.id and e.status = 'pending');
+
+insert into public.order_events (order_id, status, created_at)
+select id, 'paid', paid_at from public.orders o
+where paid_at is not null
+  and not exists (select 1 from public.order_events e where e.order_id = o.id and e.status = 'paid');
+
+-- 2026-10-18_checkout_liga_fotos.sql
+-- Checkout: liga ao pedido, numa operação só, as fotos do carrinho de tamanhos ativos e devolve quantas
+-- fotos e cópias ligou de cada tamanho. O checkout compara com o que cobrou e desfaz o pedido se mudou.
+-- Substitui a lista de ids na URL, que quebrava a partir de ~600 fotos, e fecha a corrida com quem
+-- muda cópias ou fecha o pedido em outra aba ao mesmo tempo.
+create or replace function public.claim_cart_photos(p_order uuid, p_user uuid)
+returns table (product_id text, files integer, copies integer)
+language sql set search_path = public, pg_temp as $$
+  with claimed as (
+    update public.photos p
+       set order_id = p_order
+     where p.user_id = p_user
+       and p.order_id is null
+       and exists (select 1 from public.products pr where pr.id = p.product_id and pr.active)
+    returning p.product_id, p.quantity
+  )
+  select c.product_id, count(*)::integer, sum(c.quantity)::integer
+    from claimed c
+   group by c.product_id
+$$;
+
+revoke all on function public.claim_cart_photos(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.claim_cart_photos(uuid, uuid) to service_role;
+
+-- 2026-10-18_fotos_em_lote.sql
+-- Grava de uma vez a mesma ação em várias fotos do carrinho de um tamanho ("Aplicar a todas", ajuste
+-- automático, borda em todas). Antes eram centenas de requisições ao mesmo tempo; se uma falhava, a tela
+-- voltava tudo, mas parte já estava gravada. Agora é uma transação: grava todas ou nenhuma.
+-- Roda com a sessão do cliente: a RLS e as colunas liberadas para ele valem aqui também.
+-- p_changes: [{ "id": "<uuid>", "quantity": 3 }] ou [{ "id": "<uuid>", "adjust": {...} | null }]
+create or replace function public.update_cart_photos(p_product text, p_changes jsonb)
+returns integer
+language plpgsql security invoker set search_path = public, pg_temp as $$
+declare
+  changed integer;
+begin
+  update public.photos p
+     set quantity = case when c.value ? 'quantity' then (c.value ->> 'quantity')::integer else p.quantity end,
+         adjust = case when c.value ? 'adjust' then nullif(c.value -> 'adjust', 'null'::jsonb) else p.adjust end
+    from jsonb_array_elements(p_changes) c
+   where p.id = (c.value ->> 'id')::uuid
+     and p.user_id = auth.uid()
+     and p.order_id is null
+     and p.product_id = p_product;
+  get diagnostics changed = row_count;
+  -- Foto que saiu do carrinho (pedido fechado, removida em outra aba): não grava nenhuma
+  if changed <> jsonb_array_length(p_changes) then
+    raise exception 'fotos_fora_do_carrinho' using errcode = 'P0001';
+  end if;
+  return changed;
+end $$;
+
+revoke all on function public.update_cart_photos(text, jsonb) from public, anon;
+grant execute on function public.update_cart_photos(text, jsonb) to authenticated;
+
+-- 2026-10-18_tentativas_de_cupom.sql
+-- Códigos de cupom digitados que não existem, para limitar tentativas (um código curto dá para adivinhar
+-- tentando em sequência). /api/cupom e o checkout contam por cliente e por endereço de internet.
+create table if not exists public.coupon_misses (
+  id bigint generated always as identity primary key,
+  user_id uuid references auth.users (id) on delete cascade,
+  ip text,
+  created_at timestamptz not null default now()
+);
+create index if not exists coupon_misses_user_idx on public.coupon_misses (user_id, created_at);
+create index if not exists coupon_misses_ip_idx on public.coupon_misses (ip, created_at);
+
+-- Sem políticas: só o servidor (service role) lê e grava.
+alter table public.coupon_misses enable row level security;
+revoke all on public.coupon_misses from anon, authenticated;
+
+-- Só a última meia hora importa: o resto é apagado todo dia.
+do $$ begin
+  -- Projeto sem pg_cron: a tabela só cresce com códigos errados, e dá para apagar à mão
+  if exists (select 1 from pg_namespace where nspname = 'cron') then
+    perform cron.schedule('limpar-tentativas-cupom', '17 6 * * *', 'delete from public.coupon_misses where created_at < now() - interval ''1 day''');
+  end if;
+end $$;
+
+-- 2026-10-18_arquivos_orfaos.sql
+-- Arquivos do bucket sem foto no banco: o envio caiu entre o arquivo e o registro, ou a remoção não
+-- conseguiu apagar o arquivo. O job diário (/api/cron/carrinho) apaga pela API do Storage, que é o único
+-- jeito de apagar o arquivo de verdade; aqui só lista.
+-- Só arquivos da pasta dos clientes (u/) com mais de 2 dias, para nunca pegar um envio em andamento.
+
+create index if not exists photos_storage_key_idx on public.photos (storage_key);
+create index if not exists photos_thumb_key_idx on public.photos (thumb_key) where thumb_key is not null;
+
+create or replace function public.orphan_objects(p_bucket text, p_limit integer default 1000)
+returns table (name text)
+language sql stable security definer set search_path = public, pg_temp as $$
+  select o.name
+    from storage.objects o
+   where o.bucket_id = p_bucket
+     and o.name like 'u/%'
+     and o.created_at < now() - interval '2 days'
+     and not exists (select 1 from public.photos p where p.storage_key = o.name)
+     and not exists (select 1 from public.photos p where p.thumb_key = o.name)
+   order by o.created_at
+   limit p_limit
+$$;
+
+revoke all on function public.orphan_objects(text, integer) from public, anon, authenticated;
+grant execute on function public.orphan_objects(text, integer) to service_role;
