@@ -19,7 +19,7 @@ export default async function CadastroPage({ searchParams }: { searchParams: Pro
           Já tem conta?{" "}
           <Link
             href={`/entrar?proximo=${encodeURIComponent(next)}`}
-            className="font-bold text-action underline underline-offset-2"
+            className="inline-flex min-h-11 items-center font-bold text-action underline underline-offset-2"
           >
             Entrar
           </Link>

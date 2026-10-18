@@ -14,14 +14,23 @@ const COPY: Record<Mode, { submit: string; loading: string }> = {
   "nova-senha": { submit: "Salvar nova senha", loading: "Salvando…" },
 };
 
-function translate(message: string) {
-  if (/invalid login credentials/i.test(message)) return "E-mail ou senha incorretos.";
-  if (/already registered/i.test(message)) return "Este e-mail já tem cadastro. Entre ou recupere a senha.";
-  if (/email not confirmed/i.test(message)) return "Confirme seu e-mail pelo link que enviamos.";
-  if (/password should be at least/i.test(message)) return "A senha precisa ter pelo menos 8 caracteres.";
-  if (/rate limit/i.test(message)) return "Muitas tentativas. Aguarde alguns minutos e tente de novo.";
-  if (/invalid.*email|validate email/i.test(message)) return "E-mail inválido. Confira o endereço.";
-  return "Não deu certo. Confira os dados e tente de novo.";
+/** Campos do formulário; o id do input é o próprio nome. */
+type Field = "nome" | "email" | "senha" | "termos";
+/** Aviso de erro e os campos a que ele se refere (o leitor de tela lê o aviso junto do campo). */
+type FormError = { message: string; fields: Field[] };
+
+function translate(message: string): FormError {
+  if (/invalid login credentials/i.test(message)) return { message: "E-mail ou senha incorretos.", fields: ["email", "senha"] };
+  if (/already registered/i.test(message)) {
+    return { message: "Este e-mail já tem cadastro. Entre ou recupere a senha.", fields: ["email"] };
+  }
+  if (/email not confirmed/i.test(message)) return { message: "Confirme seu e-mail pelo link que enviamos.", fields: ["email"] };
+  if (/password should be at least/i.test(message)) {
+    return { message: "A senha precisa ter pelo menos 8 caracteres.", fields: ["senha"] };
+  }
+  if (/rate limit/i.test(message)) return { message: "Muitas tentativas. Aguarde alguns minutos e tente de novo.", fields: [] };
+  if (/invalid.*email|validate email/i.test(message)) return { message: "E-mail inválido. Confira o endereço.", fields: ["email"] };
+  return { message: "Não deu certo. Confira os dados e tente de novo.", fields: [] };
 }
 
 /**
@@ -40,20 +49,32 @@ export function AuthForm({ mode, next = "/conta" }: { mode: Mode; next?: string 
   const [accepted, setAccepted] = useState(false);
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<FormError | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
   const needsEmail = mode !== "nova-senha";
   const needsPassword = mode !== "recuperar";
 
+  /** Mostra o erro e leva o foco ao primeiro campo com problema, como no checkout. */
+  function fail(found: FormError) {
+    setError(found);
+    if (found.fields[0]) document.getElementById(found.fields[0])?.focus();
+  }
+  const invalid = (field: Field) => Boolean(error?.fields.includes(field));
+  /** aria-describedby do campo: a dica dele, se houver, e o aviso de erro quando é sobre ele. */
+  const describedBy = (field: Field, hint?: string) =>
+    [hint, invalid(field) ? "auth-erro" : undefined].filter(Boolean).join(" ") || undefined;
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
 
-    if (needsPassword && password.length < 8) return setError("A senha precisa ter pelo menos 8 caracteres.");
+    if (needsPassword && password.length < 8) {
+      return fail({ message: "A senha precisa ter pelo menos 8 caracteres.", fields: ["senha"] });
+    }
     if (mode === "cadastro") {
-      if (name.trim().length < 3) return setError("Informe seu nome completo.");
-      if (!accepted) return setError("Aceite os termos de uso para criar a conta.");
+      if (name.trim().length < 3) return fail({ message: "Informe seu nome completo.", fields: ["nome"] });
+      if (!accepted) return fail({ message: "Aceite os termos de uso para criar a conta.", fields: ["termos"] });
     }
 
     setLoading(true);
@@ -95,7 +116,7 @@ export function AuthForm({ mode, next = "/conta" }: { mode: Mode; next?: string 
         return;
       }
     } catch (err) {
-      setError(translate(err instanceof Error ? err.message : ""));
+      fail(translate(err instanceof Error ? err.message : ""));
     }
     setLoading(false);
   }
@@ -121,6 +142,8 @@ export function AuthForm({ mode, next = "/conta" }: { mode: Mode; next?: string 
               className="field-input"
               autoComplete="name"
               required
+              aria-invalid={invalid("nome")}
+              aria-describedby={describedBy("nome")}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -142,6 +165,8 @@ export function AuthForm({ mode, next = "/conta" }: { mode: Mode; next?: string 
             className="field-input"
             autoComplete="email"
             required
+            aria-invalid={invalid("email")}
+            aria-describedby={describedBy("email")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -155,7 +180,10 @@ export function AuthForm({ mode, next = "/conta" }: { mode: Mode; next?: string 
               {mode === "nova-senha" ? "Nova senha" : "Senha"}
             </label>
             {mode === "entrar" && (
-              <Link href="/recuperar-senha" className="text-sm font-semibold text-action underline underline-offset-2">
+              <Link
+                href="/recuperar-senha"
+                className="inline-flex min-h-11 items-center text-sm font-semibold text-action underline underline-offset-2 sm:min-h-6"
+              >
                 Esqueci a senha
               </Link>
             )}
@@ -166,7 +194,8 @@ export function AuthForm({ mode, next = "/conta" }: { mode: Mode; next?: string 
               type={show ? "text" : "password"}
               className="field-input pr-12"
               autoComplete={mode === "entrar" ? "current-password" : "new-password"}
-              aria-describedby={mode === "entrar" ? undefined : "senha-dica"}
+              aria-invalid={invalid("senha")}
+              aria-describedby={describedBy("senha", mode === "entrar" ? undefined : "senha-dica")}
               required
               minLength={8}
               value={password}
@@ -193,9 +222,12 @@ export function AuthForm({ mode, next = "/conta" }: { mode: Mode; next?: string 
       {mode === "cadastro" && (
         <label className="flex min-h-11 items-start gap-3 text-sm">
           <input
+            id="termos"
             type="checkbox"
             checked={accepted}
             onChange={(e) => setAccepted(e.target.checked)}
+            aria-invalid={invalid("termos")}
+            aria-describedby={describedBy("termos")}
             className="mt-0.5 size-5 shrink-0 accent-action"
           />
           <span>
@@ -213,8 +245,8 @@ export function AuthForm({ mode, next = "/conta" }: { mode: Mode; next?: string 
       )}
 
       {error && (
-        <p className="alert alert-danger" role="alert">
-          {error}
+        <p id="auth-erro" className="alert alert-danger" role="alert">
+          {error.message}
         </p>
       )}
 

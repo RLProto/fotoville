@@ -43,7 +43,8 @@ export function CopiesInput({
       onKeyDown={(e) => {
         if (e.key === "Enter") e.currentTarget.blur();
       }}
-      className={`min-w-0 bg-transparent text-center font-bold tabular-nums outline-none focus:bg-action-soft ${className}`}
+      // O contorno de foco do site, por dentro do campo (por fora ele encostaria nos botões + e −)
+      className={`min-w-0 bg-transparent text-center font-bold tabular-nums focus:bg-action-soft focus-visible:-outline-offset-3 ${className}`}
     />
   );
 }

@@ -25,7 +25,7 @@ export default async function EntrarPage({
           Ainda não tem conta?{" "}
           <Link
             href={`/cadastro?proximo=${encodeURIComponent(next)}`}
-            className="font-bold text-action underline underline-offset-2"
+            className="inline-flex min-h-11 items-center font-bold text-action underline underline-offset-2"
           >
             Criar conta
           </Link>

@@ -4,8 +4,11 @@ import { WhatsappLogoIcon } from "@phosphor-icons/react";
 import { usePathname } from "next/navigation";
 import { whatsappLink } from "@/lib/site";
 
-/** Telas de tarefa com ação fixa embaixo: lá o WhatsApp fica dentro do resumo, não flutuando sobre os botões. */
-const HIDDEN = ["/enviar", "/carrinho", "/checkout", "/admin"];
+/**
+ * Telas de tarefa com ação fixa embaixo: lá o WhatsApp fica dentro do resumo, não flutuando sobre os botões.
+ * Contato e Prazos e frete já têm o WhatsApp no conteúdo: o botão flutuante só repetia e cobria o texto.
+ */
+const HIDDEN = ["/enviar", "/carrinho", "/checkout", "/admin", "/contato", "/prazos-e-frete"];
 
 export function WhatsAppButton() {
   const pathname = usePathname();

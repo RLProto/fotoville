@@ -177,6 +177,7 @@ export default async function CarrinhoPage() {
           <p className="leading-tight">
             <span className="block text-sm text-ink-2">Subtotal</span>
             <span className="font-display text-lg font-bold tabular-nums">{formatBRL(cart.subtotal_cents)}</span>
+            {blocked && <span className="block text-sm font-semibold text-warning">Complete o mínimo de fotos</span>}
           </p>
           {finish("btn btn-accent")}
         </div>

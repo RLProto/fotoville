@@ -58,7 +58,8 @@ export function Footer() {
       </div>
 
       <div className="border-t border-rule">
-        <div className="container-page flex flex-col gap-x-6 gap-y-1 pt-4 pb-24 text-sm text-ink-2 sm:flex-row sm:pr-24 sm:pb-5">
+        {/* Cada item com 32 px de altura: os links ficam fáceis de tocar */}
+        <div className="container-page flex flex-col gap-x-6 gap-y-1 pt-4 pb-24 text-sm text-ink-2 sm:flex-row sm:pr-24 sm:pb-5 [&>*]:flex [&>*]:min-h-8 [&>*]:items-center">
           <p>
             © {new Date().getFullYear()} {site.name}
           </p>

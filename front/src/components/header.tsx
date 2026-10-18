@@ -43,20 +43,20 @@ export async function Header() {
           </span>
         </Link>
 
-        <nav aria-label="Principal" className="hidden items-center md:flex">
+        <nav aria-label="Principal" className="hidden items-center lg:flex">
           <NavLinks items={NAV} />
         </nav>
 
         <div className="flex shrink-0 items-center gap-1">
           {isAdmin && (
-            // Entre 768 e 1023 px não cabe ao lado do menu; até 1279 px fica só o ícone
+            // De 768 a 1279 px (com o botão Enviar fotos e, a partir de 1024, o menu) fica só o ícone
             <Link
               href="/admin"
               title="Painel da loja"
-              className="hidden min-h-11 items-center gap-2 rounded-control px-3 font-medium text-ink-2 transition-colors duration-150 hover:bg-ink/[0.05] hover:text-ink sm:inline-flex md:max-lg:hidden"
+              className="hidden min-h-11 items-center gap-2 rounded-control px-3 font-medium text-ink-2 transition-colors duration-150 hover:bg-ink/[0.05] hover:text-ink sm:inline-flex"
             >
               <StorefrontIcon size={20} aria-hidden />
-              <span className="lg:max-xl:sr-only">Painel da loja</span>
+              <span className="md:max-xl:sr-only">Painel da loja</span>
             </Link>
           )}
           <Link
@@ -64,8 +64,7 @@ export async function Header() {
             className="hidden min-h-11 items-center gap-2 rounded-control px-3 font-medium text-ink-2 transition-colors duration-150 hover:bg-ink/[0.05] hover:text-ink sm:inline-flex"
           >
             <UserIcon size={20} aria-hidden />
-            {/* Entre 768 e 1023 px o menu e o botão disputam espaço: fica só o ícone */}
-            <span className="md:max-lg:sr-only">{user ? "Minha conta" : "Entrar"}</span>
+            <span>{user ? "Minha conta" : "Entrar"}</span>
           </Link>
           <Link
             href="/carrinho"

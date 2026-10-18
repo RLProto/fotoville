@@ -13,7 +13,7 @@ export default function RecuperarSenhaPage() {
       footer={
         <p>
           Lembrou a senha?{" "}
-          <Link href="/entrar" className="font-bold text-action underline underline-offset-2">
+          <Link href="/entrar" className="inline-flex min-h-11 items-center font-bold text-action underline underline-offset-2">
             Entrar
           </Link>
         </p>
