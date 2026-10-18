@@ -97,6 +97,56 @@ export function Uploader({
     };
   }, []);
 
+  /**
+   * Cópias: a tela muda na hora; a gravação espera o cliente parar de tocar e sai uma por vez por foto,
+   * sempre com o valor mais recente. Toques rápidos no + e − não chegam fora de ordem ao servidor.
+   */
+  const quantities = useRef(
+    new Map<string, { want: number; saved: number; timer: ReturnType<typeof setTimeout> | null; chain: Promise<void> }>(),
+  );
+  /** Fotos como estão na tela, para uma gravação em andamento saber se a foto continua na lista. */
+  const photosRef = useRef(photos);
+  useEffect(() => {
+    photosRef.current = photos;
+  }, [photos]);
+
+  useEffect(() => {
+    const pending = quantities.current;
+    // Saiu da página antes de a gravação sair: grava mesmo assim.
+    const flush = () => {
+      for (const [id, entry] of pending) {
+        if (entry.timer) clearTimeout(entry.timer);
+        entry.timer = null;
+        if (entry.want === entry.saved) continue;
+        fetch(`/api/photos/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quantity: entry.want }),
+          keepalive: true,
+        }).catch(() => {});
+        entry.saved = entry.want;
+      }
+    };
+    window.addEventListener("pagehide", flush);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      flush();
+    };
+  }, []);
+
+  /** O contador do carrinho no topo soma as cópias: atualiza uma vez só, depois de uma sequência de toques. */
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const timer = refreshTimer;
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
+  function scheduleRefresh() {
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(() => router.refresh(), 1200);
+  }
+
   useEffect(() => {
     const urls = urlsToRevoke.current;
     return () => urls.forEach((u) => URL.revokeObjectURL(u));
@@ -211,6 +261,9 @@ export function Uploader({
     setClearing(true);
     try {
       await api(`/api/photos?product=${encodeURIComponent(product.id)}`, { method: "DELETE" });
+      // Cópias que ainda iam ser gravadas não têm mais foto
+      for (const entry of quantities.current.values()) if (entry.timer) clearTimeout(entry.timer);
+      quantities.current.clear();
       setPhotos([]);
       setSkipped([]);
       setConfirmClear(false);
@@ -302,19 +355,69 @@ export function Uploader({
     router.refresh(); // atualiza o contador do carrinho no topo
   }
 
-  /** Atualização otimista: aplica na tela, grava no servidor e desfaz se falhar. */
-  async function patch(id: string, changes: Partial<Pick<PhotoView, "quantity" | "finish" | "crop" | "fit" | "adjust">>) {
-    const before = photos;
+  /** Atualização otimista: aplica na tela, grava no servidor e, se falhar, volta só o que mudou. */
+  async function patch(id: string, changes: Partial<Pick<PhotoView, "finish" | "crop" | "fit" | "adjust">>) {
+    const previous = photos.find((p) => p.id === id);
     setPhotos((list) => list.map((p) => (p.id === id ? { ...p, ...changes } : p)));
     try {
       await api(`/api/photos/${id}`, { method: "PATCH", body: JSON.stringify(changes) });
-      if (changes.quantity !== undefined) router.refresh(); // o contador do carrinho no topo soma as cópias
     } catch (err) {
-      setPhotos(before);
+      if (previous) {
+        const restore = Object.fromEntries(Object.keys(changes).map((k) => [k, previous[k as keyof typeof changes]]));
+        setPhotos((list) => list.map((p) => (p.id === id ? { ...p, ...restore } : p)));
+      }
       reportError("fotos", err, { etapa: "salvar alteração", photo: id, campos: Object.keys(changes) });
       throw err;
     }
   }
+
+  /** Grava as cópias de uma foto depois das gravações anteriores dela, com o valor mais recente. */
+  function saveQuantity(id: string) {
+    const entry = quantities.current.get(id);
+    if (!entry) return Promise.resolve();
+    if (entry.timer) clearTimeout(entry.timer);
+    entry.timer = null;
+    entry.chain = entry.chain.then(async () => {
+      const sent = entry.want;
+      if (sent === entry.saved) return;
+      try {
+        await api(`/api/photos/${id}`, { method: "PATCH", body: JSON.stringify({ quantity: sent }) });
+        entry.saved = sent;
+        scheduleRefresh();
+      } catch (err) {
+        // Foto removida no meio: não há o que avisar
+        if (!photosRef.current.some((p) => p.id === id)) return;
+        reportError("fotos", err, { etapa: "salvar cópias", photo: id, quantity: sent });
+        // O cliente já mudou de novo: a próxima gravação leva o valor novo
+        if (entry.want !== sent) return;
+        entry.want = entry.saved;
+        setPhotos((list) => list.map((p) => (p.id === id ? { ...p, quantity: entry.saved } : p)));
+        const message = err instanceof Error ? err.message : "Não foi possível salvar as cópias. Tente de novo.";
+        setNotice(message);
+        setToast(message);
+      }
+    });
+    return entry.chain;
+  }
+
+  function setQuantity(photo: PhotoView, value: number) {
+    const quantity = Math.min(MAX_COPIES, Math.max(1, value));
+    const entry = quantities.current.get(photo.id) ?? {
+      want: photo.quantity,
+      saved: photo.quantity,
+      timer: null,
+      chain: Promise.resolve(),
+    };
+    entry.want = quantity;
+    if (entry.timer) clearTimeout(entry.timer);
+    entry.timer = setTimeout(() => void saveQuantity(photo.id), 450);
+    quantities.current.set(photo.id, entry);
+    setPhotos((list) => list.map((p) => (p.id === photo.id ? { ...p, quantity } : p)));
+  }
+
+  /** Grava agora as cópias que esperavam o cliente parar de tocar. */
+  const flushQuantities = () => Promise.all([...quantities.current.keys()].map(saveQuantity));
+  const quantitiesPending = () => [...quantities.current.values()].some((q) => q.timer || q.want !== q.saved);
 
   const restore = (photo: PhotoView, index: number) =>
     setPhotos((list) => {
@@ -373,11 +476,17 @@ export function Uploader({
     api("/api/photos", { method: "PATCH", body: JSON.stringify({ product_id: product.id, changes }) });
 
   async function applyToAll(changes: { quantity: number }) {
-    const before = photos;
+    // Cópias ainda por gravar saem antes, para não chegarem depois e desfazerem esta
+    await flushQuantities();
+    const before = photosRef.current;
     if (!before.length) return;
     setPhotos((list) => list.map((p) => ({ ...p, ...changes })));
     try {
       await saveMany(before.map((p) => ({ id: p.id, quantity: changes.quantity })));
+      for (const p of before) {
+        const entry = quantities.current.get(p.id);
+        if (entry) entry.want = entry.saved = changes.quantity;
+      }
       setNotice("Aplicado a todas as fotos.");
       setToast("Aplicado a todas as fotos.");
       router.refresh();
@@ -483,9 +592,10 @@ export function Uploader({
 
   const goToCart = async (e: React.MouseEvent) => {
     if (progress) return e.preventDefault();
-    if (pendingRemoval.current) {
+    // Remoção ou cópias ainda por gravar: grava antes, para o carrinho abrir já certo
+    if (pendingRemoval.current || quantitiesPending()) {
       e.preventDefault();
-      await flushRemoval();
+      await Promise.all([flushRemoval(), flushQuantities()]);
       router.push("/carrinho");
     }
   };
@@ -786,7 +896,7 @@ export function Uploader({
                             className="inline-flex size-11 items-center justify-center rounded-control hover:bg-action-soft disabled:opacity-40"
                             aria-label={`Diminuir cópias de ${photo.file_name}`}
                             disabled={photo.quantity <= 1}
-                            onClick={() => patch(photo.id, { quantity: photo.quantity - 1 }).catch(() => {})}
+                            onClick={() => setQuantity(photo, photo.quantity - 1)}
                           >
                             <MinusIcon size={18} aria-hidden />
                           </button>
@@ -794,7 +904,7 @@ export function Uploader({
                             key={photo.quantity}
                             value={photo.quantity}
                             label={`Cópias de ${photo.file_name}`}
-                            onCommit={(n) => patch(photo.id, { quantity: n }).catch(() => {})}
+                            onCommit={(n) => setQuantity(photo, n)}
                             className="h-11 flex-1"
                           />
                           <button
@@ -802,7 +912,7 @@ export function Uploader({
                             className="inline-flex size-11 items-center justify-center rounded-control hover:bg-action-soft disabled:opacity-40"
                             aria-label={`Aumentar cópias de ${photo.file_name}`}
                             disabled={photo.quantity >= MAX_COPIES}
-                            onClick={() => patch(photo.id, { quantity: photo.quantity + 1 }).catch(() => {})}
+                            onClick={() => setQuantity(photo, photo.quantity + 1)}
                           >
                             <PlusIcon size={18} aria-hidden />
                           </button>
