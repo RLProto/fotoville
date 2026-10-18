@@ -39,7 +39,8 @@ de referência. Login, envio de fotos, frete real e pagamento dependem da config
 
 **Opção em uso: Supabase Storage.** Com o plano Pro, já inclui 100 GB de armazenamento e 250 GB de download por mês.
 
-1. Storage > *New bucket* `fotoville-fotos`, **privado**, sem políticas.
+1. Storage > *New bucket* `fotoville-fotos`, **privado**, sem políticas. Limite de 50 MB por arquivo e só
+   `image/jpeg`, `image/png` e `image/webp` (migração `2026-10-18_bucket_limites.sql`).
 2. Storage > Settings > *S3 connection*: copie Endpoint e Region e gere uma *access key*.
 3. Preencha `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID` e `S3_SECRET_ACCESS_KEY`. Não precisa de CORS.
 4. Rode `npm run check:storage` para confirmar envio, leitura e bloqueio de acesso anônimo.
