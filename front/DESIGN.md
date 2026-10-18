@@ -96,7 +96,7 @@ Escrito depois da construção, a partir do código em `src/app/globals.css` e d
 
 O site é o envelope de revelação do laboratório: o cliente marca tamanho e cópias como nos quadradinhos
 do envelope, sobre papel fotográfico branco e frio, com tinta índigo. As seis lâminas do diafragma do logo aparecem
-como campos inteiros de cor (régua de tamanhos em petróleo, pacotes em mostarda) e como preenchimento das fotos
+como campos inteiros de cor (régua de tamanhos em petróleo, desconto progressivo em mostarda) e como preenchimento das fotos
 desenhadas.
 O elemento memorável é a régua de tamanhos, com as fotos lado a lado na escala real e um celular de referência.
 Tema único claro, escolhido pela cena de uso: a borda branca da foto precisa ler como papel.
@@ -126,8 +126,8 @@ Contêiner de 1200px com respiro lateral de 16px (24px a partir de 640px). Seç�
 (80 a 96px nas seções principais da home).
 
 **Home, nesta ordem:** topo em duas colunas no desktop (foto até a borda esquerda; título, uma frase, botão "Enviar
-fotos" e link "Ver preços" à direita); régua "Compare os tamanhos" no campo petróleo; pacotes no campo mostarda, com
-título em cima e os quatro canhotos numa fileira no desktop; a loja (desde quando, papel, endereço de retirada);
+fotos" e link "Ver preços" à direita); régua "Compare os tamanhos" no campo petróleo; desconto progressivo no campo mostarda, com
+os cartões de faixas (os pacotes saíram da home e ficam na aba Pacotes); a loja (desde quando, papel, endereço de retirada);
 perguntas frequentes. Sem faixa "Como funciona" com números grandes: as etapas do pedido já ensinam o fluxo. O título da
 página é o maior da home; títulos de seção ficam em `text-3xl`.
 
