@@ -88,21 +88,36 @@ export function planJobs({ order, photos, products }: OrderDownload) {
     });
   }
 
-  for (let i = 0; i < minis.length; i += MINI_SHEET.perSheet) {
-    const group = minis.slice(i, i + MINI_SHEET.perSheet);
+  // Última folha em que cada foto aparece: depois dela, a foto decodificada sai da memória. Guardar todas
+  // até o fim derrubava a aba com uma centena de Minis.
+  const groups: AdminPhoto[][] = [];
+  for (let i = 0; i < minis.length; i += MINI_SHEET.perSheet) groups.push(minis.slice(i, i + MINI_SHEET.perSheet));
+  const lastSheet = new Map<string, number>();
+  groups.forEach((group, sheet) => group.forEach((photo) => lastSheet.set(photo.original_url!, sheet)));
+
+  groups.forEach((group, sheet) => {
     jobs.push({
       folder: MINI_SHEET_FOLDER,
-      name: `${order.number}_${MINI}_folha_${String(i / MINI_SHEET.perSheet + 1).padStart(3, "0")}`,
+      name: `${order.number}_${MINI}_folha_${String(sheet + 1).padStart(3, "0")}`,
       copies: 1,
       photoIds: group.map((p) => p.id),
       make: async () => {
-        const items = await Promise.all(
-          group.map(async (photo) => ({ source: await cached(photo.original_url!), photo, product: productOf(photo)! })),
-        );
-        return renderMiniSheetFile(items);
+        try {
+          const items = await Promise.all(
+            group.map(async (photo) => ({ source: await cached(photo.original_url!), photo, product: productOf(photo)! })),
+          );
+          return await renderMiniSheetFile(items);
+        } finally {
+          for (const url of new Set(group.map((p) => p.original_url!))) {
+            if (lastSheet.get(url) !== sheet) continue;
+            const image = cache.get(url);
+            cache.delete(url);
+            image?.then((img) => img.close()).catch(() => {});
+          }
+        }
       },
     });
-  }
+  });
   /** Libera as fotos decodificadas para as folhas. */
   const release = () => cache.forEach((p) => p.then((img) => img.close()).catch(() => {}));
   return { jobs, release };
