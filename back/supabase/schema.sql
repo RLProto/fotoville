@@ -411,9 +411,22 @@ drop policy if exists "fotos proprias - ler" on public.photos;
 create policy "fotos proprias - ler" on public.photos
   for select using (auth.uid() = user_id);
 
+-- O arquivo precisa estar na pasta do próprio cliente (u/<id>/), a mesma que /api/upload/presign assina
 drop policy if exists "fotos proprias - criar" on public.photos;
 create policy "fotos proprias - criar" on public.photos
-  for insert with check (auth.uid() = user_id and order_id is null);
+  for insert with check (
+    auth.uid() = user_id
+    and order_id is null
+    and starts_with(storage_key, 'u/' || auth.uid()::text || '/')
+    and (thumb_key is null or starts_with(thumb_key, 'u/' || auth.uid()::text || '/'))
+  );
+
+-- Colunas que o cliente grava: as de POST /api/photos e as do editor. Caminho do arquivo, dono, pedido e
+-- data ficam de fora, mesmo chamando o Supabase direto.
+revoke insert, update, truncate, references, trigger on public.photos from anon, authenticated;
+grant insert (user_id, product_id, storage_key, thumb_key, file_name, width_px, height_px, crop, finish, quantity)
+  on public.photos to authenticated;
+grant update (crop, fit, adjust, finish, quantity) on public.photos to authenticated;
 
 drop policy if exists "fotos proprias - editar no carrinho" on public.photos;
 create policy "fotos proprias - editar no carrinho" on public.photos
