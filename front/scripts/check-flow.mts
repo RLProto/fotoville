@@ -99,6 +99,58 @@ try {
   const login = await auth.auth.signInWithPassword({ email, password });
   check("login", !login.error && jar.size > 0, login.error?.message);
 
+  // Destino depois de entrar não sai do site: /%09/site.com virava //site.com (logado, /entrar já redireciona)
+  const sneaky = await fetch(`${SITE}/entrar?proximo=${encodeURIComponent("/\t/evil.example")}`, {
+    headers: { Cookie: cookieHeader() },
+    redirect: "manual",
+  });
+  const target = sneaky.headers.get("location") ?? "";
+  check(
+    "destino depois de entrar fica no site",
+    sneaky.status >= 300 && sneaky.status < 400 && !target.includes("evil.example") && new URL(target, SITE).origin === new URL(SITE).origin,
+    `${sneaky.status} → ${target}`,
+  );
+
+  // Sem login: API responde 401, página protegida leva ao login, link de e-mail inválido volta com aviso
+  const noLogin = await fetch(`${SITE}/api/frete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cep: "01310-100" }),
+  });
+  check("API sem login responde 401", noLogin.status === 401, `HTTP ${noLogin.status}`);
+  const guarded = await fetch(`${SITE}/carrinho`, { redirect: "manual" });
+  check(
+    "página protegida sem login vai para o login",
+    (guarded.headers.get("location") ?? "").includes("/entrar?proximo=%2Fcarrinho"),
+    `${guarded.status} ${guarded.headers.get("location")}`,
+  );
+  const badLink = await fetch(`${SITE}/auth/callback?token_hash=invalido&type=email&next=/conta`, { redirect: "manual" });
+  check(
+    "link de e-mail inválido volta para o login com aviso",
+    (badLink.headers.get("location") ?? "").includes("/entrar?erro=link"),
+    `${badLink.status} ${badLink.headers.get("location")}`,
+  );
+
+  // Cabeçalhos de segurança e SEO
+  const homeRes = await fetch(`${SITE}/`);
+  const homeHtml = await homeRes.text();
+  check(
+    "CSP e Permissions-Policy",
+    Boolean(homeRes.headers.get("content-security-policy")?.includes("frame-ancestors 'self'")) &&
+      Boolean(homeRes.headers.get("permissions-policy")?.includes("geolocation=()")),
+  );
+  check("dados da loja para o Google na home", homeHtml.includes("application/ld+json") && homeHtml.includes('"@type":"Store"'));
+  const precosHtml = await (await fetch(`${SITE}/precos`)).text();
+  const ogTitle = precosHtml.match(/property="og:title" content="([^"]*)"/)?.[1];
+  check("título de compartilhamento da própria página", ogTitle === "Preços de revelação de fotos | Fotoville", ogTitle);
+  const entrarHtml = await (await fetch(`${SITE}/entrar`)).text();
+  check("login fora do Google (noindex)", /name="robots" content="noindex/.test(entrarHtml));
+  const missing = await fetch(`${SITE}/pagina-que-nao-existe-${stamp}`);
+  const missingHtml = await missing.text();
+  check("404 com título próprio", missing.status === 404 && missingHtml.includes("<title>Página não encontrada | Fotoville</title>"), `HTTP ${missing.status}`);
+  const manifest = await fetch(`${SITE}/manifest.webmanifest`);
+  check("manifest", manifest.ok && (await manifest.json()).name === "Fotoville", `HTTP ${manifest.status}`);
+
   // Registro de erros: o navegador manda, o servidor grava com o cliente logado
   const report = await api("POST", "/api/erros", { scope: "teste-fluxo", message: `teste ${stamp}`, detail: { ok: true } });
   check("erro do navegador aceito", report.status === 204, `HTTP ${report.status}`);
@@ -121,6 +173,24 @@ try {
   const p1 = await uploadPhoto("praia.jpg", 4000, 3000);
   const p2 = await uploadPhoto("retrato.jpg", 1200, 1600);
   check("fotos enviadas e registradas", p1.id && p2.id);
+
+  // Pelo Supabase direto, com a sessão do cliente: só as colunas que o site grava
+  const foreignKey = `u/${crypto.randomUUID()}/arquivo-de-outra-pessoa.jpg`;
+  const directInsert = await auth.from("photos").insert({
+    user_id: userId,
+    product_id: "10x15",
+    storage_key: foreignKey,
+    file_name: "x.jpg",
+    width_px: 10,
+    height_px: 10,
+    finish: "brilho",
+    quantity: 1,
+  });
+  check("Supabase direto: foto com arquivo de outra pessoa é recusada", Boolean(directInsert.error), directInsert.error?.message);
+  const directDate = await auth.from("photos").update({ created_at: "2099-01-01T00:00:00Z" }).eq("id", p1.id);
+  check("Supabase direto: created_at não muda", Boolean(directDate.error), directDate.error?.message);
+  const directKey = await auth.from("photos").update({ storage_key: foreignKey }).eq("id", p1.id);
+  check("Supabase direto: caminho do arquivo não muda", Boolean(directKey.error), directKey.error?.message);
   check("corte padrão na proporção 10x15", Math.abs(p1.crop.width / p1.crop.height - 1.5) < 0.01, `${p1.crop.width}x${p1.crop.height}`);
   check("miniatura com URL assinada", typeof p1.thumb_url === "string" && p1.thumb_url.includes("X-Amz-Signature"));
 
@@ -152,6 +222,39 @@ try {
   const original = await api<{ url: string }>("GET", `/api/photos/${p1.id}`);
   const fetched = original.data.url ? await fetch(original.data.url) : null;
   check("original abre no editor de corte", fetched?.ok, `HTTP ${fetched?.status}`);
+  // Gravação em lote (Aplicar a todas, ajuste automático, borda): todas ou nenhuma
+  const batch = await api<{ updated: number }>("PATCH", "/api/photos", {
+    product_id: "10x15",
+    changes: [
+      { id: p1.id, quantity: 5 },
+      { id: p2.id, quantity: 5 },
+    ],
+  });
+  const { data: afterBatch } = await admin.from("photos").select("quantity").in("id", [p1.id, p2.id]);
+  check(
+    "gravação em lote",
+    batch.status === 200 && batch.data.updated === 2 && afterBatch?.length === 2 && afterBatch.every((p) => p.quantity === 5),
+    `HTTP ${batch.status} ${batch.text.slice(0, 120)}`,
+  );
+  const partial = await api("PATCH", "/api/photos", {
+    product_id: "10x15",
+    changes: [
+      { id: p1.id, quantity: 7 },
+      { id: crypto.randomUUID(), quantity: 7 },
+    ],
+  });
+  const { data: stillFive } = await admin.from("photos").select("quantity").eq("id", p1.id).single();
+  check("lote com foto fora do carrinho não grava nenhuma", partial.status === 409 && stillFive?.quantity === 5, `HTTP ${partial.status}, ${stillFive?.quantity} cópias`);
+  const adjustBatch = await api("PATCH", "/api/photos", { product_id: "10x15", changes: [{ id: p2.id, adjust }] });
+  const { data: p2Saved } = await admin.from("photos").select("adjust").eq("id", p2.id).single();
+  check(
+    "ajuste em lote (legenda descartada fora da Polaroid)",
+    adjustBatch.status === 200 && p2Saved?.adjust?.border?.mm === 6 && p2Saved?.adjust?.caption === null,
+    `HTTP ${adjustBatch.status} ${adjustBatch.text.slice(0, 120)}`,
+  );
+  // Volta às 3 cópias que o resto do teste espera
+  await api("PATCH", "/api/photos", { product_id: "10x15", changes: [{ id: p1.id, quantity: 3 }] });
+
   const removed = await api("DELETE", `/api/photos/${p2.id}`);
   check("remover foto do carrinho", removed.status === 200, `HTTP ${removed.status}`);
 
@@ -163,6 +266,16 @@ try {
   );
   const pac = frete.data.options?.find((o) => o.service === "pac");
   check("cotação de frete", pac && pac.price_cents > 0, pac ? `PAC R$ ${(pac.price_cents / 100).toFixed(2)}, ${pac.estimated ? "estimado" : "Correios"}, pacote ${frete.data.parcel.weight_g} g` : frete.text.slice(0, 200));
+
+  // Motoboy: só com CEP de Joinville, mesmo que cidade e bairro digitados sejam de lá
+  const joinville = await api<{ options: { service: string }[] }>("POST", "/api/frete", { cep: "89201-100", district: "Centro", city: "Joinville" });
+  check("motoboy para CEP de Joinville com bairro da lista", joinville.data.options?.some((o) => o.service === "motoboy"), joinville.text.slice(0, 160));
+  const outside = await api<{ options: { service: string }[] }>("POST", "/api/frete", { cep: "01310-100", district: "Centro", city: "Joinville" });
+  check(
+    "sem motoboy para CEP de fora com cidade e bairro de Joinville",
+    outside.status === 200 && !outside.data.options?.some((o) => o.service === "motoboy"),
+    outside.text.slice(0, 160),
+  );
 
   // 6. Cupom de créditos (2 fotos 10x15)
   await admin.from("coupons").insert({ code: couponCode, kind: "credits", user_id: userId, product_id: "10x15", credits_total: 2 });
@@ -206,6 +319,8 @@ try {
     await api("PATCH", `/api/photos/${other.id}`, { quantity: 120 });
     const cartPage = await api("GET", "/carrinho");
     check("desconto progressivo no carrinho", cartPage.status === 200 && cartPage.text.includes("142,80"), `HTTP ${cartPage.status}`);
+    const checkoutPage = await api("GET", "/checkout");
+    check("entrega do último pedido já preenchida", checkoutPage.status === 200 && checkoutPage.text.includes("Avenida Paulista"), `HTTP ${checkoutPage.status}`);
 
     // Mini Polaroid: mínimo de 2 fotos. Com 1, o pagamento recusa; com 2 cópias, passa da validação.
     const mini = await uploadPhoto("mini.jpg", 1200, 1600, "mini-polaroid");
@@ -238,10 +353,23 @@ try {
   const { count: copied } = await admin.from("profile_prices").select("product_id", { count: "exact", head: true }).eq("profile_id", profileId);
   check("perfil nasce com a tabela da loja", (copied ?? 0) > 20, `${copied} tamanhos`);
 
+  // Desde 07/10 as faixas do perfil seguem as quantidades da loja: faixa mais cara que o preço não é
+  // recusada, é ignorada (vira o preço anterior) e nenhuma faixa gravada passa do preço
   const badTier = await api("PATCH", `/api/admin/perfis/${profileId}`, {
     items: [{ product_id: "10x15", price_cents: 100, price_tiers: [{ min: 100, price_cents: 120 }] }],
   });
-  check("faixa mais cara que o preço é recusada", badTier.status === 400, `HTTP ${badTier.status}`);
+  const { data: savedRow } = await admin
+    .from("profile_prices")
+    .select("price_cents, price_tiers")
+    .eq("profile_id", profileId)
+    .eq("product_id", "10x15")
+    .maybeSingle();
+  const savedTiers = (savedRow?.price_tiers ?? []) as { min: number; price_cents: number }[];
+  check(
+    "faixa mais cara que o preço é ignorada",
+    badTier.status === 200 && savedRow?.price_cents === 100 && savedTiers.every((t) => t.price_cents <= 100),
+    `HTTP ${badTier.status} ${JSON.stringify(savedRow)}`,
+  );
   const ownPrice = await api("PATCH", `/api/admin/perfis/${profileId}`, {
     items: [{ product_id: "10x15", price_cents: 100, price_tiers: [{ min: 100, price_cents: 80 }] }],
   });
@@ -278,6 +406,34 @@ try {
   const { count: still } = await admin.from("customer_price_profiles").select("user_id", { count: "exact", head: true }).eq("user_id", userId);
   check("cliente volta para a tabela da loja", still === 0);
   profileId = null;
+
+  // 10. Duas abas fechando o mesmo carrinho ao mesmo tempo: um pedido só, com todas as fotos
+  await uploadPhoto("aba1.jpg", 3000, 2000);
+  await uploadPhoto("aba2.jpg", 3000, 2000);
+  const pickupOrder = { customer: { name: "Cliente Teste", cpf: "123.456.789-09", whatsapp: "(47) 99999-0000" }, service: "retirada" };
+  const tabs = await Promise.all([
+    api<{ orderId?: string; error?: string }>("POST", "/api/checkout", pickupOrder),
+    api<{ orderId?: string; error?: string }>("POST", "/api/checkout", pickupOrder),
+  ]);
+  const created2 = tabs.filter((t) => t.status === 200 && t.data.orderId);
+  const refused = tabs.filter((t) => t.status === 409 || t.status === 422);
+  check("duas abas: só um pedido", created2.length === 1 && refused.length === 1, tabs.map((t) => `${t.status} ${t.data.error ?? ""}`).join(" / "));
+  if (created2[0]?.data.orderId) {
+    const { count: both } = await admin.from("photos").select("id", { count: "exact", head: true }).eq("order_id", created2[0].data.orderId);
+    check("o pedido leva as duas fotos", both === 2, `${both}`);
+  }
+
+  // 11. Cupom: códigos inexistentes em sequência são barrados (o carrinho precisa ter foto)
+  await uploadPhoto("cupom.jpg", 3000, 2000);
+  const misses = [];
+  for (let i = 0; i < 10; i++) misses.push((await api("POST", "/api/cupom", { code: `NAOEXISTE${i}X${stamp}` })).status);
+  const blockedCoupon = await api<{ error: string }>("POST", "/api/cupom", { code: `NAOEXISTE10X${stamp}` });
+  check(
+    "11º código inexistente seguido é barrado",
+    misses.every((s) => s === 422) && blockedCoupon.status === 429,
+    `${misses.join(",")} → ${blockedCoupon.status} ${blockedCoupon.data.error ?? ""}`,
+  );
+  await admin.from("coupon_misses").delete().eq("user_id", userId);
 } catch (err) {
   failures++;
   console.error("FALHOU", err instanceof Error ? err.message : err);
