@@ -21,15 +21,50 @@ export type CartSummary = {
   parcelItems: ParcelItem[];
 };
 
+/** O Supabase devolve no máximo 1.000 linhas por consulta: carrinho maior vem em páginas. */
+const PAGE = 1000;
+
 export async function loadCartPhotos(supabase: SupabaseClient, userId: string): Promise<Photo[]> {
-  const { data, error } = await supabase
-    .from("photos")
-    .select("*")
-    .eq("user_id", userId)
-    .is("order_id", null)
-    .order("created_at");
-  if (error) throw new Error(error.message);
-  return (data ?? []) as Photo[];
+  const photos: Photo[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("photos")
+      .select("*")
+      .eq("user_id", userId)
+      .is("order_id", null)
+      .order("created_at")
+      .order("id")
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    photos.push(...((data ?? []) as Photo[]));
+    if (!data || data.length < PAGE) return photos;
+  }
+}
+
+/** Fotos e cópias por tamanho ativo, no formato que claim_cart_photos devolve. */
+export type CartCount = { product_id: string; files: number; copies: number };
+
+export function countCart(photos: Photo[], products: Product[]): CartCount[] {
+  const active = new Set(products.map((p) => p.id));
+  const counts = new Map<string, CartCount>();
+  for (const photo of photos) {
+    if (!active.has(photo.product_id)) continue;
+    const entry = counts.get(photo.product_id) ?? { product_id: photo.product_id, files: 0, copies: 0 };
+    entry.files += 1;
+    entry.copies += photo.quantity;
+    counts.set(photo.product_id, entry);
+  }
+  return [...counts.values()];
+}
+
+/** As fotos ligadas ao pedido são as mesmas que foram cobradas? */
+export function sameCount(charged: CartCount[], linked: CartCount[]) {
+  if (charged.length !== linked.length) return false;
+  const byProduct = new Map(linked.map((c) => [c.product_id, c]));
+  return charged.every((c) => {
+    const other = byProduct.get(c.product_id);
+    return other && other.files === c.files && other.copies === c.copies;
+  });
 }
 
 /**

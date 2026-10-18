@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { fail, reportServerError, requireUser, serverFail } from "@/lib/api";
-import { belowMinimum, loadCartPhotos, summarizeCart } from "@/lib/cart";
+import { belowMinimum, type CartCount, countCart, loadCartPhotos, sameCount, summarizeCart } from "@/lib/cart";
 import { getCustomerPriceProfile, getProducts } from "@/lib/catalog";
 import { percentDiscount } from "@/lib/coupon-rules";
 import { type CouponProblem, couponProblemMessage, previewCoupon } from "@/lib/coupons";
@@ -132,6 +132,21 @@ export async function POST(request: Request) {
     await admin.from("orders").delete().eq("id", order.id);
   };
 
+  // Liga as fotos ao pedido numa operação só e confere com o que foi cobrado. Se o carrinho mudou no meio
+  // (cópias alteradas, foto nova ou o pedido fechado em outra aba), desfaz: o cliente confere e tenta de novo.
+  const { data: linked, error: linkError } = await admin.rpc("claim_cart_photos", { p_order: order.id, p_user: user.id });
+  if (linkError) {
+    await rollback();
+    return serverFail("checkout", "Não foi possível criar o pedido. Tente de novo ou fale com a gente pelo WhatsApp.", linkError, 500, {
+      order: order.id,
+      etapa: "vincular fotos",
+    });
+  }
+  if (!sameCount(countCart(photos, products), (linked ?? []) as CartCount[])) {
+    await rollback();
+    return fail("Seu carrinho mudou enquanto o pedido era criado. Confira o carrinho e tente de novo.", 409);
+  }
+
   // Créditos do cupom são consumidos de forma atômica: dois pedidos não gastam o mesmo saldo.
   if (coupon?.kind === "credits" && coupon.credits > 0) {
     const { data: redeemed } = await admin.rpc("redeem_coupon_credits", {
@@ -174,21 +189,14 @@ export async function POST(request: Request) {
       total_cents: l.total_cents,
     })),
   );
-  const { error: photosError } = await admin
-    .from("photos")
-    .update({ order_id: order.id })
-    .eq("user_id", user.id)
-    .is("order_id", null)
-    .in("id", photos.map((p) => p.id));
-
-  if (itemsError || photosError) {
+  if (itemsError) {
     if (coupon?.kind === "credits" && coupon.credits > 0) {
       await admin.rpc("redeem_coupon_credits", { p_code: coupon.code, p_credits: -coupon.credits });
     }
     await rollback();
-    return serverFail("checkout", "Não foi possível criar o pedido. Tente de novo ou fale com a gente pelo WhatsApp.", itemsError ?? photosError, 500, {
+    return serverFail("checkout", "Não foi possível criar o pedido. Tente de novo ou fale com a gente pelo WhatsApp.", itemsError, 500, {
       order: order.id,
-      etapa: itemsError ? "itens do pedido" : "vincular fotos",
+      etapa: "itens do pedido",
     });
   }
 
