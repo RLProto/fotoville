@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { fail, reportServerError, requireUser, serverFail } from "@/lib/api";
 import { belowMinimum, type CartCount, countCart, loadCartPhotos, sameCount, summarizeCart } from "@/lib/cart";
-import { getCustomerPriceProfile, getProducts } from "@/lib/catalog";
+import { getChargeProducts } from "@/lib/catalog";
 import { percentDiscount } from "@/lib/coupon-rules";
 import { type CouponProblem, couponProblemMessage, previewCoupon } from "@/lib/coupons";
 import { isValidCpf, onlyDigits } from "@/lib/format";
@@ -11,7 +11,7 @@ import { markOrderPaid } from "@/lib/orders";
 import { quoteShipping } from "@/lib/shipping";
 import { estimateParcel } from "@/lib/shipping/parcel";
 import { createAdminClient } from "@/lib/supabase/server";
-import type { Coupon, Order } from "@/lib/types";
+import type { Coupon, Order, Photo } from "@/lib/types";
 
 const schema = z.object({
   customer: z.object({
@@ -53,8 +53,14 @@ export async function POST(request: Request) {
   const cep = onlyDigits(input.address?.cep ?? "");
   if (delivery && (!input.address || cep.length !== 8)) return fail("Informe o endereço de entrega completo.");
 
-  // Tudo que envolve dinheiro é recalculado aqui, a partir do banco.
-  const [photos, products] = await Promise.all([loadCartPhotos(supabase, user.id), getProducts()]);
+  // Tudo que envolve dinheiro é recalculado aqui, a partir do banco. Sem banco, não cobra.
+  let loaded: [Photo[], Awaited<ReturnType<typeof getChargeProducts>>];
+  try {
+    loaded = await Promise.all([loadCartPhotos(supabase, user.id), getChargeProducts(user.id)]);
+  } catch (err) {
+    return serverFail("checkout", "Não foi possível carregar o carrinho agora. Tente de novo em instantes.", err, 503, { etapa: "carrinho e preços" });
+  }
+  const [photos, { products, profile }] = loaded;
   const cart = summarizeCart(photos, products);
   if (!cart.lines.length) return fail("Seu carrinho está vazio.");
   const short = belowMinimum(cart.lines)[0];
@@ -114,7 +120,7 @@ export async function POST(request: Request) {
       coupon_code: coupon?.code ?? null,
       customer: { name: input.customer.name, cpf, whatsapp, email: user.email },
       // Com que tabela o pedido foi cobrado (perfil de cliente preferencial), para o painel
-      price_profile_name: (await getCustomerPriceProfile())?.name ?? null,
+      price_profile_name: profile?.name ?? null,
       shipping_service: shipping.service,
       shipping_label: shipping.label,
       shipping_days: shipping.days,

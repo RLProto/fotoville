@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { fail, reportServerError, requireUser, serverFail } from "@/lib/api";
-import { getPackages } from "@/lib/catalog";
+import { getChargePackage } from "@/lib/catalog";
 import { createPreference, hasMercadoPago } from "@/lib/mercadopago";
 import { createAdminClient } from "@/lib/supabase/server";
 import type { Order } from "@/lib/types";
@@ -17,7 +17,13 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return fail("Pacote inválido.");
 
-  const pkg = (await getPackages()).find((p) => p.id === parsed.data.packageId);
+  // Preço direto do banco: sem banco, não cobra
+  let pkg;
+  try {
+    pkg = await getChargePackage(parsed.data.packageId);
+  } catch (err) {
+    return serverFail("checkout", "Não foi possível carregar o pacote agora. Tente de novo em instantes.", err, 503, { package: parsed.data.packageId });
+  }
   if (!pkg) return fail("Pacote não encontrado.", 404);
 
   const admin = createAdminClient();
