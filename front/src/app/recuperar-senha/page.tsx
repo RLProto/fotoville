@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AuthForm } from "@/components/auth-form";
 import { AuthShell } from "@/components/auth-shell";
 
-export const metadata: Metadata = { title: "Recuperar senha" };
+export const metadata: Metadata = { title: "Recuperar senha", robots: { index: false } };
 
 export default function RecuperarSenhaPage() {
   return (

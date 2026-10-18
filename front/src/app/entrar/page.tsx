@@ -5,7 +5,7 @@ import { AuthForm } from "@/components/auth-form";
 import { accessReason, AuthShell, safeNext } from "@/components/auth-shell";
 import { getUser } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "Entrar" };
+export const metadata: Metadata = { title: "Entrar", robots: { index: false } };
 
 export default async function EntrarPage({
   searchParams,

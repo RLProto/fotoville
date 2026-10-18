@@ -5,7 +5,7 @@ import { AuthForm } from "@/components/auth-form";
 import { accessReason, AuthShell, safeNext } from "@/components/auth-shell";
 import { getUser } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "Criar conta" };
+export const metadata: Metadata = { title: "Criar conta", robots: { index: false } };
 
 export default async function CadastroPage({ searchParams }: { searchParams: Promise<{ proximo?: string }> }) {
   const next = safeNext((await searchParams).proximo);

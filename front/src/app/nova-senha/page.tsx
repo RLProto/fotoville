@@ -4,7 +4,7 @@ import { AuthForm } from "@/components/auth-form";
 import { AuthShell } from "@/components/auth-shell";
 import { getUser } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "Nova senha" };
+export const metadata: Metadata = { title: "Nova senha", robots: { index: false } };
 
 export default async function NovaSenhaPage() {
   // Só chega aqui logado: pelo link de recuperação ou já dentro da conta.

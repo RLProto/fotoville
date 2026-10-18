@@ -44,5 +44,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // As rotas de API passam por aqui: é o proxy que renova o token vencido antes de a rota rodar
-  matcher: ["/((?!_next/static|_next/image|api/webhooks|robots\\.txt$|sitemap\\.xml$|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|api/webhooks|robots\\.txt$|sitemap\\.xml$|manifest\\.webmanifest$|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)",
+  ],
 };

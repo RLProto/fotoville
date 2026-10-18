@@ -14,12 +14,12 @@ export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: { default: "Revelação de fotos online em Joinville | Fotoville", template: "%s | Fotoville" },
   description: site.description,
+  // Sem título nem descrição aqui: o Next usa os de cada página no compartilhamento (com título fixo, todas
+  // as páginas apareciam com o título da home)
   openGraph: {
     type: "website",
     locale: "pt_BR",
     siteName: site.name,
-    title: "Revelação de fotos online em Joinville | Fotoville",
-    description: site.description,
     images: [{ url: "/hero-fotos.jpg", width: 1024, height: 671, alt: "Fotos reveladas pela Fotoville" }],
   },
 };

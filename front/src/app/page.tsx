@@ -161,6 +161,36 @@ export default async function HomePage() {
           </p>
         </div>
       </section>
+
+      {/* Dados da loja para o Google (busca local e mapa) */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: storeJsonLd() }} />
     </>
   );
+}
+
+/** Loja física em Joinville, no formato schema.org. Horário fica de fora até a loja confirmar. */
+function storeJsonLd() {
+  const phone = site.whatsapp;
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "Store",
+    name: site.name,
+    description: site.description,
+    url: site.url,
+    image: `${site.url}/hero-fotos.jpg`,
+    logo: `${site.url}/logo-icon.png`,
+    telephone: `+${phone.slice(0, 2)} ${phone.slice(2, 4)} ${phone.slice(4, 8)}-${phone.slice(8)}`,
+    email: site.email,
+    foundingDate: String(site.since),
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: site.address.street,
+      addressLocality: site.address.city,
+      addressRegion: site.address.state,
+      postalCode: site.address.cep,
+      addressCountry: "BR",
+    },
+  };
+  // "<" escapado: o texto nunca fecha a tag <script>
+  return JSON.stringify(data).replace(/</g, "\\u003c");
 }
