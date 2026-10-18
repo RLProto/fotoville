@@ -89,6 +89,8 @@ export function PhotoEditor({
   const [captionFontId, setCaptionFontId] = useState<CaptionFont>(start.caption?.font ?? "caneta");
 
   const [saving, setSaving] = useState(false);
+  /** O cliente mexeu no enquadramento (arrastar, zoom, orientação)? O corte calculado ao abrir não conta. */
+  const [cropTouched, setCropTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const adjust = useMemo(
@@ -217,6 +219,23 @@ export function PhotoEditor({
   const dpi = printDpi(draft, product);
   const neutral = isNeutralAdjust(adjust);
 
+  // Foto inteira com proporção diferente da janela do papel: sobra papel em volta. Com a mesma proporção, não.
+  const fitWindow = paperLayout(product, isLandscape({ ...draft, fit: true }), adjust).window;
+  const fitMargins = Math.abs(photo.width_px / photo.height_px / (fitWindow.w / fitWindow.h) - 1) > 0.01;
+
+  /** Mudou algo desde que o editor abriu? Esc e o X perguntam antes de descartar. */
+  const dirty = cropTouched || fit !== photo.fit || canonical(neutral ? null : adjust) !== canonical(photo.adjust);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const keepEditingRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (confirmDiscard) keepEditingRef.current?.focus();
+  }, [confirmDiscard]);
+
+  function requestClose() {
+    if (dirty && !saving) setConfirmDiscard(true);
+    else dialogRef.current?.close();
+  }
+
   /** Área do corte em porcentagem, convertida para pixels do original. */
   function onArea(area: Area) {
     const x = Math.min(photo.width_px - 1, Math.max(0, Math.round((area.x / 100) * photo.width_px)));
@@ -273,6 +292,16 @@ export function PhotoEditor({
     <dialog
       ref={dialogRef}
       onClose={onClose}
+      onCancel={(e) => {
+        // Esc com ajustes feitos pergunta antes; Esc na pergunta volta a ajustar
+        if (confirmDiscard) {
+          e.preventDefault();
+          setConfirmDiscard(false);
+        } else if (dirty && !saving) {
+          e.preventDefault();
+          setConfirmDiscard(true);
+        }
+      }}
       aria-labelledby="editor-title"
       className="m-auto max-h-[calc(100dvh-1.5rem)] w-[min(100vw-1.5rem,44rem)] max-w-none overflow-hidden rounded-panel bg-surface p-0 shadow-lift backdrop:bg-ink/70 open:flex open:flex-col"
     >
@@ -293,7 +322,7 @@ export function PhotoEditor({
         </div>
         <button
           type="button"
-          onClick={() => dialogRef.current?.close()}
+          onClick={requestClose}
           aria-label="Fechar"
           className="inline-flex size-11 shrink-0 items-center justify-center rounded-control hover:bg-action-soft"
         >
@@ -330,6 +359,7 @@ export function PhotoEditor({
                 : undefined
             }
             onCropChange={setPosition}
+            onInteractionStart={() => setCropTouched(true)}
             onZoomChange={setZoom}
             onCropAreaChange={onArea}
             showGrid
@@ -383,7 +413,10 @@ export function PhotoEditor({
                       max={4}
                       step={0.01}
                       value={zoom}
-                      onChange={(e) => setZoom(Number(e.target.value))}
+                      onChange={(e) => {
+                        setZoom(Number(e.target.value));
+                        setCropTouched(true);
+                      }}
                       className="h-11 flex-1 accent-action"
                     />
                   </label>
@@ -401,6 +434,7 @@ export function PhotoEditor({
                             setLandscape(value);
                             setPosition({ x: 0, y: 0 });
                             setZoom(1);
+                            setCropTouched(true);
                           }}
                           className={`btn btn-sm ${landscape === value ? "bg-action text-white" : "text-ink hover:bg-action-soft"}`}
                         >
@@ -425,13 +459,15 @@ export function PhotoEditor({
                 </span>
               </label>
               {fit ? (
-                <p className="alert alert-warning" role="status">
-                  <WarningIcon size={20} aria-hidden className="mt-0.5 shrink-0" />
-                  <span>
-                    Atenção: a proporção da foto é diferente da do papel,{" "}
-                    <strong>a foto impressa terá margens brancas.</strong>
-                  </span>
-                </p>
+                fitMargins && (
+                  <p className="alert alert-warning" role="status">
+                    <WarningIcon size={20} aria-hidden className="mt-0.5 shrink-0" />
+                    <span>
+                      Atenção: a proporção da foto é diferente da do papel,{" "}
+                      <strong>a foto impressa terá margens brancas.</strong>
+                    </span>
+                  </p>
+                )
               ) : (
                 <p className="text-sm text-ink-2">Arraste para posicionar a foto.</p>
               )}
@@ -577,27 +613,45 @@ export function PhotoEditor({
             {error}
           </p>
         )}
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <button type="button" className="btn btn-ghost" onClick={() => dialogRef.current?.close()}>
-            Cancelar
-          </button>
-          {onSaveNext ? (
-            <>
-              <button type="button" className="btn btn-outline" onClick={() => save()} disabled={saving || !pixels}>
-                Salvar
-              </button>
-              <button type="button" className="btn btn-primary" onClick={() => save(true)} disabled={saving || !pixels}>
-                {saving && <CircleNotchIcon size={18} className="spinner" aria-hidden />}
-                {saving ? "Salvando…" : "Salvar e próxima"}
-              </button>
-            </>
-          ) : (
-            <button type="button" className="btn btn-primary" onClick={() => save()} disabled={saving || !pixels}>
-              {saving && <CircleNotchIcon size={18} className="spinner" aria-hidden />}
-              {saving ? "Salvando…" : "Salvar"}
+        {confirmDiscard ? (
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end" role="group" aria-labelledby="descartar-ajustes">
+            <p id="descartar-ajustes" className="font-bold sm:mr-auto">
+              Descartar os ajustes desta foto?
+            </p>
+            <button ref={keepEditingRef} type="button" className="btn btn-outline" onClick={() => setConfirmDiscard(false)}>
+              Continuar ajustando
             </button>
-          )}
-        </div>
+            <button
+              type="button"
+              className="btn bg-danger text-white hover:bg-danger/90"
+              onClick={() => dialogRef.current?.close()}
+            >
+              Descartar
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button type="button" className="btn btn-ghost" onClick={() => dialogRef.current?.close()}>
+              Cancelar
+            </button>
+            {onSaveNext ? (
+              <>
+                <button type="button" className="btn btn-outline" onClick={() => save()} disabled={saving || !pixels}>
+                  Salvar
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => save(true)} disabled={saving || !pixels}>
+                  {saving && <CircleNotchIcon size={18} className="spinner" aria-hidden />}
+                  {saving ? "Salvando…" : "Salvar e próxima"}
+                </button>
+              </>
+            ) : (
+              <button type="button" className="btn btn-primary" onClick={() => save()} disabled={saving || !pixels}>
+                {saving && <CircleNotchIcon size={18} className="spinner" aria-hidden />}
+                {saving ? "Salvando…" : "Salvar"}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </dialog>
   );
@@ -605,4 +659,14 @@ export function PhotoEditor({
 
 function pickTone(a: Adjust): Tone {
   return { auto: a.auto, brightness: a.brightness, contrast: a.contrast, saturation: a.saturation, bw: a.bw };
+}
+
+/** JSON com as chaves em ordem: o banco devolve o ajuste com as chaves em outra ordem. */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value).sort(([a], [b]) => (a < b ? -1 : 1));
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
 }
