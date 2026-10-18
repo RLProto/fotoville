@@ -368,20 +368,25 @@ export function Uploader({
     setNotice(`${pending.photo.file_name} voltou para a lista.`);
   }
 
+  /** Grava a mesma ação em várias fotos numa requisição só: todas ou nenhuma. */
+  const saveMany = (changes: ({ id: string; quantity: number } | { id: string; adjust: Adjust | null })[]) =>
+    api("/api/photos", { method: "PATCH", body: JSON.stringify({ product_id: product.id, changes }) });
+
   async function applyToAll(changes: { quantity: number }) {
     const before = photos;
+    if (!before.length) return;
     setPhotos((list) => list.map((p) => ({ ...p, ...changes })));
     try {
-      await Promise.all(
-        before.map((p) => api(`/api/photos/${p.id}`, { method: "PATCH", body: JSON.stringify(changes) })),
-      );
+      await saveMany(before.map((p) => ({ id: p.id, quantity: changes.quantity })));
       setNotice("Aplicado a todas as fotos.");
       setToast("Aplicado a todas as fotos.");
       router.refresh();
     } catch (err) {
       reportError("fotos", err, { etapa: "aplicar a todas", ...changes, count: before.length });
       setPhotos(before);
-      setNotice("Não foi possível aplicar a todas. Tente de novo.");
+      const message = err instanceof Error ? err.message : "Não foi possível aplicar a todas. Tente de novo.";
+      setNotice(message);
+      setToast(message);
     }
   }
 
@@ -423,16 +428,16 @@ export function Uploader({
 
     setPhotos((list) => list.map((p) => (next.has(p.id) ? { ...p, adjust: next.get(p.id)! } : p)));
     try {
-      await Promise.all(
-        [...next].map(([id, adjust]) => api(`/api/photos/${id}`, { method: "PATCH", body: JSON.stringify({ adjust }) })),
-      );
+      if (next.size) await saveMany([...next].map(([id, adjust]) => ({ id, adjust })));
       const message = allAuto ? "Ajuste automático removido de todas." : "Ajuste automático aplicado a todas.";
       setNotice(message);
       setToast(message);
     } catch (err) {
       reportError("ajuste", err, { etapa: "gravar ajuste automático em todas", count: next.size });
       setPhotos(before);
-      setNotice("Não foi possível aplicar a todas. Tente de novo.");
+      const message = err instanceof Error ? err.message : "Não foi possível aplicar a todas. Tente de novo.";
+      setNotice(message);
+      setToast(message);
     }
     setAutoBusy(false);
   }
@@ -458,9 +463,7 @@ export function Uploader({
     }
     setPhotos((list) => list.map((p) => ({ ...p, adjust: next.get(p.id) ?? null })));
     try {
-      await Promise.all(
-        [...next].map(([id, adjust]) => api(`/api/photos/${id}`, { method: "PATCH", body: JSON.stringify({ adjust }) })),
-      );
+      if (next.size) await saveMany([...next].map(([id, adjust]) => ({ id, adjust })));
       const message = border ? "Borda aplicada a todas." : "Borda tirada de todas.";
       setNotice(message);
       setToast(message);
@@ -468,7 +471,9 @@ export function Uploader({
     } catch (err) {
       reportError("ajuste", err, { etapa: "borda em todas", count: next.size });
       setPhotos(before);
-      setNotice("Não foi possível aplicar a todas. Tente de novo.");
+      const message = err instanceof Error ? err.message : "Não foi possível aplicar a todas. Tente de novo.";
+      setNotice(message);
+      setToast(message);
     }
     setBorderBusy(false);
   }

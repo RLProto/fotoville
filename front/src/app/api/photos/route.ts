@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { isNeutralAdjust, normalizeAdjust } from "@/lib/adjust";
 import { fail, reportServerError, requireUser, serverFail } from "@/lib/api";
 import { getProduct } from "@/lib/catalog";
 import { defaultCrop } from "@/lib/crop";
+import { adjustSchema, quantitySchema } from "@/lib/photo-schemas";
 import { deleteObjects, hasStorage, withThumbUrls } from "@/lib/storage";
 import type { Photo } from "@/lib/types";
 
@@ -55,6 +57,56 @@ export async function POST(request: Request) {
 
   const [photo] = await withThumbUrls([data as Photo]);
   return NextResponse.json({ photo });
+}
+
+const batchSchema = z.object({
+  product_id: z.string(),
+  changes: z
+    .array(
+      z.union([
+        z.strictObject({ id: z.guid(), quantity: quantitySchema }),
+        z.strictObject({ id: z.guid(), adjust: adjustSchema.nullable() }),
+      ]),
+    )
+    .min(1)
+    .max(2000),
+});
+
+/**
+ * Mesma ação em várias fotos de um tamanho, numa transação: "Aplicar a todas" (cópias), ajuste automático
+ * e borda em todas. Grava todas ou nenhuma, para a tela nunca mostrar algo diferente do que ficou salvo.
+ */
+export async function PATCH(request: Request) {
+  const auth = await requireUser();
+  if ("error" in auth) return auth.error;
+
+  const parsed = batchSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return fail("Não foi possível salvar. Tente de novo.");
+  const { product_id, changes } = parsed.data;
+  if (new Set(changes.map((c) => c.id)).size !== changes.length) return fail("Não foi possível salvar. Tente de novo.");
+
+  const product = await getProduct(product_id);
+  if (!product) return fail("Este tamanho não está mais disponível.", 404);
+
+  // Borda só fora da Polaroid, legenda só nela; sem nenhum ajuste, grava null (como na edição de uma foto).
+  const normalized = changes.map((c) => {
+    if (!("adjust" in c) || !c.adjust) return c;
+    const adjust = normalizeAdjust(c.adjust, product);
+    return { id: c.id, adjust: isNeutralAdjust(adjust) ? null : adjust };
+  });
+
+  const { data, error } = await auth.supabase.rpc("update_cart_photos", { p_product: product.id, p_changes: normalized });
+  if (error) {
+    if (error.message.includes("fotos_fora_do_carrinho")) {
+      return fail("Algumas fotos não estão mais no carrinho. Atualize a página.", 409);
+    }
+    return serverFail("fotos", "Não foi possível salvar. Tente de novo.", error, 500, {
+      etapa: "gravar em lote",
+      product: product.id,
+      count: changes.length,
+    });
+  }
+  return NextResponse.json({ updated: data });
 }
 
 /** Remove do carrinho todas as fotos de um tamanho (?product=10x15) ou o carrinho inteiro. */
