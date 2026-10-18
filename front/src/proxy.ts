@@ -21,10 +21,12 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // Renova o token da sessão; não coloque lógica entre createServerClient e getUser.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Renova o token da sessão; não coloque lógica entre createServerClient e getClaims.
+  // getClaims confere a assinatura do token aqui mesmo (chave ES256 publicada pelo projeto), sem ir ao
+  // servidor do Auth a cada requisição; só vai lá para renovar o token vencido. Páginas e rotas que
+  // precisam do usuário continuam conferindo com getUser.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims ?? null;
 
   const { pathname, search } = request.nextUrl;
   // A escolha do tamanho (/enviar) é pública; o envio em si (/enviar/<tamanho>) pede login.
@@ -41,5 +43,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|api/webhooks|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)"],
+  // As rotas de API passam por aqui: é o proxy que renova o token vencido antes de a rota rodar
+  matcher: ["/((?!_next/static|_next/image|api/webhooks|robots\\.txt$|sitemap\\.xml$|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)"],
 };
