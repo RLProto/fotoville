@@ -106,7 +106,7 @@ try {
       console.log(`OK   chave gravada; o grupo já existe (${settings.orders_chat_id})`);
     } else {
       // O número no formato que o WhatsApp usa: no Brasil, alguns ficam sem o nono dígito
-      const check = await greenApi("checkWhatsapp", { chatId: env("PEDIDOS_WHATSAPP").replace(/\D/g, "") });
+      const check = await greenApi("checkWhatsapp", { chatId: env("PEDIDOS_WHATSAPP").replace(/\D/g, "") + "@c.us" });
       if (!check.existsWhatsapp) throw new Error("PEDIDOS_WHATSAPP não tem WhatsApp");
       const member = check.phoneNumber || check.chatId;
       const group = await greenApi("createGroup", { groupName: GROUP_NAME, chatIds: [member] });
