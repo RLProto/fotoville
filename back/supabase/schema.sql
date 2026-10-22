@@ -448,7 +448,7 @@ create policy "cupons proprios" on public.coupons
 
 -- ---------------------------------------------------------------------------
 -- Daqui para baixo: o conteúdo das migrações de back/supabase/migrations, na ordem.
--- O bot do WhatsApp (esquema monitor) fica só em 2026-10-04_whatsapp_monitor.sql: depende de pg_cron,
+-- O bot do WhatsApp (esquema monitor) fica só em 2026-10-04_whatsapp_monitor.sql e 2026-10-22_whatsapp_pedidos.sql: depende de pg_cron,
 -- pg_net e da chave no Vault. O limite do bucket está em 2026-10-18_bucket_limites.sql.
 -- ---------------------------------------------------------------------------
 

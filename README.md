@@ -64,3 +64,18 @@ Fica desligado até `CARRINHO_LIMPEZA=1`.
    mostrar o prazo.
 
 Sem número ou sem as chaves da Meta, o aviso fica registrado em `cart_notices` sem envio e o prazo vale do mesmo jeito.
+
+## Pedidos novos no grupo do WhatsApp
+
+Cada pedido criado (pago ou não) vira uma mensagem num grupo, enviada pelo chip da loja, até um minuto depois.
+Roda no Supabase (`2026-10-22_whatsapp_pedidos.sql`, job `whatsapp-pedidos`); o envio é pela Green-API, que
+conecta o WhatsApp Business do chip como aparelho vinculado.
+
+1. **green-api.com:** crie a conta e uma instância do plano Developer (grátis, até 3 conversas; o grupo conta
+   como uma). Leia o QR code com o WhatsApp Business do chip (Aparelhos conectados).
+2. **`front/.env.local`:** `GREENAPI_URL`, `GREENAPI_INSTANCE` e `GREENAPI_TOKEN` (apiUrl, idInstance e
+   apiTokenInstance do painel da instância) e `PEDIDOS_WHATSAPP` (quem entra no grupo).
+3. `npm run whatsapp -- grupo` cria o grupo "Pedidos Fotoville" e grava tudo no banco.
+   `npm run whatsapp -- teste-pedido` manda o último pedido para conferir.
+
+Mensagens e falhas ficam em `monitor.messages`; falha de entrega também aparece em `/admin/erros` (área `whatsapp`).
