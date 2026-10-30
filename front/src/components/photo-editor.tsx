@@ -2,11 +2,13 @@
 
 import {
   ArrowCounterClockwiseIcon,
+  CaretDownIcon,
   CircleNotchIcon,
   CropIcon,
   DropHalfIcon,
   FrameCornersIcon,
   MagicWandIcon,
+  PaletteIcon,
   ProhibitIcon,
   RectangleIcon,
   SmileyIcon,
@@ -606,23 +608,31 @@ export function PhotoEditor({
                   )}
                   <button
                     type="button"
-                    title="Mais cores"
                     aria-expanded={paletteOpen}
                     aria-controls="moldura-paleta"
                     onClick={() => setPaletteOpen((v) => !v)}
-                    className={`inline-flex size-11 items-center justify-center rounded-control ring-1 ring-ink/20 ring-inset ${
-                      paletteOpen ? "outline-2 outline-offset-2 outline-ink-2" : ""
-                    }`}
-                    style={{
-                      background:
-                        "conic-gradient(#e53935, #fb8c00, #fdd835, #43a047, #00acc1, #1e88e5, #8e24aa, #d81b60, #e53935)",
-                    }}
+                    className={`btn btn-outline min-h-11 gap-2 px-3 ${paletteOpen ? "bg-action-soft" : ""}`}
                   >
-                    <span className="sr-only">Mais cores</span>
+                    <PaletteIcon size={20} aria-hidden />
+                    Mais cores
+                    <CaretDownIcon
+                      size={16}
+                      aria-hidden
+                      className={`transition-transform ${paletteOpen ? "rotate-180" : ""}`}
+                    />
                   </button>
                 </div>
                 {paletteOpen && (
-                  <FramePalette id="moldura-paleta" value={frameHex(frameColor)} onChange={(hex) => setFrameColor(hex)} />
+                  <FramePalette
+                    id="moldura-paleta"
+                    value={frameHex(frameColor)}
+                    onChange={(hex) => {
+                      // Escolheu: a paleta fecha e a cor fica ao lado das outras (ou marca a rápida igual, como a branca)
+                      const quick = BORDER_COLORS.find((c) => c.hex === hex);
+                      setFrameColor(quick ? (quick.id === "branco" ? null : quick.id) : hex);
+                      setPaletteOpen(false);
+                    }}
+                  />
                 )}
               </fieldset>
               <div>

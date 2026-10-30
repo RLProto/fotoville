@@ -3,7 +3,7 @@
 import { CircleNotchIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
 import { EmojiPicker, type EmojiPickerListComponents } from "frimousse";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BORDER_COLORS, FRAME_PALETTE } from "@/lib/adjust";
+import { FRAME_PALETTE } from "@/lib/adjust";
 
 /** Controles da Polaroid no editor de foto: emojis da legenda e paleta maior da moldura. */
 
@@ -98,10 +98,7 @@ export function EmojiPanel({ id, onPick }: { id: string; onPick: (emoji: string)
   );
 }
 
-/**
- * Paleta da moldura no jeito da do Office: uma coluna por cor, do claro ao escuro,
- * e qualquer outra cor pelo seletor do sistema.
- */
+/** Paleta da moldura no jeito da do Office: uma coluna por cor, do claro ao escuro. */
 export function FramePalette({
   id,
   value,
@@ -112,44 +109,26 @@ export function FramePalette({
   value: string;
   onChange: (hex: string) => void;
 }) {
-  // Cor que não está em nenhuma lista: veio do seletor do sistema
-  const custom = !FRAME_PALETTE.some((row) => row.some((c) => c.hex === value)) && !BORDER_COLORS.some((c) => c.hex === value);
   return (
     <div id={id} className="mt-3 rounded-control border border-rule p-3">
-      <div role="radiogroup" aria-label="Mais cores" className="grid grid-cols-10 gap-1 sm:max-w-sm">
+      <div role="group" aria-label="Mais cores" className="grid grid-cols-10 gap-1 sm:max-w-sm">
         {FRAME_PALETTE.flatMap((row) =>
           row.map((c) => (
-            <label
+            <button
               key={c.hex}
+              type="button"
               title={c.label}
-              className={`relative aspect-square cursor-pointer rounded-[3px] ring-1 ring-ink/15 ring-inset has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-action ${
+              aria-label={c.label}
+              aria-pressed={value === c.hex}
+              onClick={() => onChange(c.hex)}
+              className={`aspect-square rounded-[3px] ring-1 ring-ink/15 ring-inset focus-visible:z-10 focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-action ${
                 value === c.hex ? "z-10 outline-2 outline-offset-1 outline-action" : ""
               }`}
               style={{ background: c.hex }}
-            >
-              <input
-                type="radio"
-                name="moldura-paleta"
-                className="sr-only"
-                checked={value === c.hex}
-                onChange={() => onChange(c.hex)}
-              />
-              <span className="sr-only">{c.label}</span>
-            </label>
+            />
           )),
         )}
       </div>
-      <label className="mt-3 inline-flex min-h-11 cursor-pointer items-center gap-3 text-sm font-bold">
-        <input
-          type="color"
-          value={value}
-          onChange={(e) => onChange(e.target.value.toLowerCase())}
-          className={`size-11 cursor-pointer rounded-control border-0 bg-transparent p-0 ${
-            custom ? "outline-2 outline-offset-2 outline-action" : ""
-          }`}
-        />
-        Outra cor
-      </label>
     </div>
   );
 }
