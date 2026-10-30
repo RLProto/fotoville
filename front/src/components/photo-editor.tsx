@@ -9,7 +9,7 @@ import {
   MagicWandIcon,
   ProhibitIcon,
   RectangleIcon,
-  TextAaIcon,
+  SmileyIcon,
   WarningIcon,
   XIcon,
 } from "@phosphor-icons/react";
@@ -18,7 +18,10 @@ import Cropper, { type Area } from "react-easy-crop";
 import {
   BORDER_COLORS,
   BORDER_MM,
+  CAPTION_EMOJIS,
   CAPTION_MAX,
+  captionLength,
+  clipCaption,
   DEFAULT_ADJUST,
   hasToneChange,
   isNeutralAdjust,
@@ -87,6 +90,12 @@ export function PhotoEditor({
   const [borderMm, setBorderMm] = useState(start.border?.mm ?? BORDER_MM.initial);
   const [captionText, setCaptionText] = useState(start.caption?.text ?? "");
   const [captionFontId, setCaptionFontId] = useState<CaptionFont>(start.caption?.font ?? "caneta");
+  const [frameColor, setFrameColor] = useState<BorderColor | null>(start.frame ?? null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const captionRef = useRef<HTMLInputElement>(null);
+  /** Onde o cursor estava na legenda: o emoji entra ali sem focar o campo (no celular, focar abre o teclado). */
+  const caret = useRef<number | null>(null);
+  const captionLeft = CAPTION_MAX - captionLength(captionText);
 
   const [saving, setSaving] = useState(false);
   /** O cliente mexeu no enquadramento (arrastar, zoom, orientação)? O corte calculado ao abrir não conta. */
@@ -100,10 +109,11 @@ export function PhotoEditor({
           ...tone,
           border: borderColor ? { color: borderColor, mm: borderMm } : null,
           caption: { text: captionText, font: captionFontId },
+          frame: frameColor,
         },
         product,
       ),
-    [tone, borderColor, borderMm, captionText, captionFontId, product],
+    [tone, borderColor, borderMm, captionText, captionFontId, frameColor, product],
   );
   const draft = useMemo(
     () => ({ width_px: photo.width_px, height_px: photo.height_px, crop: pixels, fit, adjust }),
@@ -256,6 +266,17 @@ export function PhotoEditor({
     setTone((t) => ({ ...t, auto }));
   }
 
+  function rememberCaret() {
+    caret.current = captionRef.current?.selectionEnd ?? null;
+  }
+
+  function insertEmoji(emoji: string) {
+    const at = Math.min(caret.current ?? captionText.length, captionText.length);
+    const text = clipCaption(captionText.slice(0, at) + emoji + captionText.slice(at));
+    caret.current = Math.min(at + emoji.length, text.length);
+    setCaptionText(text);
+  }
+
   async function save(next = false) {
     if (!pixels) return;
     setSaving(true);
@@ -275,7 +296,7 @@ export function PhotoEditor({
     { id: "corte", label: "Corte", Icon: CropIcon },
     { id: "cor", label: "Cor", Icon: DropHalfIcon },
     polaroid
-      ? { id: "papel", label: "Legenda", Icon: TextAaIcon }
+      ? { id: "papel", label: "Moldura", Icon: FrameCornersIcon }
       : { id: "papel", label: "Borda", Icon: FrameCornersIcon },
   ];
 
@@ -557,20 +578,78 @@ export function PhotoEditor({
 
           {tab === "papel" && polaroid && (
             <>
+              <fieldset>
+                <legend className="field-label">Cor do fundo</legend>
+                <div className="flex flex-wrap gap-2">
+                  {BORDER_COLORS.map((c) => (
+                    <Swatch
+                      key={c.id}
+                      name="moldura"
+                      label={c.label}
+                      checked={(frameColor ?? "branco") === c.id}
+                      onChange={() => setFrameColor(c.id === "branco" ? null : c.id)}
+                      style={{ background: c.hex }}
+                    />
+                  ))}
+                </div>
+              </fieldset>
               <div>
-                <label htmlFor="legenda" className="field-label">
-                  Texto
-                </label>
-                <input
-                  id="legenda"
-                  type="text"
-                  value={captionText}
-                  maxLength={CAPTION_MAX}
-                  placeholder="Escreva algo"
-                  autoComplete="off"
-                  onChange={(e) => setCaptionText(e.target.value)}
-                  className="field-input"
-                />
+                <div className="flex items-baseline justify-between gap-3">
+                  <label htmlFor="legenda" className="field-label">
+                    Texto
+                  </label>
+                  <span
+                    id="legenda-restante"
+                    className={`text-sm tabular-nums ${captionLeft <= 5 ? "font-bold text-danger" : "text-ink-2"}`}
+                  >
+                    {captionLeft}
+                    <span className="sr-only"> caracteres restantes</span>
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    ref={captionRef}
+                    id="legenda"
+                    type="text"
+                    value={captionText}
+                    placeholder="Escreva algo"
+                    autoComplete="off"
+                    aria-describedby="legenda-restante"
+                    onChange={(e) => {
+                      // No limite, digitar não faz nada (como o maxLength); colar texto longo entra cortado
+                      if (captionLeft <= 0 && captionLength(e.target.value) > CAPTION_MAX) return;
+                      setCaptionText(clipCaption(e.target.value));
+                      rememberCaret();
+                    }}
+                    onSelect={rememberCaret}
+                    className="field-input min-w-0 flex-1"
+                  />
+                  <button
+                    type="button"
+                    aria-expanded={emojiOpen}
+                    aria-controls="legenda-emojis"
+                    onClick={() => setEmojiOpen((v) => !v)}
+                    className={`btn shrink-0 px-3 ${emojiOpen ? "btn-primary" : "btn-outline"}`}
+                  >
+                    <SmileyIcon size={20} aria-hidden />
+                    <span className="sr-only sm:not-sr-only">Emojis</span>
+                  </button>
+                </div>
+                {emojiOpen && (
+                  <div id="legenda-emojis" role="group" aria-label="Emojis" className="mt-2 flex flex-wrap gap-1">
+                    {CAPTION_EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        disabled={captionLeft <= 0}
+                        onClick={() => insertEmoji(emoji)}
+                        className="inline-flex size-11 items-center justify-center rounded-control text-2xl hover:bg-action-soft disabled:opacity-40"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <fieldset>
                 <legend className="field-label">Letra</legend>
@@ -665,7 +744,10 @@ function pickTone(a: Adjust): Tone {
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
   if (value && typeof value === "object") {
-    const entries = Object.entries(value).sort(([a], [b]) => (a < b ? -1 : 1));
+    // Campo nulo vale o mesmo que ausente: fotos gravadas antes da moldura não têm o campo
+    const entries = Object.entries(value)
+      .filter(([, v]) => v != null)
+      .sort(([a], [b]) => (a < b ? -1 : 1));
     return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(",")}}`;
   }
   return JSON.stringify(value ?? null);

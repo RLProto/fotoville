@@ -50,7 +50,7 @@ export function paperLayout(product: Size, landscape: boolean, adjust: Adjust | 
       height: long,
       window: { x: frame.side, y: frame.top, w, h },
       caption: { x: frame.side, y: frame.top + h, w, h: long - frame.top - h },
-      background: "#ffffff",
+      background: adjust?.frame ? borderHex(adjust.frame) : "#ffffff",
     };
   }
 

@@ -4,7 +4,6 @@ import { site, whatsappLink } from "@/lib/site";
 
 const LINKS = [
   { href: "/precos", label: "Preços" },
-  { href: "/promocoes", label: "Pacotes" },
   { href: "/prazos-e-frete", label: "Prazos e frete" },
   { href: "/quem-somos", label: "Quem somos" },
   { href: "/contato", label: "Contato" },

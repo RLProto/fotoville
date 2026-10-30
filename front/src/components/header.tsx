@@ -8,7 +8,6 @@ import { NavLinks } from "./nav-links";
 
 export const NAV = [
   { href: "/precos", label: "Preços" },
-  { href: "/promocoes", label: "Pacotes" },
   { href: "/prazos-e-frete", label: "Prazos e frete" },
   { href: "/contato", label: "Contato" },
 ];

@@ -5,7 +5,6 @@ const PATHS = [
   "",
   "/enviar",
   "/precos",
-  "/promocoes",
   "/prazos-e-frete",
   "/quem-somos",
   "/contato",
@@ -16,7 +15,7 @@ const PATHS = [
 export default function sitemap(): MetadataRoute.Sitemap {
   return PATHS.map((path) => ({
     url: `${site.url}${path}`,
-    changeFrequency: ["", "/precos", "/promocoes"].includes(path) ? "weekly" : "yearly",
+    changeFrequency: ["", "/precos"].includes(path) ? "weekly" : "yearly",
     priority: path === "" ? 1 : 0.7,
   }));
 }

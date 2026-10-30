@@ -127,7 +127,8 @@ Contêiner de 1200px com respiro lateral de 16px (24px a partir de 640px). Seç�
 
 **Home, nesta ordem:** topo em duas colunas no desktop (foto até a borda esquerda; título, uma frase, botão "Enviar
 fotos" e link "Ver preços" à direita); régua "Compare os tamanhos" no campo petróleo; desconto progressivo no campo mostarda, com
-os cartões de faixas (os pacotes saíram da home e ficam na aba Pacotes); a loja (desde quando, papel, endereço de retirada);
+título, botão e os cartões de faixas, sem frase de "até X%"; a página de pacotes (`/promocoes`) existe, mas fica fora do
+menu, do rodapé e do sitemap; a loja (desde quando, papel, endereço de retirada);
 perguntas frequentes. Sem faixa "Como funciona" com números grandes: as etapas do pedido já ensinam o fluxo. O título da
 página é o maior da home; títulos de seção ficam em `text-3xl`.
 

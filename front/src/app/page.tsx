@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { SizeBoard } from "@/components/size-board";
-import { TierTable, tieredSizesPhrase } from "@/components/tier-table";
+import { TierTable } from "@/components/tier-table";
 import { getProducts } from "@/lib/catalog";
 import { site, whatsappLink } from "@/lib/site";
 import type { Product } from "@/lib/types";
@@ -26,11 +26,6 @@ function pick(products: Product[], ids: string[]) {
 export default async function HomePage() {
   const products = await getProducts();
   const tiered = products.filter((p) => p.price_tiers.length > 0);
-  // Maior desconto da tabela progressiva, para a chamada da seção
-  const bestOff = Math.max(
-    0,
-    ...tiered.flatMap((p) => p.price_tiers.map((t) => Math.round((1 - t.price_cents / p.price_cents) * 100))),
-  );
   const mapsQuery = encodeURIComponent(
     `${site.address.street}, ${site.address.district}, ${site.address.city} - ${site.address.state}, ${site.address.cep}`,
   );
@@ -92,9 +87,6 @@ export default async function HomePage() {
               <h2 id="progressivo" className="display text-3xl">
                 Quanto mais fotos, menor o preço
               </h2>
-              <p className="mt-4 text-lg">
-                Desconto progressivo{bestOff > 0 ? ` de até ${bestOff}%` : ""} {tieredSizesPhrase(products)}.
-              </p>
               <p className="mt-6">
                 <Link href="/enviar" className="btn btn-outline">
                   Enviar fotos

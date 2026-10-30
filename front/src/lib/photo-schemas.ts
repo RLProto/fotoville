@@ -7,6 +7,8 @@ import type { BorderColor, CaptionFont } from "./types";
 const slider = z.number().int().min(-100).max(100);
 const gain = z.number().min(0.5).max(1);
 
+const borderColor = z.enum(BORDER_COLORS.map((c) => c.id) as [BorderColor, ...BorderColor[]]);
+
 export const quantitySchema = z.number().int().min(1).max(10000);
 
 export const adjustSchema = z.object({
@@ -26,14 +28,16 @@ export const adjustSchema = z.object({
   bw: z.boolean(),
   border: z
     .object({
-      color: z.enum(BORDER_COLORS.map((c) => c.id) as [BorderColor, ...BorderColor[]]),
+      color: borderColor,
       mm: z.number().int().min(BORDER_MM.min).max(BORDER_MM.max),
     })
     .nullable(),
   caption: z
     .object({
-      text: z.string().max(CAPTION_MAX * 2),
+      // Emoji ocupa vários caracteres no texto; o limite de letras visíveis é cobrado em normalizeAdjust
+      text: z.string().max(CAPTION_MAX * 16),
       font: z.enum(Object.keys(CAPTION_FONT_LABEL) as [CaptionFont, ...CaptionFont[]]),
     })
     .nullable(),
+  frame: borderColor.nullable().optional(),
 });

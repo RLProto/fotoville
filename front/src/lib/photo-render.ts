@@ -3,7 +3,7 @@
  * e o arquivo que a loja baixa, então o que aparece na tela é o que vai para o papel.
  * Lê pixels de imagens do bucket: exige CORS de leitura (GET) liberado para o domínio do site.
  */
-import { CAPTION_COLOR, hasToneChange } from "./adjust";
+import { captionInk, hasToneChange } from "./adjust";
 import { captionFont } from "./caption-fonts";
 import { loadImage, type DecodedImage } from "./decode-image";
 import { fitCrop, isLandscape, paperLayout, type Rect } from "./crop";
@@ -245,7 +245,7 @@ export async function renderPrint(
   }
 
   if (text) {
-    ctx.fillStyle = CAPTION_COLOR;
+    ctx.fillStyle = captionInk(photo.adjust?.frame);
     ctx.font = text.font;
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";

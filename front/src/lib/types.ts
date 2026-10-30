@@ -63,6 +63,8 @@ export type Adjust = {
   border: { color: BorderColor; mm: number } | null;
   /** Texto na faixa de baixo (só Polaroid). */
   caption: { text: string; font: CaptionFont } | null;
+  /** Cor da moldura da Polaroid; ausente ou null = branca. Fotos antigas não têm o campo. */
+  frame?: BorderColor | null;
 };
 
 export type Photo = {
