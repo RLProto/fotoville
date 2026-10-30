@@ -1,4 +1,4 @@
-import { borderHex } from "./adjust";
+import { borderHex, frameHex } from "./adjust";
 import type { Adjust, Crop, Photo, Product } from "./types";
 
 type PhotoShape = Pick<Photo, "width_px" | "height_px" | "crop" | "fit" | "adjust">;
@@ -50,7 +50,7 @@ export function paperLayout(product: Size, landscape: boolean, adjust: Adjust | 
       height: long,
       window: { x: frame.side, y: frame.top, w, h },
       caption: { x: frame.side, y: frame.top + h, w, h: long - frame.top - h },
-      background: adjust?.frame ? borderHex(adjust.frame) : "#ffffff",
+      background: frameHex(adjust?.frame),
     };
   }
 

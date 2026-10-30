@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BORDER_COLORS, BORDER_MM, CAPTION_FONT_LABEL, CAPTION_MAX } from "./adjust";
+import { BORDER_COLORS, BORDER_MM, CAPTION_FONT_LABEL, CAPTION_MAX, HEX_COLOR } from "./adjust";
 import type { BorderColor, CaptionFont } from "./types";
 
 /** Validação do que o navegador manda para gravar numa foto do carrinho (uma por vez ou em lote). */
@@ -39,5 +39,5 @@ export const adjustSchema = z.object({
       font: z.enum(Object.keys(CAPTION_FONT_LABEL) as [CaptionFont, ...CaptionFont[]]),
     })
     .nullable(),
-  frame: borderColor.nullable().optional(),
+  frame: z.union([borderColor, z.string().toLowerCase().regex(HEX_COLOR)]).nullable().optional(),
 });

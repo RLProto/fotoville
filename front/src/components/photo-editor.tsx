@@ -18,17 +18,18 @@ import Cropper, { type Area } from "react-easy-crop";
 import {
   BORDER_COLORS,
   BORDER_MM,
-  CAPTION_EMOJIS,
   CAPTION_MAX,
   captionLength,
   clipCaption,
   DEFAULT_ADJUST,
+  frameHex,
   hasToneChange,
   isNeutralAdjust,
   normalizeAdjust,
 } from "@/lib/adjust";
 import { CAPTION_FONTS } from "@/lib/caption-fonts";
 import { Slider, Swatch } from "@/components/adjust-controls";
+import { EmojiPanel, FramePalette } from "@/components/polaroid-controls";
 import { cropAspect, fitCrop, isLandscape, LOW_DPI, paperLayout, printDpi } from "@/lib/crop";
 import { loadImage } from "@/lib/decode-image";
 import { analyzeImage, applyTone, renderPrint } from "@/lib/photo-render";
@@ -90,7 +91,9 @@ export function PhotoEditor({
   const [borderMm, setBorderMm] = useState(start.border?.mm ?? BORDER_MM.initial);
   const [captionText, setCaptionText] = useState(start.caption?.text ?? "");
   const [captionFontId, setCaptionFontId] = useState<CaptionFont>(start.caption?.font ?? "caneta");
-  const [frameColor, setFrameColor] = useState<BorderColor | null>(start.frame ?? null);
+  /** Uma das cores da borda (id) ou "#rrggbb" da paleta maior; null = branca. */
+  const [frameColor, setFrameColor] = useState<string | null>(start.frame ?? null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const captionRef = useRef<HTMLInputElement>(null);
   /** Onde o cursor estava na legenda: o emoji entra ali sem focar o campo (no celular, focar abre o teclado). */
@@ -271,6 +274,7 @@ export function PhotoEditor({
   }
 
   function insertEmoji(emoji: string) {
+    if (captionLeft <= 0) return;
     const at = Math.min(caret.current ?? captionText.length, captionText.length);
     const text = clipCaption(captionText.slice(0, at) + emoji + captionText.slice(at));
     caret.current = Math.min(at + emoji.length, text.length);
@@ -324,7 +328,7 @@ export function PhotoEditor({
         }
       }}
       aria-labelledby="editor-title"
-      className="m-auto max-h-[calc(100dvh-1.5rem)] w-[min(100vw-1.5rem,44rem)] max-w-none overflow-hidden rounded-panel bg-surface p-0 shadow-lift backdrop:bg-ink/70 open:flex open:flex-col"
+      className="m-auto max-h-[calc(100dvh-1.5rem)] w-[min(100vw-1.5rem,44rem)] max-w-none overflow-clip rounded-panel bg-surface p-0 shadow-lift backdrop:bg-ink/70 open:flex open:flex-col"
     >
       <div className="flex shrink-0 items-center justify-between gap-4 border-b border-rule px-5 py-3">
         <div className="min-w-0">
@@ -591,7 +595,35 @@ export function PhotoEditor({
                       style={{ background: c.hex }}
                     />
                   ))}
+                  {frameColor?.startsWith("#") && (
+                    <Swatch
+                      name="moldura"
+                      label="Cor escolhida"
+                      checked
+                      onChange={() => {}}
+                      style={{ background: frameColor }}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    title="Mais cores"
+                    aria-expanded={paletteOpen}
+                    aria-controls="moldura-paleta"
+                    onClick={() => setPaletteOpen((v) => !v)}
+                    className={`inline-flex size-11 items-center justify-center rounded-control ring-1 ring-ink/20 ring-inset ${
+                      paletteOpen ? "outline-2 outline-offset-2 outline-ink-2" : ""
+                    }`}
+                    style={{
+                      background:
+                        "conic-gradient(#e53935, #fb8c00, #fdd835, #43a047, #00acc1, #1e88e5, #8e24aa, #d81b60, #e53935)",
+                    }}
+                  >
+                    <span className="sr-only">Mais cores</span>
+                  </button>
                 </div>
+                {paletteOpen && (
+                  <FramePalette id="moldura-paleta" value={frameHex(frameColor)} onChange={(hex) => setFrameColor(hex)} />
+                )}
               </fieldset>
               <div>
                 <div className="flex items-baseline justify-between gap-3">
@@ -635,21 +667,7 @@ export function PhotoEditor({
                     <span className="sr-only sm:not-sr-only">Emojis</span>
                   </button>
                 </div>
-                {emojiOpen && (
-                  <div id="legenda-emojis" role="group" aria-label="Emojis" className="mt-2 flex flex-wrap gap-1">
-                    {CAPTION_EMOJIS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        disabled={captionLeft <= 0}
-                        onClick={() => insertEmoji(emoji)}
-                        className="inline-flex size-11 items-center justify-center rounded-control text-2xl hover:bg-action-soft disabled:opacity-40"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {emojiOpen && <EmojiPanel id="legenda-emojis" onPick={insertEmoji} />}
               </div>
               <fieldset>
                 <legend className="field-label">Letra</legend>
