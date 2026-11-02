@@ -7,6 +7,7 @@ import { useRef, useState, useSyncExternalStore } from "react";
 import {
   fetchOrderDownload,
   hasFolderPicker,
+  markDownloaded,
   patchOrder,
   pickFolder,
   writeOrder,
@@ -111,7 +112,10 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
         note(`${result.failed} falha(s)`);
       } else {
         note(`${result.files} arquivo(s)`);
-        if (order.status === "paid") await patchOrder(order.id, { status: "in_production" });
+        if (!(await markDownloaded(order))) {
+          note("Etiqueta não liberada: baixe de novo");
+          return { ...result, failed: 1 };
+        }
       }
       return result;
     } catch (err) {
@@ -142,7 +146,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
     setMessage(
       failed
         ? `${ok} pedido(s) gravados, ${failed} com falha. Veja a coluna Imagens.`
-        : `${ok} pedido(s) gravados em pastas, com etiquetas. Pedidos pagos passaram para "Em produção".`,
+        : `${ok} pedido(s) gravados em pastas. Etiquetas na aba Etiquetas. Pedidos pagos passaram para "Em produção".`,
     );
     router.refresh();
   }

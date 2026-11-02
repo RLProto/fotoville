@@ -62,6 +62,9 @@ export function nominalCm(product: Pick<Product, "name" | "width_cm" | "height_c
 }
 
 /** Medida real do papel no formato das pastas de impressão: "10,2x15,2". */
+/** Nome comercial do tamanho, como o cliente vê: "10x15", "Polaroid". */
+export const sizeName = (product: Pick<Product, "name">) => product.name.replace(/ cm$/, "");
+
 export function realSizeLabel(product: Pick<Product, "width_cm" | "height_cm">) {
   const cm = (v: number) => String(v).replace(".", ",");
   return `${cm(product.width_cm)}x${cm(product.height_cm)}`;

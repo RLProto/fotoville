@@ -9,6 +9,7 @@ const schema = z.object({
     .enum(["pending", "paid", "in_production", "shipped", "ready_for_pickup", "delivered", "cancelled"])
     .optional(),
   tracking_code: z.string().trim().max(40).optional(),
+  label_ready: z.literal(true).optional(),
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -18,7 +19,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return fail("Alteração inválida.");
-  const { status, tracking_code } = parsed.data;
+  const { status, tracking_code, label_ready } = parsed.data;
 
   const admin = createAdminClient();
 
@@ -33,6 +34,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   if (Object.keys(patch).length) {
     const { error } = await admin.from("orders").update(patch).eq("id", id);
+    if (error) return serverFail("painel", error.message, error, 500, { order: id });
+  }
+
+  // Baixar de novo não muda a data nem a marca de impressa
+  if (label_ready) {
+    const { error } = await admin
+      .from("orders")
+      .update({ label_ready_at: new Date().toISOString() })
+      .eq("id", id)
+      .is("label_ready_at", null);
     if (error) return serverFail("painel", error.message, error, 500, { order: id });
   }
   return NextResponse.json({ ok: true });

@@ -6,6 +6,9 @@
 import fontkit from "@pdf-lib/fontkit";
 import JsBarcode from "jsbarcode";
 import { PDFDocument, PDFFont, PDFPage, rgb } from "pdf-lib";
+import { sizeName } from "./catalog-data";
+import { formatCep } from "./format";
+import type { Order, OrderItem, Product } from "./types";
 
 /** Geometria da folha, em mm. Ajuste aqui se a impressora deslocar as etiquetas. */
 export const LABEL_SHEET = {
@@ -44,6 +47,48 @@ export type LabelData = {
   /** "10x15 (3 fotos)": o primeiro fica embaixo, os outros sobem. */
   sizes: string[];
 };
+
+/** Uma etiqueta por pedido, com os tamanhos na ordem do catálogo; pedido com tamanhos demais ganha outra. */
+export function labelsFor(
+  order: Pick<Order, "number" | "customer" | "shipping_service" | "shipping_address">,
+  items: Pick<OrderItem, "product_id" | "quantity">[],
+  products: Pick<Product, "id" | "name" | "sort">[],
+): LabelData[] {
+  const { customer, shipping_address: address } = order;
+
+  const copies = new Map<string, number>();
+  for (const item of items) {
+    if (item.product_id) copies.set(item.product_id, (copies.get(item.product_id) ?? 0) + item.quantity);
+  }
+  const sizes = products
+    .filter((p) => copies.has(p.id))
+    .sort((a, b) => a.sort - b.sort)
+    .map((p) => {
+      const count = copies.get(p.id)!;
+      return `${sizeName(p)} (${count} ${count === 1 ? "foto" : "fotos"})`;
+    });
+
+  const base = {
+    number: order.number,
+    customer: customer?.name?.toLocaleUpperCase("pt-BR") || customer?.email || "SEM NOME",
+    address:
+      order.shipping_service === "retirada" || !address
+        ? null
+        : {
+            street: address.street,
+            number: address.number,
+            complement: address.complement,
+            district: address.district,
+            city: `${address.city} - ${address.state}`,
+            cep: `CEP ${formatCep(address.cep)}${order.shipping_service === "motoboy" ? " - MOTOBOY" : ""}`,
+          },
+  };
+  const labels: LabelData[] = [];
+  for (let i = 0; i < Math.max(1, sizes.length); i += SIZES_PER_LABEL) {
+    labels.push({ ...base, sizes: sizes.slice(i, i + SIZES_PER_LABEL) });
+  }
+  return labels;
+}
 
 /** Cobre latim com acentos de todas as línguas, grego, cirílico e muitos símbolos. Servida em public/fonts. */
 const FONT_URL = "/fonts/DejaVuSans.ttf";

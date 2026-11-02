@@ -1,11 +1,10 @@
 /**
  * Download de um pedido para o computador da loja, no navegador do painel (Chrome ou Edge):
- * <nº do pedido>/<tamanho>/<arquivo>.jpg, uma cópia por arquivo, mais o PDF das etiquetas.
+ * <nº do pedido>/<tamanho>/<arquivo>.jpg, uma cópia por arquivo.
  * Usado pela página do pedido e pela lista de pedidos (um ou vários de uma vez).
  */
-import { formatCep } from "./format";
+import { sizeName } from "./catalog-data";
 import { loadImage, type DecodedImage } from "./decode-image";
-import { buildLabelsPdf, SIZES_PER_LABEL, type LabelData } from "./order-label";
 import { MINI_SHEET, renderMiniSheetFile, renderPrintFileFromUrl } from "./photo-render";
 import type { Order, Photo, Product } from "./types";
 
@@ -46,9 +45,6 @@ export async function pickFolder(): Promise<DirectoryHandle | null> {
 
 const MINI = "mini-polaroid";
 const MINI_SHEET_FOLDER = "Mini Polaroid (folhas 10x15)";
-
-/** Nome comercial do tamanho, como o cliente vê: "10x15", "Polaroid". */
-export const sizeName = (product: Pick<Product, "name">) => product.name.replace(/ cm$/, "");
 
 /** Pasta de cada tamanho dentro da pasta do pedido. */
 function sizeFolder(product: Product) {
@@ -126,47 +122,10 @@ export function planJobs({ order, photos, products }: OrderDownload) {
 /** Quantos arquivos o download grava (cópias contadas, Minis em folhas). */
 export const countFiles = (data: OrderDownload) => planJobs(data).jobs.reduce((sum, j) => sum + j.copies, 0);
 
-/** Uma etiqueta por pedido, com os tamanhos na ordem do catálogo; pedido com tamanhos demais ganha outra. */
-export function labelsFor({ order, photos, products }: OrderDownload): LabelData[] {
-  const customer = order.customer;
-  const address = order.shipping_address;
-
-  const copies = new Map<string, number>();
-  for (const photo of photos) copies.set(photo.product_id, (copies.get(photo.product_id) ?? 0) + photo.quantity);
-  const sizes = products
-    .filter((p) => copies.has(p.id))
-    .sort((a, b) => a.sort - b.sort)
-    .map((p) => {
-      const count = copies.get(p.id)!;
-      return `${sizeName(p)} (${count} ${count === 1 ? "foto" : "fotos"})`;
-    });
-
-  const base = {
-    number: order.number,
-    customer: customer?.name?.toLocaleUpperCase("pt-BR") || customer?.email || "SEM NOME",
-    address:
-      order.shipping_service === "retirada" || !address
-        ? null
-        : {
-            street: address.street,
-            number: address.number,
-            complement: address.complement,
-            district: address.district,
-            city: `${address.city} - ${address.state}`,
-            cep: `CEP ${formatCep(address.cep)}${order.shipping_service === "motoboy" ? " - MOTOBOY" : ""}`,
-          },
-  };
-  const labels: LabelData[] = [];
-  for (let i = 0; i < Math.max(1, sizes.length); i += SIZES_PER_LABEL) {
-    labels.push({ ...base, sizes: sizes.slice(i, i + SIZES_PER_LABEL) });
-  }
-  return labels;
-}
-
-export type WriteResult = { files: number; labels: number; failed: number };
+export type WriteResult = { files: number; failed: number };
 
 /**
- * Grava o pedido dentro de `root`: pasta com o número, subpastas por tamanho e o PDF das etiquetas.
+ * Grava o pedido dentro de `root`: pasta com o número e subpastas por tamanho.
  * `onProgress` recebe quantos arquivos já foram gravados.
  */
 export async function writeOrder(
@@ -176,7 +135,6 @@ export async function writeOrder(
 ): Promise<WriteResult> {
   const { jobs, release } = planJobs(data);
   const total = jobs.reduce((sum, j) => sum + j.copies, 0);
-  const labels = labelsFor(data);
   let failed = 0;
   let done = 0;
 
@@ -203,16 +161,10 @@ export async function writeOrder(
         reportDownloadError(err, { etapa: "gravar foto", order: data.order.id, photos: job.photoIds, file: job.name });
       }
     }
-    try {
-      await write(orderDir, `etiquetas_${data.order.number}.pdf`, await buildLabelsPdf(labels));
-    } catch (err) {
-      failed += 1;
-      reportDownloadError(err, { etapa: "gerar etiquetas", order: data.order.id });
-    }
   } finally {
     release();
   }
-  return { files: done, labels: labels.length, failed };
+  return { files: done, failed };
 }
 
 async function reportDownloadError(err: unknown, detail: Record<string, unknown>) {
@@ -227,8 +179,15 @@ export async function fetchOrderDownload(orderId: string): Promise<OrderDownload
   return res.json();
 }
 
+/** Depois de gravar o pedido: libera a etiqueta na aba Etiquetas e, se estava pago, passa para "Em produção". */
+export const markDownloaded = (order: Pick<Order, "id" | "status">) =>
+  patchOrder(order.id, { label_ready: true, ...(order.status === "paid" ? { status: "in_production" as const } : {}) });
+
 /** Muda a situação do pedido pela mesma rota da página do pedido. */
-export async function patchOrder(orderId: string, patch: { status?: Order["status"]; tracking_code?: string }) {
+export async function patchOrder(
+  orderId: string,
+  patch: { status?: Order["status"]; tracking_code?: string; label_ready?: true },
+) {
   const res = await fetch(`/api/admin/pedidos/${orderId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },

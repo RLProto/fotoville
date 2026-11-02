@@ -7,15 +7,14 @@ import { PrintPreview } from "@/components/print-preview";
 import {
   countFiles,
   hasFolderPicker,
-  patchOrder,
+  markDownloaded,
   pickFolder,
-  sizeName,
   writeOrder,
   type AdminPhoto,
   type OrderDownload,
 } from "@/lib/admin-download";
 import { describeAdjust } from "@/lib/adjust";
-import { realSizeLabel } from "@/lib/catalog-data";
+import { realSizeLabel, sizeName } from "@/lib/catalog-data";
 import { formatDate } from "@/lib/format";
 import { canDeletePhotos, canDownload, downloadBlockedReason } from "@/lib/order-rules";
 import { renderPrintFileFromUrl } from "@/lib/photo-render";
@@ -32,7 +31,7 @@ function save(blob: Blob, name: string) {
 
 const subscribeNoop = () => () => {};
 
-/** Fotos do pedido no painel: download em pastas com etiquetas, arquivo avulso, original, e limpeza do bucket. */
+/** Fotos do pedido no painel: download em pastas, arquivo avulso, original, e limpeza do bucket. */
 export function PhotoDownloads({ data }: { data: OrderDownload }) {
   const { order, photos, products } = data;
   const router = useRouter();
@@ -53,7 +52,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
     save(await renderPrintFileFromUrl(photo.original_url, photo, product), `${photo.base_name}.jpg`);
   }
 
-  /** Grava o pedido numa pasta do computador e, se estava pago, passa para "Em produção". */
+  /** Grava o pedido numa pasta do computador, libera a etiqueta e, se estava pago, passa para "Em produção". */
   async function downloadFolder() {
     const root = await pickFolder();
     if (!root) return;
@@ -75,14 +74,13 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
       setMessage(`${result.failed} arquivo(s) falharam. Confira o CORS do bucket ou baixe os originais.`);
       return;
     }
-    let note = `${result.files} arquivo(s) e ${result.labels} etiqueta(s) na pasta ${order.number}.`;
-    if (order.status === "paid") {
-      if (await patchOrder(order.id, { status: "in_production" })) {
-        note += " Pedido em produção.";
-        router.refresh();
-      } else {
-        note += " Não foi possível marcar como em produção.";
-      }
+    let note = `${result.files} arquivo(s) na pasta ${order.number}.`;
+    if (await markDownloaded(order)) {
+      note += " Etiqueta na aba Etiquetas.";
+      if (order.status === "paid") note += " Pedido em produção.";
+      router.refresh();
+    } else {
+      note += " Não foi possível liberar a etiqueta: baixe de novo.";
     }
     setBusy(null);
     setMessage(note);
@@ -136,7 +134,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
       {downloadable && !message && (
         <p className="text-sm text-ink-2">
           {canPickFolder
-            ? `Pasta com o número do pedido, uma subpasta por tamanho, cópias contadas e o PDF das etiquetas na folha A4. Escolha uma pasta sua, como Área de Trabalho\\Pedidos.`
+            ? `Pasta com o número do pedido, uma subpasta por tamanho, cópias contadas. Escolha uma pasta sua, como Área de Trabalho\\Pedidos.`
             : "Para baixar em pastas, abra o painel no Chrome ou no Edge do computador."}
         </p>
       )}
