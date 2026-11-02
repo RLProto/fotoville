@@ -3,6 +3,7 @@
 import { CircleNotchIcon, DownloadSimpleIcon, FoldersIcon, ScissorsIcon, TrashIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
+import { DownloadDialog, downloadResult, type DownloadState } from "@/components/admin/download-dialog";
 import { PrintPreview } from "@/components/print-preview";
 import {
   countFiles,
@@ -37,6 +38,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [download, setDownload] = useState<DownloadState | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   // No servidor não há window nem localStorage: assume o padrão, e o navegador corrige ao montar.
   const canPickFolder = useSyncExternalStore(subscribeNoop, hasFolderPicker, () => true);
@@ -58,32 +60,20 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
     if (!root) return;
     setBusy("all");
     setMessage(null);
-    const result = await writeOrder(root, data, {
-      onProgress: (done, total) => setMessage(`${done} de ${total} arquivos gravados…`),
-    }).catch((err) => {
+    const title = `Baixando pedido #${order.number}`;
+    setDownload({ phase: "running", title, done: 0, total: 0 });
+    let saved = false;
+    try {
+      const result = await writeOrder(root, data, {
+        onProgress: (done, total) => setDownload({ phase: "running", title, done, total }),
+      });
+      saved = !result.failed && (await markDownloaded(order));
+    } catch (err) {
       reportError("loja", err, { etapa: "baixar pedido em pastas", order: order.id });
-      return null;
-    });
-    if (!result) {
-      setBusy(null);
-      setMessage("Não foi possível gravar na pasta escolhida.");
-      return;
-    }
-    if (result.failed) {
-      setBusy(null);
-      setMessage(`${result.failed} arquivo(s) falharam. Confira o CORS do bucket ou baixe os originais.`);
-      return;
-    }
-    let note = `${result.files} arquivo(s) na pasta ${order.number}.`;
-    if (await markDownloaded(order)) {
-      note += " Etiqueta na aba Etiquetas.";
-      if (order.status === "paid") note += " Pedido em produção.";
-      router.refresh();
-    } else {
-      note += " Não foi possível liberar a etiqueta: baixe de novo.";
     }
     setBusy(null);
-    setMessage(note);
+    setDownload(saved ? downloadResult(1, []) : downloadResult(0, [order.number]));
+    if (saved) router.refresh();
   }
 
   async function deletePhotos() {
@@ -131,12 +121,8 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
       <p aria-live="polite" className="mt-2 min-h-5 text-sm font-semibold">
         {message}
       </p>
-      {downloadable && !message && (
-        <p className="text-sm text-ink-2">
-          {canPickFolder
-            ? `Pasta com o número do pedido, uma subpasta por tamanho, cópias contadas. Escolha uma pasta sua, como Área de Trabalho\\Pedidos.`
-            : "Para baixar em pastas, abra o painel no Chrome ou no Edge do computador."}
-        </p>
+      {downloadable && !canPickFolder && (
+        <p className="text-sm text-ink-2">Para baixar em pastas, abra o painel no Chrome ou no Edge do computador.</p>
       )}
 
       <ul className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
@@ -170,7 +156,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
                       setMessage(null);
                       await downloadOne(photo).catch((err) => {
                         reportError("loja", err, { etapa: "baixar recortada", photo: photo.id, file: photo.base_name });
-                        setMessage("Falha ao recortar. Confira o CORS do bucket ou baixe o original.");
+                        setMessage("Não foi possível baixar esta foto. Tente o original.");
                       });
                       setBusy(null);
                     }}
@@ -192,6 +178,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
           );
         })}
       </ul>
+      {download && <DownloadDialog state={download} onClose={() => setDownload(null)} />}
 
       {canDeletePhotos(order) && (
         <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-rule pt-5">

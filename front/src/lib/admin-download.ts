@@ -122,7 +122,7 @@ export function planJobs({ order, photos, products }: OrderDownload) {
 /** Quantos arquivos o download grava (cópias contadas, Minis em folhas). */
 export const countFiles = (data: OrderDownload) => planJobs(data).jobs.reduce((sum, j) => sum + j.copies, 0);
 
-export type WriteResult = { files: number; failed: number };
+export type WriteResult = { failed: number };
 
 /**
  * Grava o pedido dentro de `root`: pasta com o número e subpastas por tamanho.
@@ -164,7 +164,7 @@ export async function writeOrder(
   } finally {
     release();
   }
-  return { files: done, failed };
+  return { failed };
 }
 
 async function reportDownloadError(err: unknown, detail: Record<string, unknown>) {

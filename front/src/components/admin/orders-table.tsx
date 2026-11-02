@@ -13,6 +13,7 @@ import {
   writeOrder,
   type DirectoryHandle,
 } from "@/lib/admin-download";
+import { DownloadDialog, downloadResult, type DownloadState } from "@/components/admin/download-dialog";
 import { formatBRL, formatDate } from "@/lib/format";
 import { canDownload } from "@/lib/order-rules";
 import { reportError } from "@/lib/report-error";
@@ -73,7 +74,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
   const [saving, setSaving] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
-  const [progress, setProgress] = useState<Record<string, string>>({});
+  const [download, setDownload] = useState<DownloadState | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const downloadable = orders.filter(canDownload);
@@ -99,29 +100,18 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
     }
   }
 
-  /** Grava um pedido em `root` e, se estava pago, passa para "Em produção". Devolve o que gravou. */
-  async function downloadInto(root: DirectoryHandle, order: Order) {
-    const note = (text: string) => setProgress((p) => ({ ...p, [order.id]: text }));
-    note("Preparando…");
+  /** Grava um pedido em `root`, libera a etiqueta e, se estava pago, passa para "Em produção". */
+  async function downloadInto(root: DirectoryHandle, order: Order, title: string) {
+    setDownload({ phase: "running", title, done: 0, total: 0 });
     try {
       const data = await fetchOrderDownload(order.id);
       const result = await writeOrder(root, data, {
-        onProgress: (done, total) => note(`${done} de ${total}`),
+        onProgress: (done, total) => setDownload({ phase: "running", title, done, total }),
       });
-      if (result.failed) {
-        note(`${result.failed} falha(s)`);
-      } else {
-        note(`${result.files} arquivo(s)`);
-        if (!(await markDownloaded(order))) {
-          note("Etiqueta não liberada: baixe de novo");
-          return { ...result, failed: 1 };
-        }
-      }
-      return result;
+      return !result.failed && (await markDownloaded(order));
     } catch (err) {
       reportError("loja", err, { etapa: "baixar pedido pela lista", order: order.id });
-      note("Falhou");
-      return null;
+      return false;
     }
   }
 
@@ -131,23 +121,16 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
     if (!root) return;
     setBusy(list.length === 1 ? list[0].id : "many");
     setMessage(null);
-    let ok = 0;
-    let failed = 0;
-    for (const order of list) {
-      const result = await downloadInto(root, order);
-      if (result && !result.failed) {
-        ok += 1;
-      } else {
-        failed += 1;
-      }
+    let saved = 0;
+    const failed: number[] = [];
+    for (const [i, order] of list.entries()) {
+      const place = list.length > 1 ? ` (${i + 1} de ${list.length})` : "";
+      if (await downloadInto(root, order, `Baixando pedido #${order.number}${place}`)) saved += 1;
+      else failed.push(order.number);
     }
     setBusy(null);
     setSelected(new Set());
-    setMessage(
-      failed
-        ? `${ok} pedido(s) gravados, ${failed} com falha. Veja a coluna Imagens.`
-        : `${ok} pedido(s) gravados em pastas. Etiquetas na aba Etiquetas. Pedidos pagos passaram para "Em produção".`,
-    );
+    setDownload(downloadResult(saved, failed));
     router.refresh();
   }
 
@@ -311,7 +294,6 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                     ) : (
                       <span className="badge bg-success-soft text-success">No servidor</span>
                     )}
-                    {progress[order.id] && <span className="block tabular-nums text-ink-2">{progress[order.id]}</span>}
                   </td>
                   <td className="px-3 py-1.5">
                     <div className="flex items-center justify-end gap-1">
@@ -348,6 +330,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
           </tbody>
         </table>
       </div>
+      {download && <DownloadDialog state={download} onClose={() => setDownload(null)} />}
     </div>
   );
 }

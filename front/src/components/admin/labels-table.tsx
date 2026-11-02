@@ -60,11 +60,7 @@ export function LabelsTable({ rows }: { rows: LabelRow[] }) {
         body: JSON.stringify({ ids: chosen.map((r) => r.id) }),
       }).catch(() => null);
       setSelected(new Set());
-      setMessage(
-        res?.ok
-          ? `PDF gerado com ${count} ${count === 1 ? "etiqueta" : "etiquetas"}.`
-          : "PDF gerado, mas não foi possível marcar como impressas.",
-      );
+      if (!res?.ok) setMessage("PDF gerado, mas não foi possível marcar como impressas.");
       router.refresh();
     } catch (err) {
       reportError("loja", err, { etapa: "gerar etiquetas", count });
