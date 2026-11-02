@@ -689,8 +689,7 @@ export function Uploader({
     <div>
       {!storageReady && (
         <p className="alert alert-warning mb-6" role="status">
-          O armazenamento de fotos ainda não foi configurado neste ambiente (variáveis S3_*). O envio fica
-          indisponível até lá.
+          Envio indisponível no momento. Tente mais tarde.
         </p>
       )}
 

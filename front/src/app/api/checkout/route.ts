@@ -162,7 +162,7 @@ export async function POST(request: Request) {
   }
   if (!sameCount(countCart(photos, products), (linked ?? []) as CartCount[])) {
     await rollback();
-    return fail("Seu carrinho mudou enquanto o pedido era criado. Confira o carrinho e tente de novo.", 409);
+    return fail("Seu carrinho mudou. Confira e tente de novo.", 409);
   }
 
   // Créditos do cupom são consumidos de forma atômica: dois pedidos não gastam o mesmo saldo.

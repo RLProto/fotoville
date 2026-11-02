@@ -68,10 +68,7 @@ export default async function EnviarPage({ params }: Props) {
       </div>
 
       {!hasSupabase ? (
-        <p className="alert alert-warning">
-          O banco de dados ainda não foi configurado neste ambiente. Preencha o arquivo .env.local para liberar o
-          envio de fotos.
-        </p>
+        <p className="alert alert-warning">Envio indisponível no momento. Tente mais tarde.</p>
       ) : (
         <Uploader product={product} initialPhotos={photos} storageReady={hasStorage} />
       )}

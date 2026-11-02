@@ -84,7 +84,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
     setBusy(null);
     setConfirmDelete(false);
     if (res?.ok) {
-      setMessage(`${body?.deleted ?? 0} arquivo(s) apagados do servidor.`);
+      setMessage("Imagens apagadas.");
       router.refresh();
     } else {
       setMessage(body?.error ?? "Não foi possível apagar as imagens.");
@@ -97,7 +97,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
     <div>
       {order.photos_deleted_at ? (
         <p className="alert alert-warning">
-          Imagens apagadas do servidor em {formatDate(order.photos_deleted_at)}. Só o histórico ficou.
+          Imagens apagadas em {formatDate(order.photos_deleted_at)}.
         </p>
       ) : blocked ? (
         <p className="alert alert-warning">{blocked}</p>

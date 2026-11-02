@@ -71,7 +71,6 @@ export default async function ArmazenamentoPage() {
   return (
     <>
       <h1 className="display-md text-3xl">Armazenamento</h1>
-      <p className="mt-1 text-ink-2">Fotos guardadas no servidor (Supabase). Os números são de agora.</p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <section className="card p-5" aria-label="Espaço em uso">

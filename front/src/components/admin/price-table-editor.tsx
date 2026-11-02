@@ -143,7 +143,7 @@ export function PriceTableEditor({
         }
         return next;
       });
-      setToast(`${items.length === 1 ? "1 tamanho salvo" : `${items.length} tamanhos salvos`}.`);
+      setToast("Preços salvos.");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível salvar. Tente de novo.");
