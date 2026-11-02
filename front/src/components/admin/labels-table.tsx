@@ -3,9 +3,9 @@
 import { CheckCircleIcon, CircleNotchIcon, FilePdfIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import { formatDate } from "@/lib/format";
-import { buildLabelsPdf, LABELS_PER_SHEET, type LabelData } from "@/lib/order-label";
+import { buildLabelsPdf, type LabelData } from "@/lib/order-label";
 import { reportError } from "@/lib/report-error";
 
 export type LabelRow = {
@@ -15,18 +15,6 @@ export type LabelRow = {
   readyAt: string;
   printedAt: string | null;
 };
-
-/** Próxima etiqueta livre da folha, lembrada neste navegador: a folha volta para a impressora pela metade. */
-const NEXT_KEY = "fotoville-etiqueta-posicao";
-const subscribeNoop = () => () => {};
-function storedStart() {
-  try {
-    const value = Number(window.localStorage.getItem(NEXT_KEY));
-    return value >= 1 && value <= LABELS_PER_SHEET ? value : 1;
-  } catch {
-    return 1;
-  }
-}
 
 function save(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
@@ -43,9 +31,6 @@ export function LabelsTable({ rows }: { rows: LabelRow[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const stored = useSyncExternalStore(subscribeNoop, storedStart, () => 1);
-  const [typedStart, setTypedStart] = useState<number | null>(null);
-  const start = typedStart ?? stored;
 
   const chosen = rows.filter((r) => selected.has(r.id));
   const count = chosen.reduce((sum, r) => sum + r.labels.length, 0);
@@ -65,17 +50,9 @@ export function LabelsTable({ rows }: { rows: LabelRow[] }) {
     setBusy(true);
     setMessage(null);
     try {
-      const pdf = await buildLabelsPdf(chosen.flatMap((r) => r.labels), start);
+      const pdf = await buildLabelsPdf(chosen.flatMap((r) => r.labels));
       const date = new Date().toLocaleDateString("sv-SE");
       save(new Blob([pdf as BlobPart], { type: "application/pdf" }), `etiquetas_${date}.pdf`);
-
-      const next = ((start - 1 + count) % LABELS_PER_SHEET) + 1;
-      setTypedStart(next);
-      try {
-        window.localStorage.setItem(NEXT_KEY, String(next));
-      } catch {
-        // Navegador sem armazenamento: a posição só não fica lembrada
-      }
 
       const res = await fetch("/api/admin/etiquetas", {
         method: "POST",
@@ -107,22 +84,6 @@ export function LabelsTable({ rows }: { rows: LabelRow[] }) {
           )}
           Gerar PDF ({count})
         </button>
-        <label className="flex items-center gap-2 text-sm font-semibold">
-          Começar na etiqueta
-          <input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={LABELS_PER_SHEET}
-            value={start}
-            onChange={(e) => {
-              const value = Math.round(Number(e.target.value));
-              if (value >= 1 && value <= LABELS_PER_SHEET) setTypedStart(value);
-            }}
-            className="field-input w-20"
-          />
-          <span className="font-normal text-ink-2">de {LABELS_PER_SHEET}</span>
-        </label>
         <p aria-live="polite" className="min-h-5 text-sm font-semibold">
           {message}
         </p>

@@ -22,7 +22,7 @@ export const LABEL_SHEET = {
   gapX: 0,
   gapY: 0,
 };
-export const LABELS_PER_SHEET = LABEL_SHEET.cols * LABEL_SHEET.rows;
+const LABELS_PER_SHEET = LABEL_SHEET.cols * LABEL_SHEET.rows;
 
 /** Quantos tamanhos cabem numa etiqueta; o pedido que passar disso ganha outra. */
 export const SIZES_PER_LABEL = 6;
@@ -271,8 +271,8 @@ function drawLabel(page: PDFPage, font: PDFFont, label: LabelData, box: ReturnTy
   rows.forEach((row, i) => text(row.value, left, base + (rows.length - 1 - i) * LINE, row.size));
 }
 
-/** PDF com as etiquetas a partir da posição `startAt` (1 a 22) da folha; passa de folha quando precisa. */
-export async function buildLabelsPdf(labels: LabelData[], startAt = 1): Promise<Uint8Array> {
+/** PDF com as etiquetas a partir da primeira posição da folha; passa de folha quando precisa. */
+export async function buildLabelsPdf(labels: LabelData[]): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle("Etiquetas Fotoville");
   doc.registerFontkit(fontkit);
@@ -280,13 +280,11 @@ export async function buildLabelsPdf(labels: LabelData[], startAt = 1): Promise<
   if (!response.ok) throw new Error(`Fonte da etiqueta: HTTP ${response.status}`);
   const font = await doc.embedFont(await response.arrayBuffer(), { subset: true });
   const pages: PDFPage[] = [];
-  const first = Math.min(LABELS_PER_SHEET, Math.max(1, Math.round(startAt))) - 1;
 
   for (const [i, label] of labels.entries()) {
-    const absolute = first + i;
-    const pageIndex = Math.floor(absolute / LABELS_PER_SHEET);
+    const pageIndex = Math.floor(i / LABELS_PER_SHEET);
     while (pages.length <= pageIndex) pages.push(doc.addPage([mm(A4.width), mm(A4.height)]));
-    drawLabel(pages[pageIndex], font, label, slot(absolute % LABELS_PER_SHEET));
+    drawLabel(pages[pageIndex], font, label, slot(i % LABELS_PER_SHEET));
   }
 
   return doc.save();
