@@ -3,9 +3,9 @@
  * <nº do pedido>/<tamanho>/<arquivo>.jpg, uma cópia por arquivo, mais o PDF das etiquetas.
  * Usado pela página do pedido e pela lista de pedidos (um ou vários de uma vez).
  */
-import { formatCep, formatPhone } from "./format";
+import { formatCep } from "./format";
 import { loadImage, type DecodedImage } from "./decode-image";
-import { buildLabelsPdf, type LabelData } from "./order-label";
+import { buildLabelsPdf, SIZES_PER_LABEL, type LabelData } from "./order-label";
 import { MINI_SHEET, renderMiniSheetFile, renderPrintFileFromUrl } from "./photo-render";
 import type { Order, Photo, Product } from "./types";
 
@@ -126,33 +126,41 @@ export function planJobs({ order, photos, products }: OrderDownload) {
 /** Quantos arquivos o download grava (cópias contadas, Minis em folhas). */
 export const countFiles = (data: OrderDownload) => planJobs(data).jobs.reduce((sum, j) => sum + j.copies, 0);
 
-/** Uma etiqueta por tamanho do pedido, na ordem do catálogo. */
+/** Uma etiqueta por pedido, com os tamanhos na ordem do catálogo; pedido com tamanhos demais ganha outra. */
 export function labelsFor({ order, photos, products }: OrderDownload): LabelData[] {
   const customer = order.customer;
   const address = order.shipping_address;
-  const lines =
-    order.shipping_service === "retirada" || !address
-      ? ["RETIRADA NA LOJA"]
-      : [
-          `${address.street}, ${address.number}${address.complement ? ` - ${address.complement}` : ""}`,
-          `${address.district}, ${address.city}/${address.state}`,
-          `CEP ${formatCep(address.cep)}${order.shipping_service === "motoboy" ? "  -  MOTOBOY" : ""}`,
-        ];
-  if (customer?.whatsapp) lines.push(`WhatsApp ${formatPhone(customer.whatsapp)}`);
 
   const copies = new Map<string, number>();
   for (const photo of photos) copies.set(photo.product_id, (copies.get(photo.product_id) ?? 0) + photo.quantity);
-  return products
+  const sizes = products
     .filter((p) => copies.has(p.id))
     .sort((a, b) => a.sort - b.sort)
-    .map((p) => ({
-      number: order.number,
-      customer: customer?.name || customer?.email || "Sem nome",
-      lines,
-      size: sizeName(p),
-      copies: copies.get(p.id)!,
-      url: `${window.location.origin}/admin/pedidos/${order.id}`,
-    }));
+    .map((p) => {
+      const count = copies.get(p.id)!;
+      return `${sizeName(p)} (${count} ${count === 1 ? "foto" : "fotos"})`;
+    });
+
+  const base = {
+    number: order.number,
+    customer: customer?.name?.toLocaleUpperCase("pt-BR") || customer?.email || "SEM NOME",
+    address:
+      order.shipping_service === "retirada" || !address
+        ? null
+        : {
+            street: address.street,
+            number: address.number,
+            complement: address.complement,
+            district: address.district,
+            city: `${address.city} - ${address.state}`,
+            cep: `CEP ${formatCep(address.cep)}${order.shipping_service === "motoboy" ? " - MOTOBOY" : ""}`,
+          },
+  };
+  const labels: LabelData[] = [];
+  for (let i = 0; i < Math.max(1, sizes.length); i += SIZES_PER_LABEL) {
+    labels.push({ ...base, sizes: sizes.slice(i, i + SIZES_PER_LABEL) });
+  }
+  return labels;
 }
 
 export type WriteResult = { files: number; labels: number; failed: number };
