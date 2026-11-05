@@ -25,7 +25,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   // Marcar como pago manualmente passa pelo mesmo caminho do webhook (gera cupom de pacote).
   if (status === "paid") {
-    await markOrderPaid(admin, id, { id: null, method: "manual" });
+    const paid = await markOrderPaid(admin, id, { id: null, method: "manual" });
+    if (!paid) return fail("Este pedido não está aguardando pagamento.", 409);
   }
 
   const patch: Record<string, unknown> = {};

@@ -13,11 +13,7 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return fail("Seleção inválida.");
 
-  const { error } = await createAdminClient()
-    .from("orders")
-    .update({ label_printed_at: new Date().toISOString() })
-    .in("id", parsed.data.ids)
-    .not("label_ready_at", "is", null);
+  const { error } = await createAdminClient().rpc("mark_labels_printed", { p_ids: parsed.data.ids });
   if (error) return serverFail("painel", error.message, error, 500, { etapa: "marcar etiquetas" });
   return NextResponse.json({ ok: true });
 }

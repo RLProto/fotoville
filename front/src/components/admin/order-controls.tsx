@@ -3,6 +3,7 @@
 import { CircleNotchIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { canPickStatus } from "@/lib/order-rules";
 import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/types";
 
 export function OrderControls({
@@ -46,11 +47,13 @@ export function OrderControls({
             setState("idle");
           }}
         >
-          {(Object.keys(ORDER_STATUS_LABEL) as OrderStatus[]).map((s) => (
-            <option key={s} value={s}>
-              {ORDER_STATUS_LABEL[s]}
-            </option>
-          ))}
+          {(Object.keys(ORDER_STATUS_LABEL) as OrderStatus[])
+            .filter((s) => canPickStatus(status, s))
+            .map((s) => (
+              <option key={s} value={s}>
+                {ORDER_STATUS_LABEL[s]}
+              </option>
+            ))}
         </select>
       </div>
       <div>

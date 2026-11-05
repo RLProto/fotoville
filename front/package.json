@@ -12,6 +12,7 @@
     "check:frete": "node scripts/check-shipping.mts",
     "check:storage": "node scripts/check-storage.mts",
     "check:fluxo": "node scripts/check-flow.mts",
+    "check:status": "node scripts/check-status.mts",
     "db:migrate": "node scripts/db-migrate.mts",
     "whatsapp": "node scripts/whatsapp.mts"
   },

@@ -13,9 +13,10 @@ import {
   writeOrder,
   type DirectoryHandle,
 } from "@/lib/admin-download";
+import { BulkStatusDialog } from "@/components/admin/bulk-status-dialog";
 import { DownloadDialog, downloadResult, type DownloadState } from "@/components/admin/download-dialog";
 import { formatBRL, formatDate } from "@/lib/format";
-import { canDownload } from "@/lib/order-rules";
+import { BULK_STATUSES, canBulkChange, canDownload, canPickStatus, type BulkStatus } from "@/lib/order-rules";
 import { reportError } from "@/lib/report-error";
 import { ORDER_STATUS_LABEL, type Order, type OrderStatus } from "@/lib/types";
 
@@ -41,8 +42,8 @@ const ROW_TONE = Object.fromEntries(
 const STATUSES = Object.keys(ORDER_STATUS_LABEL) as OrderStatus[];
 
 /**
- * Lista de pedidos do painel: situação editável na linha, download em pastas por pedido ou em lote
- * (um seletor de pasta para todos), e o estado das imagens no bucket.
+ * Lista de pedidos do painel: situação editável na linha, download em pastas por pedido, ações em massa
+ * nos selecionados (download com um seletor de pasta para todos e status), e o estado das imagens no bucket.
  */
 export function OrdersTable({ orders: all }: { orders: Order[] }) {
   const router = useRouter();
@@ -77,9 +78,34 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
   const [download, setDownload] = useState<DownloadState | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const downloadable = orders.filter(canDownload);
-  const chosen = downloadable.filter((o) => selected.has(o.id));
-  const allChosen = downloadable.length > 0 && chosen.length === downloadable.length;
+  const [bulkTarget, setBulkTarget] = useState<BulkStatus | "">("");
+  const [bulk, setBulk] = useState<{ status: BulkStatus; orders: Order[]; leftOut: Order[] } | null>(null);
+
+  // Só o que está na tela: a busca não deixa uma ação pegar pedido escondido
+  const chosen = orders.filter((o) => selected.has(o.id));
+  const allChosen = orders.length > 0 && chosen.length === orders.length;
+  const toDownload = chosen.filter(canDownload);
+  const bulkOptions = BULK_STATUSES.map((status) => ({
+    status,
+    count: chosen.filter((o) => canBulkChange(o, status)).length,
+  })).filter((option) => option.count > 0);
+  const target = bulkOptions.some((option) => option.status === bulkTarget) ? bulkTarget : "";
+
+  function openBulk() {
+    if (!target) return;
+    setBulk({
+      status: target,
+      orders: chosen.filter((o) => canBulkChange(o, target)),
+      leftOut: chosen.filter((o) => !canBulkChange(o, target)),
+    });
+  }
+
+  function bulkApplied(ids: string[]) {
+    setSelected(new Set());
+    setBulkTarget("");
+    setPending((current) => Object.fromEntries(Object.entries(current).filter(([id]) => !ids.includes(id))));
+    router.refresh();
+  }
 
   async function saveStatus(order: Order) {
     const status = pending[order.id];
@@ -97,6 +123,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
       router.refresh();
     } else {
       setMessage(`Não foi possível alterar o pedido #${order.number}.`);
+      router.refresh();
     }
   }
 
@@ -135,32 +162,17 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
   }
 
   function toggleAll() {
-    setSelected(allChosen ? new Set() : new Set(downloadable.map((o) => o.id)));
+    setSelected(allChosen ? new Set() : new Set(orders.map((o) => o.id)));
   }
 
   return (
     <div>
-      <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={busy !== null || !canPickFolder || chosen.length === 0}
-          onClick={() => downloadMany(chosen)}
-        >
-          {busy === "many" ? (
-            <CircleNotchIcon size={18} className="spinner" aria-hidden />
-          ) : (
-            <FoldersIcon size={18} aria-hidden />
-          )}
-          Baixar selecionados ({chosen.length})
-        </button>
-        <p aria-live="polite" className="min-h-5 text-sm font-semibold">
-          {message ??
-            (canPickFolder ? null : "Para baixar em pastas, abra o painel no Chrome ou no Edge do computador.")}
-        </p>
-      </div>
+      <p aria-live="polite" className="mt-6 min-h-5 text-sm font-semibold">
+        {message ??
+          (canPickFolder ? null : "Para baixar em pastas, abra o painel no Chrome ou no Edge do computador.")}
+      </p>
 
-      <div className="card mt-4 overflow-x-auto">
+      <div className="card mt-2 overflow-x-auto">
         <table className="w-full min-w-[64rem] text-left text-sm">
           <caption className="sr-only">Pedidos</caption>
           <thead className="border-b border-rule text-sm text-ink-2">
@@ -168,10 +180,13 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
               <th scope="col" className="px-3 py-2">
                 <input
                   type="checkbox"
-                  aria-label="Selecionar todos os pedidos que podem ser baixados"
+                  aria-label="Selecionar todos os pedidos"
                   className="size-4 accent-action"
+                  ref={(el) => {
+                    if (el) el.indeterminate = chosen.length > 0 && !allChosen;
+                  }}
                   checked={allChosen}
-                  disabled={downloadable.length === 0}
+                  disabled={orders.length === 0 || busy !== null}
                   onChange={toggleAll}
                 />
               </th>
@@ -231,7 +246,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                       aria-label={`Selecionar pedido ${order.number}`}
                       className="size-4 accent-action"
                       checked={selected.has(order.id)}
-                      disabled={!pick || busy !== null}
+                      disabled={busy !== null}
                       onChange={(e) =>
                         setSelected((s) => {
                           const next = new Set(s);
@@ -267,7 +282,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                         disabled={saving === order.id}
                         onChange={(e) => setPending((p) => ({ ...p, [order.id]: e.target.value as OrderStatus }))}
                       >
-                        {STATUSES.map((s) => (
+                        {STATUSES.filter((s) => canPickStatus(order.status, s)).map((s) => (
                           <option key={s} value={s}>
                             {ORDER_STATUS_LABEL[s]}
                           </option>
@@ -330,6 +345,76 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
           </tbody>
         </table>
       </div>
+
+      {/* Fixa no rodapé: a lista pode ter centenas de linhas */}
+      {chosen.length > 0 && (
+        <section
+          aria-label="Ações nos pedidos selecionados"
+          className="card sticky bottom-3 z-10 mt-3 flex flex-wrap items-center gap-x-5 gap-y-3 p-3 shadow-lift"
+        >
+          {/* Tudo à esquerda: o botão do WhatsApp fica sobre o canto direito da barra */}
+          <div className="flex items-center gap-1">
+            <p className="font-bold tabular-nums">
+              {chosen.length} {chosen.length === 1 ? "selecionado" : "selecionados"}
+            </p>
+            <button type="button" className="btn btn-ghost btn-sm" disabled={busy !== null} onClick={() => setSelected(new Set())}>
+              Limpar
+            </button>
+          </div>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            disabled={busy !== null || !canPickFolder || toDownload.length === 0}
+            onClick={() => downloadMany(toDownload)}
+          >
+            {busy === "many" ? (
+              <CircleNotchIcon size={16} className="spinner" aria-hidden />
+            ) : (
+              <FoldersIcon size={16} aria-hidden />
+            )}
+            Baixar fotos ({toDownload.length})
+          </button>
+          <form
+            className="flex flex-wrap items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              openBulk();
+            }}
+          >
+            <label htmlFor="status-em-massa" className="text-sm font-semibold">
+              Mudar para
+            </label>
+            <select
+              id="status-em-massa"
+              className="field-input h-10 min-h-10 w-auto min-w-[14rem] py-0 text-sm"
+              value={target}
+              disabled={busy !== null || bulkOptions.length === 0}
+              onChange={(e) => setBulkTarget(e.target.value as BulkStatus | "")}
+            >
+              <option value="">{bulkOptions.length ? "Escolha o status" : "Nenhum status disponível"}</option>
+              {bulkOptions.map(({ status, count }) => (
+                <option key={status} value={status}>
+                  {ORDER_STATUS_LABEL[status]}
+                  {count < chosen.length ? ` (${count} de ${chosen.length})` : ""}
+                </option>
+              ))}
+            </select>
+            <button type="submit" className="btn btn-primary btn-sm" disabled={busy !== null || !target}>
+              Aplicar
+            </button>
+          </form>
+        </section>
+      )}
+
+      {bulk && (
+        <BulkStatusDialog
+          status={bulk.status}
+          orders={bulk.orders}
+          leftOut={bulk.leftOut}
+          onApplied={bulkApplied}
+          onClose={() => setBulk(null)}
+        />
+      )}
       {download && <DownloadDialog state={download} onClose={() => setDownload(null)} />}
     </div>
   );
