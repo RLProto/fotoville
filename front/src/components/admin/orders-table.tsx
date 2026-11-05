@@ -79,7 +79,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
   const [message, setMessage] = useState<string | null>(null);
 
   const [bulkTarget, setBulkTarget] = useState<BulkStatus | "">("");
-  const [bulk, setBulk] = useState<{ status: BulkStatus; orders: Order[]; leftOut: Order[] } | null>(null);
+  const [bulk, setBulk] = useState<{ status: BulkStatus; orders: Order[] } | null>(null);
 
   // Só o que está na tela: a busca não deixa uma ação pegar pedido escondido
   const chosen = orders.filter((o) => selected.has(o.id));
@@ -93,11 +93,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
 
   function openBulk() {
     if (!target) return;
-    setBulk({
-      status: target,
-      orders: chosen.filter((o) => canBulkChange(o, target)),
-      leftOut: chosen.filter((o) => !canBulkChange(o, target)),
-    });
+    setBulk({ status: target, orders: chosen.filter((o) => canBulkChange(o, target)) });
   }
 
   function bulkApplied(ids: string[]) {
@@ -410,7 +406,6 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
         <BulkStatusDialog
           status={bulk.status}
           orders={bulk.orders}
-          leftOut={bulk.leftOut}
           onApplied={bulkApplied}
           onClose={() => setBulk(null)}
         />

@@ -5,15 +5,10 @@ import { useEffect, useRef, useState } from "react";
 import type { BulkStatus } from "@/lib/order-rules";
 import { ORDER_STATUS_LABEL, type Order } from "@/lib/types";
 
-const NUMBERS_SHOWN = 8;
-
-/** "#1045, #1046 e mais 3": a seleção pode ter centenas de pedidos. */
+/** "#1045, #1046 e #1047" */
 function numberList(orders: Order[]) {
-  const shown = orders
-    .slice(0, NUMBERS_SHOWN)
-    .map((o) => `#${o.number}`)
-    .join(", ");
-  return orders.length > NUMBERS_SHOWN ? `${shown} e mais ${orders.length - NUMBERS_SHOWN}` : shown;
+  const numbers = orders.map((o) => `#${o.number}`);
+  return numbers.length > 1 ? `${numbers.slice(0, -1).join(", ")} e ${numbers.at(-1)}` : numbers[0];
 }
 
 function question(status: BulkStatus, orders: Order[]) {
@@ -30,13 +25,11 @@ function question(status: BulkStatus, orders: Order[]) {
 export function BulkStatusDialog({
   status,
   orders,
-  leftOut,
   onApplied,
   onClose,
 }: {
   status: BulkStatus;
   orders: Order[];
-  leftOut: Order[];
   onApplied: (ids: string[]) => void;
   onClose: () => void;
 }) {
@@ -45,6 +38,7 @@ export function BulkStatusDialog({
   const [failed, setFailed] = useState(false);
   const [missed, setMissed] = useState<Order[] | null>(null);
   const cancelling = status === "cancelled";
+  const changed = missed ? orders.filter((o) => !missed.includes(o)) : [];
 
   useEffect(() => {
     dialogRef.current?.showModal();
@@ -85,11 +79,18 @@ export function BulkStatusDialog({
         <div role="status">
           <h2 id="status-massa-titulo" className="flex items-center gap-2 text-lg font-bold">
             <WarningCircleIcon size={24} weight="fill" aria-hidden className="shrink-0 text-danger" />
-            {orders.length - missed.length} de {orders.length} pedidos alterados
+            {changed.length ? "Nem todos os pedidos mudaram" : "Nenhum pedido mudou"}
           </h2>
-          <p className="mt-2 text-ink-2">
-            {numberList(missed)} {missed.length === 1 ? "não mudou" : "não mudaram"}: o status já era outro.
-          </p>
+          <div className="mt-2 max-h-48 space-y-2 overflow-y-auto text-ink-2">
+            {changed.length > 0 && (
+              <p>
+                {numberList(changed)} {changed.length === 1 ? "mudou" : "mudaram"} para {ORDER_STATUS_LABEL[status]}.
+              </p>
+            )}
+            <p>
+              {numberList(missed)} {missed.length === 1 ? "não mudou" : "não mudaram"} porque o status já era outro.
+            </p>
+          </div>
           <div className="mt-5 flex justify-end">
             <button type="button" className="btn btn-outline" onClick={() => dialogRef.current?.close()}>
               Fechar
@@ -101,7 +102,7 @@ export function BulkStatusDialog({
           <h2 id="status-massa-titulo" className="text-lg font-bold">
             {question(status, orders)}
           </h2>
-          {leftOut.length > 0 && <p className="mt-2 text-ink-2">Ficam de fora: {numberList(leftOut)}.</p>}
+          {orders.length > 1 && <p className="mt-2 max-h-48 overflow-y-auto text-ink-2">Pedidos {numberList(orders)}.</p>}
           {failed && (
             <p role="alert" className="mt-2 font-semibold text-danger">
               Não foi possível mudar. Tente de novo.
