@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 
 const schema = z.strictObject({ ids: z.array(z.guid()).min(1).max(500), status: z.enum(BULK_STATUSES) });
 
-/** Muda o status de vários pedidos. Responde quais mudaram: quem não pode ir para esse status fica de fora. */
+/** Muda o status de vários pedidos. Responde quais mudaram: quem não pode ir para esse status não muda. */
 export async function POST(request: Request) {
   const auth = await requireAdmin();
   if ("error" in auth) return auth.error;

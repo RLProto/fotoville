@@ -8,6 +8,7 @@ import type { Order, Package } from "./types";
 /**
  * Marca o pedido como pago. É idempotente: só age se o pedido ainda estava pendente.
  * Pedido de pacote gera o cupom com os créditos de fotos.
+ * A mudança em massa do painel (bulk_order_status, no banco) grava estes mesmos campos.
  */
 export async function markOrderPaid(
   admin: SupabaseClient,

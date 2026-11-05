@@ -806,19 +806,24 @@ $$;
 revoke all on function public.orphan_objects(text, integer) from public, anon, authenticated;
 grant execute on function public.orphan_objects(text, integer) to service_role;
 
--- 2026-11-04_status_em_massa.sql
+-- 2026-11-04_status_em_massa.sql e 2026-11-04_status_em_massa_pago.sql
 -- Painel: muda o status de vários pedidos de uma vez e devolve os que mudaram. O status atual é conferido
 -- na hora de gravar: o que mudou desde que a lista abriu (pagamento chegando, outra aba) fica de fora.
 -- A lista de ids vai no corpo da chamada, porque na URL ela falha com centenas de pedidos.
 -- As regras se repetem em canBulkChange (front/src/lib/order-rules.ts); npm run check:status confere as duas.
--- "Pagamento aprovado" não entra: tem efeitos próprios em markOrderPaid.
+-- "Pagamento aprovado" grava os mesmos campos de markOrderPaid (front/src/lib/orders.ts). Pacote fica de
+-- fora, porque o cupom de créditos dele é criado lá.
 create or replace function public.bulk_order_status(p_ids uuid[], p_status text)
 returns table (id uuid)
 language sql set search_path = public, pg_temp as $$
   update public.orders o
-     set status = p_status
+     set status = p_status,
+         paid_at = case when p_status = 'paid' then now() else o.paid_at end,
+         mp_payment_id = case when p_status = 'paid' then null else o.mp_payment_id end,
+         payment_method = case when p_status = 'paid' then 'manual' else o.payment_method end
    where o.id = any (p_ids)
      and case p_status
+       when 'paid' then o.kind = 'prints' and o.status = 'pending'
        when 'in_production' then o.kind = 'prints' and o.status = 'paid'
        when 'shipped' then o.kind = 'prints' and o.status = 'in_production' and o.shipping_service is distinct from 'retirada'
        when 'ready_for_pickup' then o.kind = 'prints' and o.status = 'in_production' and o.shipping_service = 'retirada'

@@ -52,16 +52,39 @@ try {
     }
   }
 
-  // Pagamento aprovado e status desconhecido nunca passam
+  // Voltar para aguardando pagamento e status desconhecido nunca passam
   const { rows: pendingRows } = await client.query(
     `insert into public.orders (number, user_id) overriding system value values ($1, $2) returning id`,
     [number - 1, users[0].id],
   );
   const pendingId = pendingRows[0].id;
-  for (const to of ["paid", "pending", "qualquer"]) {
+  for (const to of ["pending", "qualquer"]) {
     const { rows } = await client.query("select id from public.bulk_order_status($1::uuid[], $2)", [[pendingId], to]);
     checked++;
     if (rows.length) fail(`${to} não deveria passar`);
+  }
+
+  // Pagamento aprovado grava o mesmo que markOrderPaid, e o histórico usa a data do pagamento
+  await client.query("select id from public.bulk_order_status($1::uuid[], 'paid')", [[pendingId]]);
+  const { rows: paidRows } = await client.query(
+    `select o.status, o.paid_at, o.payment_method, o.mp_payment_id,
+            (select e.created_at from public.order_events e where e.order_id = o.id and e.status = 'paid') as event_at
+       from public.orders o where o.id = $1`,
+    [pendingId],
+  );
+  const paid = paidRows[0];
+  checked++;
+  if (paid.status !== "paid" || !paid.paid_at || paid.payment_method !== "manual" || paid.mp_payment_id !== null) {
+    fail(`pagamento aprovado gravou ${JSON.stringify(paid)}`);
+  }
+  if (paid.event_at?.getTime() !== paid.paid_at?.getTime()) fail("histórico do pagamento com outra data");
+
+  // Outros status não mexem nos dados do pagamento
+  await client.query("select id from public.bulk_order_status($1::uuid[], 'in_production')", [[pendingId]]);
+  const { rows: keptRows } = await client.query("select paid_at, payment_method from public.orders where id = $1", [pendingId]);
+  checked++;
+  if (keptRows[0].paid_at?.getTime() !== paid.paid_at?.getTime() || keptRows[0].payment_method !== "manual") {
+    fail("mudar para em produção alterou os dados do pagamento");
   }
 
   // O histórico registra cada mudança, com um lote de verdade

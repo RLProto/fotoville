@@ -7,7 +7,7 @@ export const DOWNLOADABLE: OrderStatus[] = ["paid", "in_production", "shipped", 
 export const DELETABLE: OrderStatus[] = ["in_production", "shipped", "ready_for_pickup", "delivered", "cancelled"];
 
 /** Status que a lista de pedidos muda em massa. */
-export const BULK_STATUSES = ["in_production", "shipped", "ready_for_pickup", "delivered", "cancelled"] as const;
+export const BULK_STATUSES = ["paid", "in_production", "shipped", "ready_for_pickup", "delivered", "cancelled"] as const;
 export type BulkStatus = (typeof BULK_STATUSES)[number];
 
 type Rule = Pick<Order, "kind" | "status" | "photos_deleted_at">;
@@ -23,6 +23,8 @@ export function canBulkChange(o: Pick<Order, "kind" | "status" | "shipping_servi
   const prints = o.kind === "prints";
   const pickup = o.shipping_service === "retirada";
   switch (to) {
+    case "paid":
+      return prints && o.status === "pending";
     case "in_production":
       return prints && o.status === "paid";
     case "shipped":
