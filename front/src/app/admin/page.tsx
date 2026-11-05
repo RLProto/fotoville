@@ -17,8 +17,14 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
   const filter = (await searchParams).filtro ?? "todos";
 
-  // Até 500 pedidos: a busca por número ou cliente é feita na lista, no navegador
-  let query = createAdminClient().from("orders").select("*").order("created_at", { ascending: false }).limit(500);
+  // Até 500 pedidos: a busca por número ou cliente é feita na lista, no navegador.
+  // Pacotes ficam fora enquanto a aba Pacotes do site estiver oculta.
+  let query = createAdminClient()
+    .from("orders")
+    .select("*")
+    .eq("kind", "prints")
+    .order("created_at", { ascending: false })
+    .limit(500);
   if (filter === "abertos") query = query.in("status", ["paid", "in_production", "ready_for_pickup"]);
   else if (filter !== "todos") query = query.eq("status", filter as OrderStatus);
 
