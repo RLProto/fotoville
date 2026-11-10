@@ -90,11 +90,12 @@ export function OrderNote({ orderId, initial, editable }: { orderId: string; ini
           autoComplete="off"
           className="field-input min-w-0 flex-1 basis-56"
           placeholder="Ex.: Aniversário da Ana"
+          maxLength={NOTE_MAX}
           value={value}
           aria-invalid={error ? true : undefined}
           aria-describedby="descricao-ajuda"
           onChange={(e) => {
-            setValue(e.target.value);
+            setValue(Array.from(e.target.value).slice(0, NOTE_MAX).join(""));
             setError(null);
             setState("idle");
           }}
@@ -123,7 +124,7 @@ export function OrderNote({ orderId, initial, editable }: { orderId: string; ini
         {error ?? (
           <>
             Sai na etiqueta do envelope.{" "}
-            <span className={`tabular-nums ${length > NOTE_MAX ? "font-semibold text-danger" : ""}`}>
+            <span className="tabular-nums">
               {length}/{NOTE_MAX}
             </span>
           </>

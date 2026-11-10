@@ -4,7 +4,7 @@
  */
 import type { Order } from "./types";
 
-export const NOTE_MAX = 40;
+export const NOTE_MAX = 30;
 
 /** Letras de qualquer língua, números, espaço e pontuação simples. Parênteses ficam de fora: a etiqueta já põe. */
 const ALLOWED = /^[\p{L}\p{M}\p{N} .,'&/-]*$/u;

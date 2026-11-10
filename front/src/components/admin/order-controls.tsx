@@ -102,10 +102,10 @@ export function OrderControls({
           name="descricao"
           autoComplete="off"
           className="field-input"
-          maxLength={NOTE_MAX + 10}
+          maxLength={NOTE_MAX}
           value={description}
           onChange={(e) => {
-            setDescription(e.target.value);
+            setDescription(Array.from(e.target.value).slice(0, NOTE_MAX).join(""));
             setState("idle");
           }}
         />
