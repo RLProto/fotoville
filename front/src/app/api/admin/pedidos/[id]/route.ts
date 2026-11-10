@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { fail, requireAdmin, serverFail } from "@/lib/api";
+import { normalizeNote, noteProblem } from "@/lib/order-note";
 import { markOrderPaid } from "@/lib/orders";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -10,6 +11,7 @@ const schema = z.object({
     .optional(),
   tracking_code: z.string().trim().max(40).optional(),
   label_ready: z.literal(true).optional(),
+  note: z.string().max(200).optional(),
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -20,6 +22,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return fail("Alteração inválida.");
   const { status, tracking_code, label_ready } = parsed.data;
+  const note = parsed.data.note === undefined ? undefined : normalizeNote(parsed.data.note);
+  const problem = note === undefined ? null : noteProblem(note);
+  if (problem) return fail(problem);
 
   const admin = createAdminClient();
 
@@ -32,6 +37,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const patch: Record<string, unknown> = {};
   if (status && status !== "paid") patch.status = status;
   if (tracking_code !== undefined) patch.tracking_code = tracking_code || null;
+  if (note !== undefined) patch.note = note;
 
   if (Object.keys(patch).length) {
     const { error } = await admin.from("orders").update(patch).eq("id", id);

@@ -123,7 +123,7 @@ export function LabelsTable({ rows }: { rows: LabelRow[] }) {
           </thead>
           <tbody>
             {rows.map((row) => {
-              const { number, customer, address } = row.labels[0];
+              const { number, customer, note, address } = row.labels[0];
               const sizes = row.labels.flatMap((l) => l.sizes);
               return (
                 <tr key={row.id} className="border-b border-rule last:border-b-0">
@@ -141,7 +141,10 @@ export function LabelsTable({ rows }: { rows: LabelRow[] }) {
                       #{number}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">{customer}</td>
+                  <td className="px-4 py-3">
+                    {customer}
+                    {note && <span className="text-ink-2"> ({note})</span>}
+                  </td>
                   <td className="px-4 py-3">{address ? address.city : "Retirada na loja"}</td>
                   <td className="px-4 py-3">
                     {sizes.join(", ")}

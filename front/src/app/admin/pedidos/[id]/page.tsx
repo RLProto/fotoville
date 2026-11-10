@@ -46,7 +46,12 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
 
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_20rem]">
         <section className="card p-5" aria-label="Atualizar pedido">
-          <OrderControls orderId={order.id} status={order.status} trackingCode={order.tracking_code} />
+          <OrderControls
+            orderId={order.id}
+            status={order.status}
+            trackingCode={order.tracking_code}
+            note={order.note}
+          />
         </section>
         <section className="card p-5" aria-labelledby="historico">
           <h2 id="historico" className="mb-3 text-lg font-bold">

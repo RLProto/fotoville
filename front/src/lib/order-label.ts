@@ -1,6 +1,7 @@
 /**
  * Etiquetas do envelope, em PDF A4 na grade da folha Pimaco CA4354 (22 etiquetas de 99 x 25,4 mm,
- * duas colunas). Uma etiqueta por pedido: cliente, endereço ou retirada, tamanhos e código de barras.
+ * duas colunas). Uma etiqueta por pedido: cliente (com a descrição do pedido entre parênteses), endereço ou
+ * retirada, tamanhos e código de barras.
  * Gerado no navegador do painel, junto com as fotos.
  */
 import fontkit from "@pdf-lib/fontkit";
@@ -42,6 +43,8 @@ export type LabelAddress = {
 export type LabelData = {
   number: number;
   customer: string;
+  /** Descrição do pedido, em maiúsculas; sai entre parênteses depois do nome. */
+  note: string | null;
   /** null: retirada na loja. */
   address: LabelAddress | null;
   /** "10x15 (3 fotos)": o primeiro fica embaixo, os outros sobem. */
@@ -50,7 +53,7 @@ export type LabelData = {
 
 /** Uma etiqueta por pedido, com os tamanhos na ordem do catálogo; pedido com tamanhos demais ganha outra. */
 export function labelsFor(
-  order: Pick<Order, "number" | "customer" | "shipping_service" | "shipping_address">,
+  order: Pick<Order, "number" | "customer" | "note" | "shipping_service" | "shipping_address">,
   items: Pick<OrderItem, "product_id" | "quantity">[],
   products: Pick<Product, "id" | "name" | "sort">[],
 ): LabelData[] {
@@ -71,6 +74,7 @@ export function labelsFor(
   const base = {
     number: order.number,
     customer: customer?.name?.toLocaleUpperCase("pt-BR") || customer?.email || "SEM NOME",
+    note: order.note?.toLocaleUpperCase("pt-BR") || null,
     address:
       order.shipping_service === "retirada" || !address
         ? null
@@ -206,11 +210,15 @@ function drawLabel(page: PDFPage, font: PDFFont, label: LabelData, box: ReturnTy
   const base = box.y + PAD_Y;
   const nameY = box.y + box.h - PAD_Y - NAME_SIZE * 0.75;
 
-  // Nome em cima, na largura toda: encolhe antes de cortar
+  // Nome em cima, na largura toda, com a descrição entre parênteses: encolhe antes de cortar, e o que se
+  // corta é o nome, nunca a descrição
   const name = printable(label.customer, font) || "SEM NOME";
-  const shrunk = (NAME_SIZE * (right - left)) / font.widthOfTextAtSize(name, NAME_SIZE);
+  const alias = printable(label.note ?? "", font);
+  const suffix = alias ? ` (${alias})` : "";
+  const shrunk = (NAME_SIZE * (right - left)) / font.widthOfTextAtSize(name + suffix, NAME_SIZE);
   const nameSize = Math.max(NAME_MIN_SIZE, Math.min(NAME_SIZE, shrunk));
-  text(fit(name, font, nameSize, right - left), left, nameY, nameSize);
+  const nameRoom = right - left - font.widthOfTextAtSize(suffix, nameSize);
+  text(fit(name, font, nameSize, nameRoom) + suffix, left, nameY, nameSize);
 
   // Código de barras à direita, com o número embaixo
   const number = `#${label.number}`;

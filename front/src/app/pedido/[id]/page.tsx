@@ -3,9 +3,11 @@ import { describeError, logError } from "@/lib/error-log";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { OrderNote } from "@/components/order-note";
 import { OrderTimeline, StatusBadge } from "@/components/order-status";
 import { formatBRL, formatCep, formatDate } from "@/lib/format";
 import { hasMercadoPago } from "@/lib/mercadopago";
+import { customerCanEditNote } from "@/lib/order-note";
 import { syncPayment } from "@/lib/orders";
 import { site, whatsappLink } from "@/lib/site";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
@@ -103,6 +105,10 @@ export default async function PedidoPage({ params, searchParams }: Props) {
         )}
         {order.status === "cancelled" && <p className="alert alert-danger">Este pedido foi cancelado.</p>}
       </div>
+
+      {order.kind === "prints" && (
+        <OrderNote orderId={order.id} initial={order.note} editable={customerCanEditNote(order)} />
+      )}
 
       {coupon && (
         <section className="card mt-6 border-2 border-action p-6" aria-labelledby="cupom-pacote">

@@ -8,11 +8,18 @@ import type { Order, OrderItem } from "@/lib/types";
 /** Impressas que continuam na lista, para reimprimir; as não impressas aparecem todas. */
 const PRINTED_SHOWN = 100;
 const ITEMS_BATCH = 50;
-const COLUMNS = "id, number, customer, shipping_service, shipping_address, label_ready_at, label_printed_at";
+const COLUMNS = "id, number, customer, note, shipping_service, shipping_address, label_ready_at, label_printed_at";
 
 type LabelOrder = Pick<
   Order,
-  "id" | "number" | "customer" | "shipping_service" | "shipping_address" | "label_ready_at" | "label_printed_at"
+  | "id"
+  | "number"
+  | "customer"
+  | "note"
+  | "shipping_service"
+  | "shipping_address"
+  | "label_ready_at"
+  | "label_printed_at"
 >;
 
 export default async function LabelsPage() {

@@ -71,7 +71,7 @@ export default async function ContaPage() {
                       <p className="font-bold">
                         Pedido #{order.number}
                         <span className="font-normal text-ink-2">
-                          , {order.kind === "package" ? "Pacote de fotos" : "Revelação"}
+                          , {order.note ?? (order.kind === "package" ? "Pacote de fotos" : "Revelação")}
                         </span>
                       </p>
                       <p className="text-sm text-ink-2">{formatDate(order.created_at)}</p>

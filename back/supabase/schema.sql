@@ -106,6 +106,8 @@ create table if not exists public.orders (
 );
 alter table public.orders add column if not exists label_ready_at timestamptz;    -- loja baixou as fotos: etiqueta na aba Etiquetas
 alter table public.orders add column if not exists label_printed_at timestamptz;  -- etiqueta entrou num PDF
+alter table public.orders add column if not exists note text                      -- descrição do pedido, sai na etiqueta
+  constraint orders_note_check check (note is null or char_length(note) between 1 and 30);
 create index if not exists orders_label_ready_idx on public.orders (label_ready_at desc) where label_ready_at is not null;
 create index if not exists orders_user_idx on public.orders (user_id, created_at desc);
 create index if not exists orders_status_idx on public.orders (status, created_at desc);

@@ -47,7 +47,7 @@ const STATUSES = Object.keys(ORDER_STATUS_LABEL) as OrderStatus[];
  */
 export function OrdersTable({ orders: all }: { orders: Order[] }) {
   const router = useRouter();
-  // Busca pelo cabeçalho da coluna: número do pedido ou nome/e-mail do cliente, sem recarregar
+  // Busca pelo cabeçalho da coluna: número do pedido ou nome/e-mail do cliente (e a descrição), sem recarregar
   const [searching, setSearching] = useState<SearchKind | null>(null);
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -58,7 +58,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
       : all.filter((o) =>
           searching === "number"
             ? String(o.number).startsWith(q.replace("#", ""))
-            : `${o.customer?.name ?? ""} ${o.customer?.email ?? ""}`.toLowerCase().includes(q),
+            : `${o.customer?.name ?? ""} ${o.customer?.email ?? ""} ${o.note ?? ""}`.toLowerCase().includes(q),
         );
   function openSearch(kind: SearchKind) {
     setSearching(kind);
@@ -264,6 +264,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                   <td className="px-3 py-1.5 whitespace-nowrap tabular-nums">{formatDate(order.created_at)}</td>
                   <td className="max-w-[13rem] truncate px-3 py-1.5" title={order.customer?.email}>
                     {order.customer?.name || order.customer?.email || "Sem nome"}
+                    {order.note && <span className="text-ink-2"> ({order.note})</span>}
                   </td>
                   <td className="px-3 py-1.5 whitespace-nowrap">
                     {order.shipping_label ?? (order.kind === "package" ? "Sem entrega" : "A definir")}

@@ -152,6 +152,8 @@ export type Order = {
   label_ready_at: string | null;
   /** Quando a etiqueta entrou num PDF pela última vez. */
   label_printed_at: string | null;
+  /** Descrição curta do pedido ("Casamento Ana"), impressa na etiqueta. Regras em lib/order-note.ts. */
+  note: string | null;
   mp_preference_id: string | null;
   mp_init_point: string | null;
   mp_payment_id: string | null;
