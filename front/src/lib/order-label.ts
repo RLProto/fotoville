@@ -217,7 +217,8 @@ function drawLabel(page: PDFPage, font: PDFFont, label: LabelData, box: ReturnTy
   const suffix = alias ? ` (${alias})` : "";
   const shrunk = (NAME_SIZE * (right - left)) / font.widthOfTextAtSize(name + suffix, NAME_SIZE);
   const nameSize = Math.max(NAME_MIN_SIZE, Math.min(NAME_SIZE, shrunk));
-  const nameRoom = right - left - font.widthOfTextAtSize(suffix, nameSize);
+  // A folga cobre o arredondamento: encolhido na medida exata, o nome não pode perder letra
+  const nameRoom = right - left - font.widthOfTextAtSize(suffix, nameSize) + 0.5;
   text(fit(name, font, nameSize, nameRoom) + suffix, left, nameY, nameSize);
 
   // Código de barras à direita, com o número embaixo
