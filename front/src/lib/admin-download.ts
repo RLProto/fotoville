@@ -34,7 +34,7 @@ export const hasFolderPicker = () => typeof window !== "undefined" && Boolean((w
 
 /** Mensagem quando nenhuma pasta foi liberada. */
 export const PICK_FAILED =
-  "O Windows não permite salvar as fotos direto na pasta Downloads ou na Área de Trabalho. Crie uma pasta nova dentro dela (por exemplo, “Pedidos”) e escolha essa pasta.";
+  "O Windows não permite salvar as fotos direto nessa pasta. Crie uma pasta nova dentro dela (por exemplo, “Pedidos”) e escolha essa pasta.";
 
 /**
  * Abre o seletor de pasta. null quando nenhuma pasta foi liberada: a janela fechada sem escolher, ou uma pasta
