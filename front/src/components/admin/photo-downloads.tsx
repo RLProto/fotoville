@@ -2,8 +2,8 @@
 
 import { CircleNotchIcon, DownloadSimpleIcon, FoldersIcon, ScissorsIcon, TrashIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
-import { useState, useSyncExternalStore } from "react";
-import { DownloadDialog, downloadResult, type DownloadState } from "@/components/admin/download-dialog";
+import { useRef, useState, useSyncExternalStore } from "react";
+import { DownloadDialog, downloadCancelled, downloadResult, type DownloadState } from "@/components/admin/download-dialog";
 import { PrintPreview } from "@/components/print-preview";
 import {
   countFiles,
@@ -40,6 +40,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [download, setDownload] = useState<DownloadState | null>(null);
+  const stopRef = useRef<AbortController | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   // No servidor não há window nem localStorage: assume o padrão, e o navegador corrige ao montar.
   const canPickFolder = useSyncExternalStore(subscribeNoop, hasFolderPicker, () => true);
@@ -65,18 +66,23 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
     setBusy("all");
     setMessage(null);
     const title = `Baixando pedido #${order.number}`;
+    const stop = new AbortController();
+    stopRef.current = stop;
     setDownload({ phase: "running", title, done: 0, total: 0 });
     let saved = false;
     try {
       const result = await writeOrder(root, data, {
+        signal: stop.signal,
         onProgress: (done, total) => setDownload({ phase: "running", title, done, total }),
       });
-      saved = !result.failed && (await markDownloaded(order));
+      saved = !result.failed && !result.cancelled && (await markDownloaded(order));
     } catch (err) {
       reportError("loja", err, { etapa: "baixar pedido em pastas", order: order.id });
     }
+    stopRef.current = null;
     setBusy(null);
-    setDownload(saved ? downloadResult(1, []) : downloadResult(0, [order.number]));
+    if (saved) setDownload(downloadResult(1, []));
+    else setDownload(stop.signal.aborted ? downloadCancelled(0) : downloadResult(0, [order.number]));
     if (saved) router.refresh();
   }
 
@@ -182,7 +188,9 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
           );
         })}
       </ul>
-      {download && <DownloadDialog state={download} onClose={() => setDownload(null)} />}
+      {download && (
+        <DownloadDialog state={download} onClose={() => setDownload(null)} onStop={() => stopRef.current?.abort()} />
+      )}
 
       {canDeletePhotos(order) && (
         <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-rule pt-5">

@@ -132,16 +132,17 @@ export function planJobs({ order, photos, products }: OrderDownload) {
 /** Quantos arquivos o download grava (cópias contadas, Minis em folhas). */
 export const countFiles = (data: OrderDownload) => planJobs(data).jobs.reduce((sum, j) => sum + j.copies, 0);
 
-export type WriteResult = { failed: number };
+export type WriteResult = { failed: number; cancelled: boolean };
 
 /**
  * Grava o pedido dentro de `root`: pasta com o número e subpastas por tamanho.
- * `onProgress` recebe quantos arquivos já foram gravados.
+ * `onProgress` recebe quantos arquivos já foram gravados. `signal` cancela entre um arquivo e outro:
+ * o que já foi gravado fica na pasta.
  */
 export async function writeOrder(
   root: DirectoryHandle,
   data: OrderDownload,
-  options: { onProgress?: (done: number, total: number) => void } = {},
+  options: { onProgress?: (done: number, total: number) => void; signal?: AbortSignal } = {},
 ): Promise<WriteResult> {
   const { jobs, release } = planJobs(data);
   const total = jobs.reduce((sum, j) => sum + j.copies, 0);
@@ -158,10 +159,12 @@ export async function writeOrder(
   try {
     const orderDir = await root.getDirectoryHandle(String(data.order.number), { create: true });
     for (const job of jobs) {
+      if (options.signal?.aborted) break;
       try {
         const blob = await job.make();
         const dir = await orderDir.getDirectoryHandle(job.folder, { create: true });
         for (let copy = 1; copy <= job.copies; copy++) {
+          if (options.signal?.aborted) break;
           await write(dir, `${job.name}_${copy}.jpg`, blob);
           done += 1;
           options.onProgress?.(done, total);
@@ -174,7 +177,7 @@ export async function writeOrder(
   } finally {
     release();
   }
-  return { failed };
+  return { failed, cancelled: Boolean(options.signal?.aborted) };
 }
 
 async function reportDownloadError(err: unknown, detail: Record<string, unknown>, level: "error" | "warning" = "error") {
@@ -183,8 +186,8 @@ async function reportDownloadError(err: unknown, detail: Record<string, unknown>
 }
 
 /** Busca os dados do pedido para o download (lista de pedidos). */
-export async function fetchOrderDownload(orderId: string): Promise<OrderDownload> {
-  const res = await fetch(`/api/admin/pedidos/${orderId}/fotos`);
+export async function fetchOrderDownload(orderId: string, signal?: AbortSignal): Promise<OrderDownload> {
+  const res = await fetch(`/api/admin/pedidos/${orderId}/fotos`, { signal });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }

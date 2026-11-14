@@ -15,7 +15,7 @@ import {
   type DirectoryHandle,
 } from "@/lib/admin-download";
 import { BulkStatusDialog } from "@/components/admin/bulk-status-dialog";
-import { DownloadDialog, downloadResult, type DownloadState } from "@/components/admin/download-dialog";
+import { DownloadDialog, downloadCancelled, downloadResult, type DownloadState } from "@/components/admin/download-dialog";
 import { formatBRL, formatDate } from "@/lib/format";
 import { BULK_STATUSES, canBulkChange, canDownload, canPickStatus, type BulkStatus } from "@/lib/order-rules";
 import { reportError } from "@/lib/report-error";
@@ -77,6 +77,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
   const [download, setDownload] = useState<DownloadState | null>(null);
+  const stopRef = useRef<AbortController | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const [bulkTarget, setBulkTarget] = useState<BulkStatus | "">("");
@@ -125,16 +126,17 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
   }
 
   /** Grava um pedido em `root`, libera a etiqueta e, se estava pago, passa para "Em produção". */
-  async function downloadInto(root: DirectoryHandle, order: Order, title: string) {
+  async function downloadInto(root: DirectoryHandle, order: Order, title: string, signal: AbortSignal) {
     setDownload({ phase: "running", title, done: 0, total: 0 });
     try {
-      const data = await fetchOrderDownload(order.id);
+      const data = await fetchOrderDownload(order.id, signal);
       const result = await writeOrder(root, data, {
+        signal,
         onProgress: (done, total) => setDownload({ phase: "running", title, done, total }),
       });
-      return !result.failed && (await markDownloaded(order));
+      return !result.failed && !result.cancelled && (await markDownloaded(order));
     } catch (err) {
-      reportError("loja", err, { etapa: "baixar pedido pela lista", order: order.id });
+      if (!signal.aborted) reportError("loja", err, { etapa: "baixar pedido pela lista", order: order.id });
       return false;
     }
   }
@@ -148,16 +150,20 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
     }
     setBusy(list.length === 1 ? list[0].id : "many");
     setMessage(null);
+    const stop = new AbortController();
+    stopRef.current = stop;
     let saved = 0;
     const failed: number[] = [];
     for (const [i, order] of list.entries()) {
+      if (stop.signal.aborted) break;
       const place = list.length > 1 ? ` (${i + 1} de ${list.length})` : "";
-      if (await downloadInto(root, order, `Baixando pedido #${order.number}${place}`)) saved += 1;
-      else failed.push(order.number);
+      if (await downloadInto(root, order, `Baixando pedido #${order.number}${place}`, stop.signal)) saved += 1;
+      else if (!stop.signal.aborted) failed.push(order.number);
     }
+    stopRef.current = null;
     setBusy(null);
     setSelected(new Set());
-    setDownload(downloadResult(saved, failed));
+    setDownload(stop.signal.aborted ? downloadCancelled(saved) : downloadResult(saved, failed));
     router.refresh();
   }
 
@@ -415,7 +421,9 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
           onClose={() => setBulk(null)}
         />
       )}
-      {download && <DownloadDialog state={download} onClose={() => setDownload(null)} />}
+      {download && (
+        <DownloadDialog state={download} onClose={() => setDownload(null)} onStop={() => stopRef.current?.abort()} />
+      )}
     </div>
   );
 }

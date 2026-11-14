@@ -1,8 +1,8 @@
 "use client";
 
-import { CheckCircleIcon, WarningCircleIcon } from "@phosphor-icons/react";
+import { CheckCircleIcon, CircleNotchIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type DownloadState =
   | { phase: "running"; title: string; done: number; total: number }
@@ -31,10 +31,34 @@ export function downloadResult(saved: number, failed: number[]): DownloadState {
   };
 }
 
-/** Andamento do download das fotos. Enquanto grava, não fecha: sair da aba interromperia o download. */
-export function DownloadDialog({ state, onClose }: { state: DownloadState; onClose: () => void }) {
+/** Cancelado no meio: quantos pedidos chegaram a ser salvos antes. */
+export function downloadCancelled(saved: number): DownloadState {
+  return {
+    phase: "finished",
+    ok: false,
+    title: "Download cancelado",
+    text: saved
+      ? `${saved === 1 ? "1 pedido foi salvo" : `${saved} pedidos foram salvos`} antes de cancelar. Os outros podem ser baixados de novo.`
+      : "O pedido continua disponível para baixar de novo.",
+  };
+}
+
+/**
+ * Andamento do download das fotos. Enquanto grava, só fecha pelo botão de cancelar, que termina o arquivo atual
+ * e para: sair da aba interromperia o download no meio.
+ */
+export function DownloadDialog({
+  state,
+  onClose,
+  onStop,
+}: {
+  state: DownloadState;
+  onClose: () => void;
+  onStop: () => void;
+}) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [stopping, setStopping] = useState(false);
   const finished = state.phase === "finished";
 
   useEffect(() => {
@@ -77,6 +101,20 @@ export function DownloadDialog({ state, onClose }: { state: DownloadState; onClo
             <span className="tabular-nums">{state.total ? `${state.done} de ${state.total} fotos` : "Preparando…"}</span>
             <span>Mantenha esta aba aberta.</span>
           </p>
+          <div className="mt-5 flex justify-end">
+            <button
+              type="button"
+              className="btn btn-outline"
+              disabled={stopping}
+              onClick={() => {
+                setStopping(true);
+                onStop();
+              }}
+            >
+              {stopping && <CircleNotchIcon size={18} className="spinner" aria-hidden />}
+              {stopping ? "Cancelando…" : "Cancelar download"}
+            </button>
+          </div>
         </>
       ) : (
         <div role="status">
