@@ -32,13 +32,23 @@ type PickerWindow = Window & {
 
 export const hasFolderPicker = () => typeof window !== "undefined" && Boolean((window as PickerWindow).showDirectoryPicker);
 
-/** Abre o seletor de pasta. null quando a janela é fechada sem escolher. */
+/** Mensagem quando nenhuma pasta foi liberada. */
+export const PICK_FAILED =
+  "As fotos não foram salvas. Crie uma pasta nova dentro de Downloads (por exemplo, “Pedidos”) e escolha essa pasta.";
+
+/**
+ * Abre o seletor de pasta. null quando nenhuma pasta foi liberada: a janela fechada sem escolher, ou uma pasta
+ * que o Chrome recusa, como a própria Downloads ou Área de Trabalho (alguns Chrome recusam sem avisar).
+ * Fica no registro de erros, para diagnóstico.
+ */
 export async function pickFolder(): Promise<DirectoryHandle | null> {
   const picker = (window as PickerWindow).showDirectoryPicker;
   if (!picker) return null;
   try {
     return await picker({ id: "fotoville-pedidos", mode: "readwrite", startIn: "desktop" });
-  } catch {
+  } catch (err) {
+    const cancelled = err instanceof DOMException && err.name === "AbortError";
+    reportDownloadError(err, { etapa: "escolher pasta" }, cancelled ? "warning" : "error");
     return null;
   }
 }
@@ -167,9 +177,9 @@ export async function writeOrder(
   return { failed };
 }
 
-async function reportDownloadError(err: unknown, detail: Record<string, unknown>) {
+async function reportDownloadError(err: unknown, detail: Record<string, unknown>, level: "error" | "warning" = "error") {
   const { reportError } = await import("./report-error");
-  reportError("loja", err, detail);
+  reportError("loja", err, detail, level);
 }
 
 /** Busca os dados do pedido para o download (lista de pedidos). */
@@ -180,8 +190,19 @@ export async function fetchOrderDownload(orderId: string): Promise<OrderDownload
 }
 
 /** Depois de gravar o pedido: libera a etiqueta na aba Etiquetas e, se estava pago, passa para "Em produção". */
-export const markDownloaded = (order: Pick<Order, "id" | "status">) =>
-  patchOrder(order.id, { label_ready: true, ...(order.status === "paid" ? { status: "in_production" as const } : {}) });
+export async function markDownloaded(order: Pick<Order, "id" | "status">) {
+  const ok = await patchOrder(order.id, {
+    label_ready: true,
+    ...(order.status === "paid" ? { status: "in_production" as const } : {}),
+  });
+  if (!ok) {
+    reportDownloadError(new Error("Fotos gravadas, mas o pedido não foi marcado como baixado"), {
+      etapa: "marcar baixado",
+      order: order.id,
+    });
+  }
+  return ok;
+}
 
 /** Muda a situação do pedido pela mesma rota da página do pedido. */
 export async function patchOrder(

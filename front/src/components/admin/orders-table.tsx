@@ -10,6 +10,7 @@ import {
   markDownloaded,
   patchOrder,
   pickFolder,
+  PICK_FAILED,
   writeOrder,
   type DirectoryHandle,
 } from "@/lib/admin-download";
@@ -141,7 +142,10 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
   async function downloadMany(list: Order[]) {
     if (!list.length) return;
     const root = await pickFolder();
-    if (!root) return;
+    if (!root) {
+      setMessage(PICK_FAILED);
+      return;
+    }
     setBusy(list.length === 1 ? list[0].id : "many");
     setMessage(null);
     let saved = 0;

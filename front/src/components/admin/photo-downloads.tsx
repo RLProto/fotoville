@@ -10,6 +10,7 @@ import {
   hasFolderPicker,
   markDownloaded,
   pickFolder,
+  PICK_FAILED,
   writeOrder,
   type AdminPhoto,
   type OrderDownload,
@@ -57,7 +58,10 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
   /** Grava o pedido numa pasta do computador, libera a etiqueta e, se estava pago, passa para "Em produção". */
   async function downloadFolder() {
     const root = await pickFolder();
-    if (!root) return;
+    if (!root) {
+      setMessage(PICK_FAILED);
+      return;
+    }
     setBusy("all");
     setMessage(null);
     const title = `Baixando pedido #${order.number}`;
