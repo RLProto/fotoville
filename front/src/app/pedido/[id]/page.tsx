@@ -79,15 +79,10 @@ export default async function PedidoPage({ params, searchParams }: Props) {
       </div>
 
       <div className="mt-6 space-y-4" aria-live="polite">
-        {order.status === "pending" && (
-          <div className="alert alert-warning flex-col sm:flex-row sm:items-center sm:justify-between">
-            <p>{order.kind === "package" ? "Pague para receber o cupom." : "Pague para o pedido entrar em produção."}</p>
-            {order.mp_init_point && (
-              <a href={order.mp_init_point} className="btn btn-accent shrink-0">
-                Pagar agora
-              </a>
-            )}
-          </div>
+        {order.status === "pending" && order.mp_init_point && (
+          <a href={order.mp_init_point} className="btn btn-accent">
+            Pagar agora
+          </a>
         )}
         {order.status === "paid" && order.kind === "prints" && (
           <p className="alert alert-success">
