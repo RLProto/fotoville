@@ -11,8 +11,8 @@ export type DownloadState =
 export function downloadResult(saved: number, failed: number[]): DownloadState {
   if (!failed.length) {
     return saved === 1
-      ? { phase: "finished", ok: true, title: "Pedido salvo", text: "As fotos ficam separadas por tamanho." }
-      : { phase: "finished", ok: true, title: `${saved} pedidos salvos`, text: "Uma pasta por pedido, com as fotos separadas por tamanho." };
+      ? { phase: "finished", ok: true, title: "Pedido salvo", text: "" }
+      : { phase: "finished", ok: true, title: `${saved} pedidos salvos`, text: "" };
   }
   if (!saved) {
     return {
@@ -125,7 +125,7 @@ export function DownloadDialog({
             )}
             {state.title}
           </h2>
-          <p className="mt-2 text-ink-2">{state.text}</p>
+          {state.text && <p className="mt-2 text-ink-2">{state.text}</p>}
           <div className="mt-5 flex justify-end">
             <button ref={closeRef} type="button" className="btn btn-outline" onClick={() => dialogRef.current?.close()}>
               Fechar

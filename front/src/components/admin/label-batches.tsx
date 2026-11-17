@@ -28,7 +28,8 @@ function when(iso: string) {
   return `em ${formatDateTime(iso)}`;
 }
 
-type Message = { text: string; error?: boolean };
+/** `quiet`: só para leitor de tela, quando a própria lista já mostra o resultado. */
+type Message = { text: string; error?: boolean; quiet?: boolean };
 
 /**
  * Lotes de etiquetas: "Gerar etiquetas" junta os pedidos aprovados num lote; o lote abre o PDF para imprimir e,
@@ -62,7 +63,7 @@ export function LabelBatches({ batches, waiting }: { batches: BatchView[]; waiti
       return;
     }
     setFresh(body.batch.id);
-    setMessage({ text: `Lote ${body.batch.number} gerado com ${plural(body.batch.orders, "pedido", "pedidos")}.` });
+    setMessage({ text: `Lote ${body.batch.number} gerado com ${plural(body.batch.orders, "pedido", "pedidos")}.`, quiet: true });
     router.refresh();
   }
 
@@ -109,7 +110,7 @@ export function LabelBatches({ batches, waiting }: { batches: BatchView[]; waiti
     setWorking(null);
     setMessage(
       res?.ok
-        ? { text: `Lote ${batch.number} desfeito. Os pedidos voltaram para a fila.` }
+        ? { text: `Lote ${batch.number} desfeito.` }
         : { text: body?.error ?? "Não foi possível desfazer o lote. Tente de novo.", error: true },
     );
     router.refresh();
@@ -124,27 +125,24 @@ export function LabelBatches({ batches, waiting }: { batches: BatchView[]; waiti
 
   return (
     <div>
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        <p className="text-ink-2">
-          {waiting
-            ? `${plural(waiting, "pedido aprovado aguardando", "pedidos aprovados aguardando")} etiqueta`
-            : "Nenhum pedido aprovado aguardando etiqueta"}
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <h1 className="display-md text-3xl">Etiquetas</h1>
         <button type="button" className="btn btn-primary" disabled={!waiting || locked} onClick={generate}>
           {creating ? <CircleNotchIcon size={18} className="spinner" aria-hidden /> : <TagIcon size={18} aria-hidden />}
           Gerar etiquetas
         </button>
       </div>
-      <p aria-live="polite" className={`mt-3 min-h-5 text-sm font-semibold ${message?.error ? "text-danger" : ""}`}>
+      <p
+        aria-live="polite"
+        className={message && !message.quiet ? `mt-4 text-sm font-semibold ${message.error ? "text-danger" : ""}` : "sr-only"}
+      >
         {message?.text}
       </p>
 
       {batches.length === 0 ? (
-        <p className="card mt-3 p-8 text-center text-ink-2">
-          Gere as etiquetas para juntar os pedidos aprovados num lote.
-        </p>
+        <p className="card mt-6 p-8 text-center text-ink-2">Nenhum lote ainda.</p>
       ) : (
-        <div className="mt-3 space-y-4">
+        <div className="mt-6 space-y-4">
           {batches.map((batch) => (
             <BatchCard
               key={batch.id}

@@ -162,11 +162,6 @@ export function PrintLabelsDialog({
                       <p className="mt-3 font-semibold">
                         Baixar as fotos {pending.length === 1 ? "do pedido" : `dos ${pending.length} pedidos`} agora?
                       </p>
-                      <p className="mt-1 text-sm text-ink-2">
-                        {pending.length === 1
-                          ? "As fotos ficam separadas por tamanho."
-                          : "Uma pasta por pedido, com as fotos separadas por tamanho."}
-                      </p>
                       <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                         <button type="button" className="btn btn-outline" onClick={close}>
                           Agora não
