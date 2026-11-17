@@ -226,7 +226,7 @@ export async function fetchOrderDownload(orderId: string, signal?: AbortSignal):
   return res.json();
 }
 
-/** Depois de gravar o pedido: libera a etiqueta na aba Etiquetas e, se estava pago, passa para "Em produção". */
+/** Depois de gravar o pedido: marca as fotos como baixadas e, se estava pago, passa para "Em produção". */
 export async function markDownloaded(order: Pick<Order, "id" | "status">) {
   const ok = await patchOrder(order.id, {
     label_ready: true,

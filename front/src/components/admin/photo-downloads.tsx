@@ -56,7 +56,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
     save(await renderPrintFileFromUrl(photo.original_url, photo, product), `${photo.base_name}.jpg`);
   }
 
-  /** Grava o pedido numa pasta do computador, libera a etiqueta e, se estava pago, passa para "Em produção". */
+  /** Grava o pedido numa pasta do computador, marca como baixado e, se estava pago, passa para "Em produção". */
   async function downloadFolder() {
     const root = await folder.pick();
     if (!root) return;

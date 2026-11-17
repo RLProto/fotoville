@@ -2,7 +2,7 @@
  * Etiquetas do envelope, em PDF A4 na grade da folha Pimaco CA4354 (22 etiquetas de 99 x 25,4 mm,
  * duas colunas). Uma etiqueta por pedido: cliente (com a descrição do pedido entre parênteses), endereço ou
  * retirada, tamanhos e código de barras.
- * Gerado no navegador do painel, junto com as fotos.
+ * Gerado no navegador do painel, na aba Etiquetas, um PDF por lote de pedidos.
  */
 import fontkit from "@pdf-lib/fontkit";
 import JsBarcode from "jsbarcode";
@@ -23,7 +23,7 @@ export const LABEL_SHEET = {
   gapX: 0,
   gapY: 0,
 };
-const LABELS_PER_SHEET = LABEL_SHEET.cols * LABEL_SHEET.rows;
+export const LABELS_PER_SHEET = LABEL_SHEET.cols * LABEL_SHEET.rows;
 
 /** Quantos tamanhos cabem numa etiqueta; o pedido que passar disso ganha outra. */
 export const SIZES_PER_LABEL = 6;

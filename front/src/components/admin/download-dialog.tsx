@@ -1,7 +1,6 @@
 "use client";
 
 import { CheckCircleIcon, CircleNotchIcon, WarningCircleIcon } from "@phosphor-icons/react";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 export type DownloadState =
@@ -12,8 +11,8 @@ export type DownloadState =
 export function downloadResult(saved: number, failed: number[]): DownloadState {
   if (!failed.length) {
     return saved === 1
-      ? { phase: "finished", ok: true, title: "Pedido salvo", text: "Etiqueta disponível para impressão." }
-      : { phase: "finished", ok: true, title: `${saved} pedidos salvos`, text: "Etiquetas disponíveis para impressão." };
+      ? { phase: "finished", ok: true, title: "Pedido salvo", text: "As fotos ficam separadas por tamanho." }
+      : { phase: "finished", ok: true, title: `${saved} pedidos salvos`, text: "Uma pasta por pedido, com as fotos separadas por tamanho." };
   }
   if (!saved) {
     return {
@@ -127,15 +126,10 @@ export function DownloadDialog({
             {state.title}
           </h2>
           <p className="mt-2 text-ink-2">{state.text}</p>
-          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <div className="mt-5 flex justify-end">
             <button ref={closeRef} type="button" className="btn btn-outline" onClick={() => dialogRef.current?.close()}>
               Fechar
             </button>
-            {state.ok && (
-              <Link href="/admin/etiquetas" className="btn btn-primary">
-                Ver etiquetas
-              </Link>
-            )}
           </div>
         </div>
       )}

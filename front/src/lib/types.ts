@@ -148,10 +148,12 @@ export type Order = {
   tracking_code: string | null;
   /** Quando a loja apagou as imagens do pedido do bucket (as linhas de `photos` ficam). */
   photos_deleted_at: string | null;
-  /** Quando a loja baixou as fotos: a etiqueta aparece na aba Etiquetas. */
+  /** Quando a loja baixou as fotos do pedido pela primeira vez. */
   label_ready_at: string | null;
-  /** Quando a etiqueta entrou num PDF pela última vez. */
+  /** Quando o lote de etiquetas do pedido foi impresso pela última vez. */
   label_printed_at: string | null;
+  /** Lote de etiquetas (aba Etiquetas) em que o pedido entrou. */
+  label_batch_id: string | null;
   /** Descrição curta do pedido ("Casamento Ana"), impressa na etiqueta. Regras em lib/order-note.ts. */
   note: string | null;
   mp_preference_id: string | null;

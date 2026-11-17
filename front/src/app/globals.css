@@ -330,6 +330,16 @@
   animation: spin 0.8s linear infinite;
 }
 
+/* Item recém-criado (lote de etiquetas): o fundo da cor de ação some devagar */
+@keyframes fresh {
+  from {
+    background-color: var(--color-action-soft);
+  }
+}
+.fresh {
+  animation: fresh 1.6s ease-out;
+}
+
 /* Lista longa de fotos no envio: o navegador só desenha o que está na tela */
 .photo-tile {
   content-visibility: auto;
