@@ -44,12 +44,26 @@ export const PICK_FAILED =
 export async function pickFolder(): Promise<DirectoryHandle | null> {
   const picker = (window as PickerWindow).showDirectoryPicker;
   if (!picker) return null;
+  // Diagnóstico: o Chrome dá o mesmo AbortError para janela fechada, pasta recusada e janela que nem abriu.
+  // A janela do Windows tira o foco da página; erro rápido e sem perder o foco indica que ela não abriu.
+  const started = performance.now();
+  let lostFocus = false;
+  const onBlur = () => {
+    lostFocus = true;
+  };
+  window.addEventListener("blur", onBlur);
   try {
     return await picker({ id: "fotoville-pedidos", mode: "readwrite", startIn: "desktop" });
   } catch (err) {
     const cancelled = err instanceof DOMException && err.name === "AbortError";
-    reportDownloadError(err, { etapa: "escolher pasta" }, cancelled ? "warning" : "error");
+    reportDownloadError(
+      err,
+      { etapa: "escolher pasta", ms: Math.round(performance.now() - started), janela_abriu: lostFocus },
+      cancelled ? "warning" : "error",
+    );
     return null;
+  } finally {
+    window.removeEventListener("blur", onBlur);
   }
 }
 
