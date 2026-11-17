@@ -122,12 +122,9 @@ export function OrderNote({ orderId, initial, editable }: { orderId: string; ini
       </div>
       <p id="descricao-ajuda" aria-live="polite" className={error ? "field-error" : "field-hint"}>
         {error ?? (
-          <>
-            Sai na etiqueta do envelope.{" "}
-            <span className="tabular-nums">
-              {length}/{NOTE_MAX}
-            </span>
-          </>
+          <span className="tabular-nums">
+            {length}/{NOTE_MAX}
+          </span>
         )}
       </p>
     </form>
