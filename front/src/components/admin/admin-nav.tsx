@@ -13,6 +13,7 @@ const ITEMS = [
   { href: "/admin/motoboy", label: "Motoboy", match: (p: string) => p.startsWith("/admin/motoboy") },
   { href: "/admin/estatisticas", label: "Estatísticas", match: (p: string) => p.startsWith("/admin/estatisticas") },
   { href: "/admin/armazenamento", label: "Armazenamento", match: (p: string) => p.startsWith("/admin/armazenamento") },
+  { href: "/admin/equipe", label: "Equipe", match: (p: string) => p.startsWith("/admin/equipe") },
   { href: "/admin/erros", label: "Erros", match: (p: string) => p.startsWith("/admin/erros") },
 ];
 
