@@ -5,6 +5,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { OrderNote } from "@/components/order-note";
 import { OrderTimeline, StatusBadge } from "@/components/order-status";
+import { PixCopyButton } from "@/components/pix-copy-button";
+import QRCode from "qrcode";
+import { pix, pixCode } from "@/lib/pix";
 import { formatBRL, formatCep, formatDate } from "@/lib/format";
 import { hasMercadoPago } from "@/lib/mercadopago";
 import { customerCanEditNote } from "@/lib/order-note";
@@ -17,7 +20,7 @@ export const metadata: Metadata = { title: "Pedido", robots: { index: false } };
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ payment_id?: string; semPagamento?: string; erroPagamento?: string }>;
+  searchParams: Promise<{ payment_id?: string }>;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -57,6 +60,14 @@ export default async function PedidoPage({ params, searchParams }: Props) {
   const address = order.shipping_address;
   const pickup = order.shipping_service === "retirada";
 
+  // Pix estático com o valor exato do pedido; a loja confirma o recebimento no painel.
+  let pixPayment: { code: string; qr: string } | null = null;
+  if (order.status === "pending" && order.total_cents > 0) {
+    const code = pixCode(order);
+    const svg = await QRCode.toString(code, { type: "svg", errorCorrectionLevel: "M", margin: 0 });
+    pixPayment = { code, qr: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}` };
+  }
+
   return (
     <div className="container-page py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -70,27 +81,7 @@ export default async function PedidoPage({ params, searchParams }: Props) {
       <div className="mt-6 space-y-4" aria-live="polite">
         {order.status === "pending" && (
           <div className="alert alert-warning flex-col sm:flex-row sm:items-center sm:justify-between">
-            <p>
-              {query.erroPagamento ? (
-                "O pagamento não abriu. Seu pedido está salvo."
-              ) : query.semPagamento || !order.mp_init_point ? (
-                <>
-                  Pedido registrado. O pagamento não abriu.{" "}
-                  <a
-                    href={whatsappLink(`Olá, preciso de ajuda para pagar o pedido #${order.number}.`)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-bold underline underline-offset-2"
-                  >
-                    Falar no WhatsApp
-                  </a>
-                </>
-              ) : order.kind === "package" ? (
-                "Pague para receber o cupom."
-              ) : (
-                "Pague para o pedido entrar em produção."
-              )}
-            </p>
+            <p>{order.kind === "package" ? "Pague para receber o cupom." : "Pague para o pedido entrar em produção."}</p>
             {order.mp_init_point && (
               <a href={order.mp_init_point} className="btn btn-accent shrink-0">
                 Pagar agora
@@ -105,6 +96,42 @@ export default async function PedidoPage({ params, searchParams }: Props) {
         )}
         {order.status === "cancelled" && <p className="alert alert-danger">Este pedido foi cancelado.</p>}
       </div>
+
+      {pixPayment && (
+        <section className="card mt-6 p-6" aria-labelledby="pix">
+          <h2 id="pix" className="text-xl font-bold">
+            Pix
+          </h2>
+          <div className="mt-4 flex flex-col items-center gap-6 sm:flex-row sm:items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element -- QR gerado no servidor, em SVG inline */}
+            <img
+              src={pixPayment.qr}
+              alt={`QR code Pix de ${formatBRL(order.total_cents)}`}
+              width={208}
+              height={208}
+              className="size-52 shrink-0 rounded-lg bg-white p-3"
+            />
+            <div className="w-full text-center sm:text-left">
+              <p className="font-display text-3xl font-bold text-ink tabular-nums">{formatBRL(order.total_cents)}</p>
+              <p className="mt-1 text-ink-2">
+                {site.name} · CNPJ {pix.keyDisplay}
+              </p>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <PixCopyButton code={pixPayment.code} />
+                <a
+                  href={whatsappLink(`Olá, segue o comprovante do Pix do pedido #${order.number}.`)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-outline"
+                >
+                  <WhatsappLogoIcon size={18} aria-hidden />
+                  Enviar comprovante
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {order.kind === "prints" && (
         <OrderNote orderId={order.id} initial={order.note} editable={customerCanEditNote(order)} />

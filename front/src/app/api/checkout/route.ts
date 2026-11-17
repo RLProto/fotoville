@@ -229,8 +229,8 @@ export async function POST(request: Request) {
   }
 
   if (!hasMercadoPago) {
-    // Ambiente sem Mercado Pago: o pedido fica aguardando pagamento.
-    return NextResponse.json({ orderId: order.id, redirect: `${orderUrl}?semPagamento=1` });
+    // Sem Mercado Pago: a página do pedido mostra o Pix e a loja confirma no painel.
+    return NextResponse.json({ orderId: order.id, redirect: orderUrl });
   }
 
   try {
@@ -249,6 +249,6 @@ export async function POST(request: Request) {
   } catch (err) {
     reportServerError("pagamento", err, { order: order.id, etapa: "preferência do Mercado Pago" });
     // O pedido já existe; o cliente pode tentar pagar de novo pela página do pedido.
-    return NextResponse.json({ orderId: order.id, redirect: `${orderUrl}?erroPagamento=1` });
+    return NextResponse.json({ orderId: order.id, redirect: orderUrl });
   }
 }

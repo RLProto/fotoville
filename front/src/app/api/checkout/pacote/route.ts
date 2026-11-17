@@ -61,7 +61,7 @@ export async function POST(request: Request) {
   });
 
   const orderUrl = `/pedido/${order.id}`;
-  if (!hasMercadoPago) return NextResponse.json({ orderId: order.id, redirect: `${orderUrl}?semPagamento=1` });
+  if (!hasMercadoPago) return NextResponse.json({ orderId: order.id, redirect: orderUrl });
 
   try {
     const preference = await createPreference({
@@ -78,6 +78,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ orderId: order.id, redirect: preference.init_point });
   } catch (err) {
     reportServerError("pagamento", err, { order: order.id, etapa: "preferência do Mercado Pago (pacote)" });
-    return NextResponse.json({ orderId: order.id, redirect: `${orderUrl}?erroPagamento=1` });
+    return NextResponse.json({ orderId: order.id, redirect: orderUrl });
   }
 }
