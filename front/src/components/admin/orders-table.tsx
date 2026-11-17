@@ -9,13 +9,12 @@ import {
   hasFolderPicker,
   markDownloaded,
   patchOrder,
-  pickFolder,
-  PICK_FAILED,
   writeOrder,
   type DirectoryHandle,
 } from "@/lib/admin-download";
 import { BulkStatusDialog } from "@/components/admin/bulk-status-dialog";
 import { DownloadDialog, downloadCancelled, downloadResult, type DownloadState } from "@/components/admin/download-dialog";
+import { useFolderPicker } from "@/components/admin/folder-picker";
 import { formatBRL, formatDate } from "@/lib/format";
 import { BULK_STATUSES, canBulkChange, canDownload, canPickStatus, type BulkStatus } from "@/lib/order-rules";
 import { reportError } from "@/lib/report-error";
@@ -78,6 +77,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [download, setDownload] = useState<DownloadState | null>(null);
   const stopRef = useRef<AbortController | null>(null);
+  const folder = useFolderPicker();
   const [message, setMessage] = useState<string | null>(null);
 
   const [bulkTarget, setBulkTarget] = useState<BulkStatus | "">("");
@@ -143,11 +143,8 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
 
   async function downloadMany(list: Order[]) {
     if (!list.length) return;
-    const root = await pickFolder();
-    if (!root) {
-      setMessage(PICK_FAILED);
-      return;
-    }
+    const root = await folder.pick();
+    if (!root) return;
     setBusy(list.length === 1 ? list[0].id : "many");
     setMessage(null);
     const stop = new AbortController();
@@ -424,6 +421,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
       {download && (
         <DownloadDialog state={download} onClose={() => setDownload(null)} onStop={() => stopRef.current?.abort()} />
       )}
+      {folder.dialog}
     </div>
   );
 }

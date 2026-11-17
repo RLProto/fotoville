@@ -20,6 +20,8 @@ export type OrderDownload = { order: Order; photos: AdminPhoto[]; products: Prod
 
 /** API de acesso a pastas (Chrome e Edge no computador). Fora do lib.dom do TypeScript. */
 export type DirectoryHandle = {
+  name: string;
+  requestPermission(options: { mode: "read" | "readwrite" }): Promise<"granted" | "denied" | "prompt">;
   getDirectoryHandle(name: string, options?: { create?: boolean }): Promise<DirectoryHandle>;
   getFileHandle(
     name: string,
@@ -32,20 +34,20 @@ type PickerWindow = Window & {
 
 export const hasFolderPicker = () => typeof window !== "undefined" && Boolean((window as PickerWindow).showDirectoryPicker);
 
-/** Mensagem quando nenhuma pasta foi liberada. */
-export const PICK_FAILED =
-  "O Windows não permite salvar as fotos direto nessa pasta. Crie uma pasta nova dentro dela (por exemplo, “Pedidos”) e escolha essa pasta.";
+type PickStep = "escolher pasta" | "escolher pasta (outro jeito)";
 
 /**
- * Abre o seletor de pasta. null quando nenhuma pasta foi liberada: a janela fechada sem escolher, ou uma pasta
- * que o Chrome recusa, como a própria Downloads ou Área de Trabalho (alguns Chrome recusam sem avisar).
- * Fica no registro de erros, para diagnóstico.
+ * Abre o seletor de pasta. null quando nenhuma pasta foi liberada. O Chrome dá o mesmo AbortError para janela
+ * fechada, pasta recusada e permissão negada, então cada falha vai para o registro de erros com o tempo até o
+ * erro e se a janela chegou a abrir (ela tira o foco da página).
+ *
+ * `simple`: só leitura, sem pasta inicial nem pasta lembrada. A permissão de gravar é pedida depois, em outro
+ * clique (askWrite). Caminho alternativo para Chrome que cancela o pedido de gravação junto com o seletor.
  */
-export async function pickFolder(): Promise<DirectoryHandle | null> {
+export async function pickFolder({ simple = false } = {}): Promise<DirectoryHandle | null> {
   const picker = (window as PickerWindow).showDirectoryPicker;
   if (!picker) return null;
-  // Diagnóstico: o Chrome dá o mesmo AbortError para janela fechada, pasta recusada e janela que nem abriu.
-  // A janela do Windows tira o foco da página; erro rápido e sem perder o foco indica que ela não abriu.
+  const etapa: PickStep = simple ? "escolher pasta (outro jeito)" : "escolher pasta";
   const started = performance.now();
   let lostFocus = false;
   const onBlur = () => {
@@ -53,17 +55,35 @@ export async function pickFolder(): Promise<DirectoryHandle | null> {
   };
   window.addEventListener("blur", onBlur);
   try {
-    return await picker({ id: "fotoville-pedidos", mode: "readwrite", startIn: "desktop" });
+    const root = await (simple
+      ? picker({ mode: "read" })
+      : picker({ id: "fotoville-pedidos", mode: "readwrite", startIn: "desktop" }));
+    if (simple) reportDownloadError("pasta escolhida", { etapa, ms: Math.round(performance.now() - started) }, "warning");
+    return root;
   } catch (err) {
     const cancelled = err instanceof DOMException && err.name === "AbortError";
     reportDownloadError(
       err,
-      { etapa: "escolher pasta", ms: Math.round(performance.now() - started), janela_abriu: lostFocus },
+      { etapa, ms: Math.round(performance.now() - started), janela_abriu: lostFocus },
       cancelled ? "warning" : "error",
     );
     return null;
   } finally {
     window.removeEventListener("blur", onBlur);
+  }
+}
+
+/** Pede permissão para gravar na pasta escolhida pelo caminho alternativo. Precisa vir de um clique. */
+export async function askWrite(root: DirectoryHandle): Promise<boolean> {
+  try {
+    const state = await root.requestPermission({ mode: "readwrite" });
+    if (state !== "granted") {
+      reportDownloadError(`permissão de gravar: ${state}`, { etapa: "permissão de gravar" }, "warning");
+    }
+    return state === "granted";
+  } catch (err) {
+    reportDownloadError(err, { etapa: "permissão de gravar" });
+    return false;
   }
 }
 

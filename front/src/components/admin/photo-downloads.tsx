@@ -4,13 +4,12 @@ import { CircleNotchIcon, DownloadSimpleIcon, FoldersIcon, ScissorsIcon, TrashIc
 import { useRouter } from "next/navigation";
 import { useRef, useState, useSyncExternalStore } from "react";
 import { DownloadDialog, downloadCancelled, downloadResult, type DownloadState } from "@/components/admin/download-dialog";
+import { useFolderPicker } from "@/components/admin/folder-picker";
 import { PrintPreview } from "@/components/print-preview";
 import {
   countFiles,
   hasFolderPicker,
   markDownloaded,
-  pickFolder,
-  PICK_FAILED,
   writeOrder,
   type AdminPhoto,
   type OrderDownload,
@@ -41,6 +40,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
   const [message, setMessage] = useState<string | null>(null);
   const [download, setDownload] = useState<DownloadState | null>(null);
   const stopRef = useRef<AbortController | null>(null);
+  const folder = useFolderPicker();
   const [confirmDelete, setConfirmDelete] = useState(false);
   // No servidor não há window nem localStorage: assume o padrão, e o navegador corrige ao montar.
   const canPickFolder = useSyncExternalStore(subscribeNoop, hasFolderPicker, () => true);
@@ -58,11 +58,8 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
 
   /** Grava o pedido numa pasta do computador, libera a etiqueta e, se estava pago, passa para "Em produção". */
   async function downloadFolder() {
-    const root = await pickFolder();
-    if (!root) {
-      setMessage(PICK_FAILED);
-      return;
-    }
+    const root = await folder.pick();
+    if (!root) return;
     setBusy("all");
     setMessage(null);
     const title = `Baixando pedido #${order.number}`;
@@ -191,6 +188,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
       {download && (
         <DownloadDialog state={download} onClose={() => setDownload(null)} onStop={() => stopRef.current?.abort()} />
       )}
+      {folder.dialog}
 
       {canDeletePhotos(order) && (
         <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-rule pt-5">
