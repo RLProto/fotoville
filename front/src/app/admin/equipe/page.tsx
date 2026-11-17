@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { NewAdminForm } from "@/components/admin/new-admin-form";
 import { RemoveAdminButton } from "@/components/admin/remove-admin-button";
+import { UserSearch } from "@/components/admin/user-search";
+import { listAllUsers } from "@/lib/admin-team";
 import { formatDate } from "@/lib/format";
 import { createAdminClient, getProfile } from "@/lib/supabase/server";
 
@@ -11,26 +12,29 @@ export default async function AdminEquipePage() {
   const me = await getProfile();
   if (!me?.is_admin) notFound();
 
-  const admin = createAdminClient();
-  const { data: profiles } = await admin
-    .from("profiles")
-    .select("id, full_name, is_super_admin")
-    .eq("is_admin", true);
+  const [users, { data: profiles }] = await Promise.all([
+    listAllUsers(),
+    createAdminClient().from("profiles").select("id, full_name, is_admin, is_super_admin"),
+  ]);
+  const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
 
-  const team = await Promise.all(
-    (profiles ?? []).map(async (p) => {
-      const { data } = await admin.auth.admin.getUserById(p.id);
-      const email = data.user?.email ?? "";
+  const all = users
+    .map((u) => {
+      const p = byId.get(u.id);
+      const email = u.email ?? "";
       return {
-        id: p.id,
-        name: p.full_name || email || "Sem nome",
+        id: u.id,
+        name: p?.full_name || email || "Sem nome",
         email,
-        isSuper: Boolean(p.is_super_admin),
-        lastSignIn: data.user?.last_sign_in_at ?? null,
+        isAdmin: Boolean(p?.is_admin),
+        isSuper: Boolean(p?.is_super_admin),
+        lastSignIn: u.last_sign_in_at ?? null,
       };
-    }),
-  );
-  team.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+
+  const team = all.filter((u) => u.isAdmin);
+  const candidates = all.filter((u) => !u.isAdmin).map(({ id, name, email }) => ({ id, name, email }));
 
   return (
     <>
@@ -73,8 +77,8 @@ export default async function AdminEquipePage() {
         </table>
       </div>
 
-      <div className="mt-6 max-w-2xl">
-        <NewAdminForm />
+      <div className="mt-6 max-w-3xl">
+        <UserSearch users={candidates} />
       </div>
     </>
   );

@@ -1,16 +1,16 @@
 import "server-only";
+import type { User } from "@supabase/supabase-js";
 import { createAdminClient } from "./supabase/server";
 
-/** Procura a conta pelo e-mail (sem diferenciar maiúsculas). */
-export async function findUserByEmail(email: string) {
-  const target = email.trim().toLowerCase();
+/** Todas as contas do site (o Supabase entrega de 1000 em 1000). */
+export async function listAllUsers() {
   const admin = createAdminClient();
-  for (let page = 1; page <= 20; page++) {
+  const users: User[] = [];
+  for (let page = 1; page <= 50; page++) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
     if (error) throw error;
-    const found = data.users.find((u) => u.email?.toLowerCase() === target);
-    if (found) return found;
-    if (data.users.length < 1000) return null;
+    users.push(...data.users);
+    if (data.users.length < 1000) break;
   }
-  return null;
+  return users;
 }
