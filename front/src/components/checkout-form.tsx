@@ -627,7 +627,7 @@ export function CheckoutForm({
           {submitting ? <CircleNotchIcon size={20} className="spinner" aria-hidden /> : <LockIcon size={18} aria-hidden />}
           {submitting ? (totalCents === 0 ? "Concluindo…" : "Abrindo pagamento…") : totalCents === 0 ? "Concluir pedido" : "Ir para o pagamento"}
         </button>
-        <p className="mt-3 text-center text-sm text-ink-2">Pix, cartão ou boleto pelo Mercado Pago.</p>
+        <p className="mt-3 text-center text-sm text-ink-2">Pagamento por Pix.</p>
         <p className="mt-4 border-t border-rule pt-3 text-center text-sm">
           Dúvidas?{" "}
           <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="link">

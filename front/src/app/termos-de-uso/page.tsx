@@ -45,7 +45,7 @@ export default function TermosPage() {
         <h2>3. Preços, pagamento e cupons</h2>
         <ul>
           <li>Os preços válidos são os exibidos no site no momento do pedido.</li>
-          <li>O pagamento é processado pelo Mercado Pago. A {site.name} não armazena dados de cartão.</li>
+          <li>O pagamento é por Pix. O pedido entra em produção depois que confirmamos o recebimento.</li>
           <li>Só é possível usar um cupom por pedido.</li>
           <li>
             Pacotes pré-pagos geram um cupom com créditos de fotos, que pode ser usado em um ou mais pedidos. O

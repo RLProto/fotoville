@@ -68,7 +68,7 @@ export function Footer() {
           <Link href="/politica-de-privacidade" className="hover:text-ink hover:underline">
             Política de privacidade
           </Link>
-          <p className="sm:ml-auto">Pagamento pelo Mercado Pago</p>
+          <p className="sm:ml-auto">Pagamento por Pix</p>
         </div>
       </div>
     </footer>

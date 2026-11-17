@@ -46,10 +46,6 @@ export default function PrivacidadePage() {
         <h2>Com quem compartilhamos</h2>
         <ul>
           <li>
-            <strong>Mercado Pago</strong>, para processar o pagamento. Os dados do cartão são informados
-            diretamente a ele e não passam pelos nossos servidores.
-          </li>
-          <li>
             <strong>Correios</strong>, que recebem nome, endereço e CPF do destinatário para a entrega.
           </li>
           <li>
