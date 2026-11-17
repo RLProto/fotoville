@@ -213,9 +213,6 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
               Apagar imagens do servidor
             </button>
           )}
-          <p className="text-sm text-ink-2">
-            Libera espaço. O pedido continua no painel, sem as fotos. Baixe antes, se ainda precisar.
-          </p>
         </div>
       )}
     </div>
