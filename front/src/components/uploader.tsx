@@ -614,6 +614,44 @@ export function Uploader({
     setAutoBusy(false);
   }
 
+  const [autoBusyIds, setAutoBusyIds] = useState<ReadonlySet<string>>(new Set());
+  const setAutoBusyId = (id: string, busy: boolean) =>
+    setAutoBusyIds((s) => {
+      const next = new Set(s);
+      if (busy) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+
+  /** Liga ou desliga o ajuste automático de uma foto, sem abrir o editor. */
+  async function autoOne(photo: PhotoView) {
+    if (autoBusyIds.has(photo.id)) return;
+    let auto: Adjust["auto"] = null;
+    if (!photo.adjust?.auto) {
+      const src = thumbOf(photo);
+      if (!src) return;
+      setAutoBusyId(photo.id, true);
+      try {
+        const image = await loadImage(src);
+        auto = analyzeImage(image);
+        image.close();
+      } catch (err) {
+        reportError("ajuste", err, { etapa: "ajuste automático de uma foto", photo: photo.id }, "warning");
+        setNotice("Não foi possível ajustar a foto. Tente de novo.");
+        setAutoBusyId(photo.id, false);
+        return;
+      }
+      setAutoBusyId(photo.id, false);
+    }
+    // Lê de novo: a foto pode ter mudado (ou saído) enquanto a miniatura era analisada
+    const current = photosRef.current.find((p) => p.id === photo.id);
+    if (!current) return;
+    const adjust = { ...(current.adjust ?? DEFAULT_ADJUST), auto };
+    patch(photo.id, { adjust: isNeutralAdjust(adjust) ? null : adjust }).catch(() =>
+      setNotice("Não foi possível salvar o ajuste. Tente de novo."),
+    );
+  }
+
   const [borderBusy, setBorderBusy] = useState(false);
   const [borderOpen, setBorderOpen] = useState(false);
   /** Borda que todas as fotos já têm igual (para o botão mostrar o estado). */
@@ -995,10 +1033,36 @@ export function Uploader({
                         </div>
                       </div>
 
-                      <div className="mt-2 flex gap-2">
-                        <button type="button" className="btn btn-outline min-w-0 flex-1 px-3" onClick={() => setEditing(photo)}>
+                      {/* Cartão estreito (celular): "Ajustar" fica só no ícone para caber o ajuste automático */}
+                      <div className="@container mt-2">
+                        <div className="flex gap-1 @[12.5rem]:gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-outline min-w-0 flex-1 px-2 @[12.5rem]:px-3"
+                          title="Ajustar"
+                          onClick={() => setEditing(photo)}
+                        >
                           <SlidersHorizontalIcon size={16} aria-hidden className="shrink-0" />
-                          Ajustar
+                          <span className="sr-only @[12.5rem]:not-sr-only">Ajustar</span>
+                        </button>
+                        <button
+                          type="button"
+                          aria-pressed={Boolean(photo.adjust?.auto)}
+                          aria-label={`Ajuste automático em ${photo.file_name}`}
+                          title="Ajuste automático"
+                          disabled={autoBusyIds.has(photo.id)}
+                          className={`inline-flex size-11 shrink-0 items-center justify-center rounded-control ${
+                            photo.adjust?.auto
+                              ? "bg-action-soft text-action-strong"
+                              : "text-ink-2 hover:bg-action-soft hover:text-action"
+                          }`}
+                          onClick={() => autoOne(photo)}
+                        >
+                          {autoBusyIds.has(photo.id) ? (
+                            <CircleNotchIcon size={18} className="spinner" aria-hidden />
+                          ) : (
+                            <MagicWandIcon size={18} aria-hidden />
+                          )}
                         </button>
                         <button
                           type="button"
@@ -1008,6 +1072,7 @@ export function Uploader({
                         >
                           <TrashIcon size={18} aria-hidden />
                         </button>
+                        </div>
                       </div>
                     </li>
                   );
