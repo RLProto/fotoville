@@ -27,7 +27,7 @@ import { minCopies, nearTier, regularPrice, unitPrice } from "@/lib/pricing";
 import { fileDetail, reportError } from "@/lib/report-error";
 import { whatsappLink } from "@/lib/site";
 import type { Adjust, Crop, Finish, PhotoView, Product } from "@/lib/types";
-import { ACCEPTED_TYPES, MAX_FILE_BYTES, putWithProgress, readImage, runPool } from "@/lib/upload-client";
+import { ACCEPTED_TYPES, MAX_FILE_BYTES, putWithProgress, readImage, runPool, withContentType } from "@/lib/upload-client";
 import { BorderAll } from "./border-all";
 import { CopiesInput, MAX_COPIES } from "./copies-input";
 import { PhotoEditor } from "./photo-editor";
@@ -349,6 +349,8 @@ export function Uploader({
             step = "conversão HEIC";
             file = await heicToJpeg(file);
             step = "leitura da imagem";
+          } else {
+            file = await withContentType(file);
           }
           const { width, height, thumb } = await readImage(file);
           step = "preparar envio";

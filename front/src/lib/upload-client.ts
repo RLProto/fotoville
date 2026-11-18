@@ -5,6 +5,30 @@ export const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const MAX_FILE_BYTES = 50 * 1024 * 1024;
 const THUMB_MAX_SIDE = 720;
 
+const EXTENSIONS: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+
+/** Tipo pelo conteúdo: JPG, PNG ou WebP. */
+function sniffType(b: Uint8Array) {
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return "image/png";
+  const ascii = String.fromCharCode(...b.slice(0, 12));
+  if (ascii.startsWith("RIFF") && ascii.slice(8) === "WEBP") return "image/webp";
+  return null;
+}
+
+/**
+ * Arquivo sem tipo aceito (ex.: JPG com nome .HEIC, que o Windows manda sem tipo) ganha o tipo
+ * e a extensão do conteúdo. Se o conteúdo não for JPG, PNG ou WebP, volta como veio.
+ */
+export async function withContentType(file: File) {
+  if (ACCEPTED_TYPES.includes(file.type)) return file;
+  const type = sniffType(new Uint8Array(await file.slice(0, 12).arrayBuffer()));
+  if (!type) return file;
+  const ext = EXTENSIONS[type];
+  const base = file.name.replace(/\.[^.]*$/, "");
+  return new File([file], `${base}.${ext}`, { type, lastModified: file.lastModified });
+}
+
 /** Lê as dimensões (já com a rotação EXIF aplicada) e gera uma miniatura JPEG. */
 export async function readImage(file: File): Promise<{ width: number; height: number; thumb: Blob }> {
   const decoded = await decodeImage(file);
