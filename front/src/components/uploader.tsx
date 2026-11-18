@@ -4,6 +4,7 @@ import {
   ArrowsOutCardinalIcon,
   CircleNotchIcon,
   CopyIcon,
+  CornersOutIcon,
   FrameCornersIcon,
   ImagesIcon,
   MagicWandIcon,
@@ -616,42 +617,9 @@ export function Uploader({
     setAutoBusy(false);
   }
 
-  const [autoBusyIds, setAutoBusyIds] = useState<ReadonlySet<string>>(new Set());
-  const setAutoBusyId = (id: string, busy: boolean) =>
-    setAutoBusyIds((s) => {
-      const next = new Set(s);
-      if (busy) next.add(id);
-      else next.delete(id);
-      return next;
-    });
-
-  /** Liga ou desliga o ajuste automático de uma foto, sem abrir o editor. */
-  async function autoOne(photo: PhotoView) {
-    if (autoBusyIds.has(photo.id)) return;
-    let auto: Adjust["auto"] = null;
-    if (!photo.adjust?.auto) {
-      const src = thumbOf(photo);
-      if (!src) return;
-      setAutoBusyId(photo.id, true);
-      try {
-        const image = await loadImage(src);
-        auto = analyzeImage(image);
-        image.close();
-      } catch (err) {
-        reportError("ajuste", err, { etapa: "ajuste automático de uma foto", photo: photo.id }, "warning");
-        setNotice("Não foi possível ajustar a foto. Tente de novo.");
-        setAutoBusyId(photo.id, false);
-        return;
-      }
-      setAutoBusyId(photo.id, false);
-    }
-    // Lê de novo: a foto pode ter mudado (ou saído) enquanto a miniatura era analisada
-    const current = photosRef.current.find((p) => p.id === photo.id);
-    if (!current) return;
-    const adjust = { ...(current.adjust ?? DEFAULT_ADJUST), auto };
-    patch(photo.id, { adjust: isNeutralAdjust(adjust) ? null : adjust }).catch(() =>
-      setNotice("Não foi possível salvar o ajuste. Tente de novo."),
-    );
+  /** Liga ou desliga "imprimir a foto inteira" de uma foto, sem abrir o editor. */
+  function toggleFit(photo: PhotoView) {
+    patch(photo.id, { fit: !photo.fit }).catch(() => setNotice("Não foi possível salvar. Tente de novo."));
   }
 
   const [borderBusy, setBorderBusy] = useState(false);
@@ -992,28 +960,21 @@ export function Uploader({
                           onCommit={(crop) => patch(photo.id, { crop }).catch(() => setNotice("Não foi possível salvar o enquadramento."))}
                           onOpen={() => setEditing(photo)}
                         />
-                        {/* Ajuste automático só desta foto, sem abrir o editor */}
+                        {/* Imprimir a foto inteira (sem cortar), sem abrir o editor */}
                         <button
                           type="button"
-                          aria-pressed={Boolean(photo.adjust?.auto)}
-                          aria-label={`Ajuste automático em ${photo.file_name}`}
-                          title="Ajuste automático"
-                          disabled={autoBusyIds.has(photo.id)}
+                          aria-pressed={photo.fit}
+                          aria-label={`Imprimir ${photo.file_name} inteira, sem cortar`}
+                          title="Imprimir a foto inteira"
                           className="absolute right-0 bottom-0 inline-flex size-11 items-center justify-center rounded-full"
-                          onClick={() => autoOne(photo)}
+                          onClick={() => toggleFit(photo)}
                         >
                           <span
                             className={`inline-flex size-9 items-center justify-center rounded-full shadow-lift transition-colors ${
-                              photo.adjust?.auto
-                                ? "bg-action text-white"
-                                : "bg-surface/95 text-ink hover:bg-action-soft hover:text-action-strong"
+                              photo.fit ? "bg-action text-white" : "bg-surface/95 text-ink hover:bg-action-soft hover:text-action-strong"
                             }`}
                           >
-                            {autoBusyIds.has(photo.id) ? (
-                              <CircleNotchIcon size={18} className="spinner" aria-hidden />
-                            ) : (
-                              <MagicWandIcon size={18} weight={photo.adjust?.auto ? "fill" : "regular"} aria-hidden />
-                            )}
+                            <CornersOutIcon size={18} weight={photo.fit ? "bold" : "regular"} aria-hidden />
                           </span>
                         </button>
                       </div>
