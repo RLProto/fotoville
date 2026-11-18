@@ -980,15 +980,41 @@ export function Uploader({
                   return (
                     <li key={photo.id} className="card flex flex-col p-3">
                       {/* Arrastar a prévia enquadra na hora; clicar abre o ajuste completo */}
-                      <QuickFrame
-                        src={thumbOf(photo)}
-                        label={`Ajustar ${photo.file_name}. Arraste para enquadrar.`}
-                        photo={photo}
-                        product={product}
-                        framing={framing}
-                        onCommit={(crop) => patch(photo.id, { crop }).catch(() => setNotice("Não foi possível salvar o enquadramento."))}
-                        onOpen={() => setEditing(photo)}
-                      />
+                      <div className="relative">
+                        <QuickFrame
+                          src={thumbOf(photo)}
+                          label={`Ajustar ${photo.file_name}. Arraste para enquadrar.`}
+                          photo={photo}
+                          product={product}
+                          framing={framing}
+                          onCommit={(crop) => patch(photo.id, { crop }).catch(() => setNotice("Não foi possível salvar o enquadramento."))}
+                          onOpen={() => setEditing(photo)}
+                        />
+                        {/* Ajuste automático só desta foto, sem abrir o editor */}
+                        <button
+                          type="button"
+                          aria-pressed={Boolean(photo.adjust?.auto)}
+                          aria-label={`Ajuste automático em ${photo.file_name}`}
+                          title="Ajuste automático"
+                          disabled={autoBusyIds.has(photo.id)}
+                          className="absolute right-0 bottom-0 inline-flex size-11 items-center justify-center rounded-full"
+                          onClick={() => autoOne(photo)}
+                        >
+                          <span
+                            className={`inline-flex size-9 items-center justify-center rounded-full shadow-lift transition-colors ${
+                              photo.adjust?.auto
+                                ? "bg-action text-white"
+                                : "bg-surface/95 text-ink hover:bg-action-soft hover:text-action-strong"
+                            }`}
+                          >
+                            {autoBusyIds.has(photo.id) ? (
+                              <CircleNotchIcon size={18} className="spinner" aria-hidden />
+                            ) : (
+                              <MagicWandIcon size={18} weight={photo.adjust?.auto ? "fill" : "regular"} aria-hidden />
+                            )}
+                          </span>
+                        </button>
+                      </div>
                       <p className="mt-2 truncate text-xs text-ink-2" title={photo.file_name}>
                         {photo.file_name}
                       </p>
@@ -1033,36 +1059,10 @@ export function Uploader({
                         </div>
                       </div>
 
-                      {/* Cartão estreito (celular): "Ajustar" fica só no ícone para caber o ajuste automático */}
-                      <div className="@container mt-2">
-                        <div className="flex gap-1 @[12.5rem]:gap-2">
-                        <button
-                          type="button"
-                          className="btn btn-outline min-w-0 flex-1 px-2 @[12.5rem]:px-3"
-                          title="Ajustar"
-                          onClick={() => setEditing(photo)}
-                        >
+                      <div className="mt-2 flex gap-2">
+                        <button type="button" className="btn btn-outline min-w-0 flex-1 px-3" onClick={() => setEditing(photo)}>
                           <SlidersHorizontalIcon size={16} aria-hidden className="shrink-0" />
-                          <span className="sr-only @[12.5rem]:not-sr-only">Ajustar</span>
-                        </button>
-                        <button
-                          type="button"
-                          aria-pressed={Boolean(photo.adjust?.auto)}
-                          aria-label={`Ajuste automático em ${photo.file_name}`}
-                          title="Ajuste automático"
-                          disabled={autoBusyIds.has(photo.id)}
-                          className={`inline-flex size-11 shrink-0 items-center justify-center rounded-control ${
-                            photo.adjust?.auto
-                              ? "bg-action-soft text-action-strong"
-                              : "text-ink-2 hover:bg-action-soft hover:text-action"
-                          }`}
-                          onClick={() => autoOne(photo)}
-                        >
-                          {autoBusyIds.has(photo.id) ? (
-                            <CircleNotchIcon size={18} className="spinner" aria-hidden />
-                          ) : (
-                            <MagicWandIcon size={18} aria-hidden />
-                          )}
+                          Ajustar
                         </button>
                         <button
                           type="button"
@@ -1072,7 +1072,6 @@ export function Uploader({
                         >
                           <TrashIcon size={18} aria-hidden />
                         </button>
-                        </div>
                       </div>
                     </li>
                   );
