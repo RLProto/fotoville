@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircleIcon, CircleNotchIcon, FoldersIcon, PrinterIcon, TagIcon } from "@phosphor-icons/react";
+import { CircleNotchIcon, FoldersIcon, PrinterIcon, TagIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
@@ -304,7 +304,7 @@ function BatchCard({
 function OrderLine({ order }: { order: BatchOrder }) {
   const cancelled = order.status === "cancelled";
   return (
-    <li className="grid grid-cols-[4.25rem_minmax(0,1fr)_1.25rem] items-baseline gap-x-3 border-b border-rule py-2 text-sm sm:grid-cols-[4.25rem_minmax(0,1fr)_auto_1.25rem]">
+    <li className="grid grid-cols-[4.25rem_minmax(0,1fr)] items-baseline gap-x-3 border-b border-rule py-2 text-sm sm:grid-cols-[4.25rem_minmax(0,1fr)_auto]">
       <Link href={`/admin/pedidos/${order.id}`} className="link font-semibold tabular-nums">
         #{order.number}
       </Link>
@@ -313,11 +313,6 @@ function OrderLine({ order }: { order: BatchOrder }) {
         {order.note && <span className="text-ink-2"> ({order.note})</span>}
       </span>
       <span className="col-start-2 text-ink-2 sm:col-start-auto">{cancelled ? "Cancelado" : order.place}</span>
-      <span className="row-start-1 col-start-3 self-center sm:col-start-auto sm:row-start-auto">
-        {order.downloaded && (
-          <CheckCircleIcon size={16} weight="fill" className="text-success" aria-label="Fotos baixadas" />
-        )}
-      </span>
     </li>
   );
 }
