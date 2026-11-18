@@ -20,6 +20,8 @@ import { DEFAULT_ADJUST, isNeutralAdjust } from "@/lib/adjust";
 import { LOW_DPI, printDpi } from "@/lib/crop";
 import { formatBRL, plural } from "@/lib/format";
 import { decodeImage, loadImage } from "@/lib/decode-image";
+import { heicToJpeg, isHeic, looksLikeHeic } from "@/lib/heic";
+import { jpegName } from "@/lib/heic-format";
 import { analyzeImage } from "@/lib/photo-render";
 import { minCopies, nearTier, regularPrice, unitPrice } from "@/lib/pricing";
 import { fileDetail, reportError } from "@/lib/report-error";
@@ -219,12 +221,19 @@ export function Uploader({
    * aceitos são imagens, e esse seletor entrega arquivos que o Chrome não consegue ler (NotReadableError,
    * crbug.com/40123366). Um tipo a mais, que não é imagem, faz o Chrome abrir o seletor normal: Arquivos
    * filtrado em imagens, com Galeria, Fotos e Drive no menu. Não pode ser application/octet-stream, que tira o filtro.
+   * No iPhone/iPad, sem HEIC na lista, o aparelho já entrega JPG.
    */
   function openPicker() {
     const input = inputRef.current;
     if (!input) return;
-    const android = /Android/i.test(navigator.userAgent);
-    input.accept = [...ACCEPTED_TYPES, ...(android ? ["application/x-fotoville"] : [])].join(",");
+    const ua = navigator.userAgent;
+    const android = /Android/i.test(ua);
+    const ios = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    input.accept = [
+      ...ACCEPTED_TYPES,
+      ...(ios ? [] : ["image/heic", "image/heif", ".heic", ".heif"]),
+      ...(android ? ["application/x-fotoville"] : []),
+    ].join(",");
     input.click();
   }
 
@@ -234,8 +243,8 @@ export function Uploader({
 
     const rejected: Failure[] = [];
     const valid = files.filter((file) => {
-      if (!ACCEPTED_TYPES.includes(file.type)) {
-        rejected.push({ name: file.name, message: "Formato não aceito. Envie JPG, PNG ou WebP." });
+      if (!ACCEPTED_TYPES.includes(file.type) && !looksLikeHeic(file)) {
+        rejected.push({ name: file.name, message: "Formato não aceito. Envie JPG, PNG, WebP ou HEIC." });
         return false;
       }
       if (file.size > MAX_FILE_BYTES) {
@@ -271,21 +280,25 @@ export function Uploader({
     const fresh: File[] = [];
     const repeated: File[] = [];
     for (const file of ready) {
-      const sameName = photos.filter((p) => p.file_name === file.name);
+      const name = looksLikeHeic(file) ? jpegName(file.name) : file.name;
+      const sameName = photos.filter((p) => p.file_name === name);
       if (!sameName.length) {
         fresh.push(file);
         continue;
       }
+      let source = file;
       let size: { width: number; height: number } | null = null;
       try {
-        const decoded = await decodeImage(file);
+        // HEIC só dá para medir convertido
+        if (await isHeic(file)) source = await heicToJpeg(file);
+        const decoded = await decodeImage(source);
         size = { width: decoded.width, height: decoded.height };
         decoded.close();
       } catch {
         // Não deu para medir: trata como nova e deixa o envio apontar o erro, se houver
       }
       const dup = size && sameName.some((p) => p.width_px === size.width && p.height_px === size.height);
-      (dup ? repeated : fresh).push(file);
+      (dup ? repeated : fresh).push(source);
     }
     setSkipped(repeated);
 
@@ -326,11 +339,17 @@ export function Uploader({
     await runPool(
       valid.map((file, index) => ({ file, index })),
       3,
-      async ({ file, index }) => {
+      async ({ file: selected, index }) => {
+        let file = selected;
         let step = "leitura da imagem";
         /** O servidor recusou o arquivo (formato, tamanho): tentar de novo não adianta. */
         let rejectedByServer = false;
         try {
+          if (await isHeic(file)) {
+            step = "conversão HEIC";
+            file = await heicToJpeg(file);
+            step = "leitura da imagem";
+          }
           const { width, height, thumb } = await readImage(file);
           step = "preparar envio";
           const { uploads } = await api<{ uploads: (Presigned & { error?: string })[] }>("/api/upload/presign", {
@@ -380,7 +399,7 @@ export function Uploader({
               ? err.message
               : "Não foi enviada. Tente de novo.";
           // Foto que não abre ou formato recusado não melhora tentando de novo; queda de conexão, sim
-          const retry = !unreadable && step !== "leitura da imagem" && !rejectedByServer;
+          const retry = !unreadable && step !== "leitura da imagem" && step !== "conversão HEIC" && !rejectedByServer;
           setFailures((list) => [...list, { name: file.name, message, file: retry ? file : undefined }]);
         } finally {
           ratios[index] = 1;
@@ -720,7 +739,7 @@ export function Uploader({
               <>
                 <ImagesIcon size={26} className="shrink-0 text-action" aria-hidden />
                 <p className="min-w-0 flex-1 text-sm text-ink-2">
-                  JPG, PNG ou WebP, até 50 MB.<span className="hidden sm:inline"> Ou arraste para cá.</span>
+                  JPG, PNG, WebP ou HEIC, até 50 MB.<span className="hidden sm:inline"> Ou arraste para cá.</span>
                 </p>
                 <button
                   type="button"
@@ -753,7 +772,7 @@ export function Uploader({
                   Selecionar fotos
                 </button>
                 <p className="mt-3 text-sm text-ink-2">
-                  JPG, PNG ou WebP, até 50 MB.<span className="hidden sm:inline"> Ou arraste para cá.</span>
+                  JPG, PNG, WebP ou HEIC, até 50 MB.<span className="hidden sm:inline"> Ou arraste para cá.</span>
                 </p>
                 {minimum > 1 && <p className="mt-1 text-sm font-semibold">Mínimo de {minimum} fotos.</p>}
                 {progressBar}

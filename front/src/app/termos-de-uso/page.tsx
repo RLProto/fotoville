@@ -30,7 +30,7 @@ export default function TermosPage() {
 
         <h2>2. O serviço</h2>
         <ul>
-          <li>Imprimimos em papel fotográfico as imagens enviadas nos formatos JPG, PNG e WebP.</li>
+          <li>Imprimimos em papel fotográfico as imagens enviadas nos formatos JPG, PNG, WebP e HEIC.</li>
           <li>
             As fotos são impressas com o enquadramento que você definir no site. Confira o corte de cada foto
             antes de fechar o pedido.

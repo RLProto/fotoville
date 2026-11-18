@@ -26,6 +26,7 @@ export function reportError(
     detail: {
       ...detail,
       ...(error instanceof Error && error.stack ? { stack: error.stack.slice(0, 3000) } : {}),
+      ...(error instanceof Error && error.cause !== undefined ? { cause: String(error.cause).slice(0, 500) } : {}),
     },
   });
   fetch("/api/erros", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(
