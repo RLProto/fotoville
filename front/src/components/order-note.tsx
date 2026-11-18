@@ -89,7 +89,6 @@ export function OrderNote({ orderId, initial, editable }: { orderId: string; ini
           name="descricao"
           autoComplete="off"
           className="field-input min-w-0 flex-1 basis-56"
-          placeholder="Ex.: Aniversário da Ana"
           maxLength={NOTE_MAX}
           value={value}
           aria-invalid={error ? true : undefined}
