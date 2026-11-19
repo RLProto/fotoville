@@ -1,15 +1,16 @@
 "use client";
 
-import { CircleNotchIcon, FolderOpenIcon, WarningCircleIcon } from "@phosphor-icons/react";
+import { CircleNotchIcon, FileZipIcon, FolderOpenIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
-import { askWrite, pickFolder, type DirectoryHandle } from "@/lib/admin-download";
+import { askWrite, pickFolder, ZipFolder, type DirectoryHandle } from "@/lib/admin-download";
 
 type Step = { kind: "failed"; again: boolean } | { kind: "confirm"; root: DirectoryHandle; denied: boolean };
 
 /**
  * Escolha da pasta para baixar pedidos. Tenta o seletor normal; se nenhuma pasta for liberada, abre uma janela
  * com o caminho alternativo: escolhe a pasta só para leitura e pede a permissão de gravar num segundo clique.
- * Há Chrome que cancela sem aviso quando as duas coisas vêm juntas.
+ * Há Chrome que cancela sem aviso quando as duas coisas vêm juntas. Se nada disso der certo, a janela oferece
+ * baixar em .zip (ZipFolder), que não depende do seletor de pasta.
  * `pick` resolve com a pasta pronta para gravar, ou null se a pessoa desistir.
  */
 export function useFolderPicker() {
@@ -77,11 +78,11 @@ function FolderDialog({
         : `Salvar as fotos em “${step.root.name}”?`;
   const text =
     step.kind === "failed"
-      ? `Escolha a pasta de novo. Use uma pasta nova, como “Pedidos”, e não a própria Downloads ou Área de Trabalho.${
-          step.again ? " Se continuar assim, baixe pelo Microsoft Edge." : ""
-        }`
+      ? step.again
+        ? "Baixe em .zip. Cada pedido vem num arquivo com as mesmas pastas."
+        : "Baixe em .zip ou escolha a pasta de novo. Use uma pasta nova, como “Pedidos”."
       : step.denied
-        ? "Clique em Salvar aqui de novo e, quando o Chrome perguntar, escolha Permitir."
+        ? "Baixe em .zip ou clique em Salvar aqui de novo e escolha Permitir."
         : "Quando o Chrome perguntar se o site pode editar os arquivos, clique em Permitir.";
 
   return (
@@ -108,14 +109,25 @@ function FolderDialog({
           Cancelar
         </button>
         {step.kind === "failed" ? (
-          <button type="button" className="btn btn-primary" disabled={busy} onClick={chooseAgain}>
+          <button type="button" className="btn btn-outline" disabled={busy} onClick={chooseAgain}>
             {spinner}
             Escolher pasta
+          </button>
+        ) : step.denied ? (
+          <button type="button" className="btn btn-outline" disabled={busy} onClick={() => allow(step.root)}>
+            {spinner}
+            Salvar aqui
           </button>
         ) : (
           <button type="button" className="btn btn-primary" disabled={busy} onClick={() => allow(step.root)}>
             {spinner}
             Salvar aqui
+          </button>
+        )}
+        {(step.kind === "failed" || step.denied) && (
+          <button type="button" className="btn btn-primary" disabled={busy} onClick={() => finish(new ZipFolder())}>
+            <FileZipIcon size={18} aria-hidden />
+            Baixar .zip
           </button>
         )}
       </div>

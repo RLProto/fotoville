@@ -7,6 +7,7 @@ import { sizeName } from "./catalog-data";
 import { loadImage, type DecodedImage } from "./decode-image";
 import { MINI_SHEET, renderMiniSheetFile, renderPrintFileFromUrl } from "./photo-render";
 import type { Order, Photo, Product } from "./types";
+import { ZipBuilder } from "./zip";
 
 export type AdminPhoto = Photo & {
   thumb_url: string | null;
@@ -33,6 +34,89 @@ type PickerWindow = Window & {
 };
 
 export const hasFolderPicker = () => typeof window !== "undefined" && Boolean((window as PickerWindow).showDirectoryPicker);
+
+/** Teto de cada .zip. Acima disso o pedido sai em partes, para não pesar na memória do navegador. */
+const ZIP_PART_BYTES = 1024 ** 3;
+const ZIP_PART_FILES = 60_000;
+
+function saveFile(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5 * 60_000);
+}
+
+/**
+ * "Pasta" que vira download .zip: alternativa ao seletor de pasta, que o Chrome às vezes cancela sozinho.
+ * Tem a mesma forma do DirectoryHandle, então writeOrder grava nela sem saber a diferença.
+ * Cada pedido sai num .zip (pedido-1234.zip), ou em partes (pedido-1234-parte-1.zip...) se for grande.
+ */
+export class ZipFolder implements DirectoryHandle {
+  name = "zip";
+  private zip = new ZipBuilder();
+  private label = "pedido";
+  private part = 0;
+
+  constructor(private prefix = "", private root?: ZipFolder) {}
+
+  private get top(): ZipFolder {
+    return this.root ?? this;
+  }
+
+  async requestPermission() {
+    return "granted" as const;
+  }
+
+  async getDirectoryHandle(name: string) {
+    return new ZipFolder(`${this.prefix}${name}/`, this.top);
+  }
+
+  async getFileHandle(name: string) {
+    const path = `${this.prefix}${name}`;
+    const top = this.top;
+    let body: Blob | null = null;
+    return {
+      createWritable: async () => ({
+        write: async (data: Blob | Uint8Array) => {
+          body = data instanceof Blob ? data : new Blob([data as BlobPart]);
+        },
+        close: async () => {
+          if (body) await top.add(path, body);
+        },
+      }),
+    };
+  }
+
+  /** Começa um .zip novo com este nome base. */
+  start(label: string) {
+    this.label = label;
+    this.part = 0;
+    this.zip = new ZipBuilder();
+  }
+
+  private async add(path: string, blob: Blob) {
+    if (this.zip.count && (this.zip.size + blob.size > ZIP_PART_BYTES || this.zip.count >= ZIP_PART_FILES)) {
+      this.part += 1;
+      this.flush();
+    }
+    await this.zip.add(path, blob);
+  }
+
+  private flush() {
+    const name = this.part ? `${this.label}-parte-${this.part}.zip` : `${this.label}.zip`;
+    saveFile(this.zip.finish(), name);
+    this.zip = new ZipBuilder();
+  }
+
+  /** Baixa o que falta. Se o pedido já saiu em partes, esta é a última. */
+  end() {
+    if (!this.zip.count) return;
+    if (this.part) this.part += 1;
+    this.flush();
+  }
+}
 
 type PickStep = "escolher pasta" | "escolher pasta (outro jeito)";
 
@@ -190,6 +274,8 @@ export async function writeOrder(
     await stream.close();
   };
 
+  const zip = root instanceof ZipFolder ? root : null;
+  zip?.start(`pedido-${data.order.number}`);
   try {
     const orderDir = await root.getDirectoryHandle(String(data.order.number), { create: true });
     for (const job of jobs) {
@@ -208,6 +294,8 @@ export async function writeOrder(
         reportDownloadError(err, { etapa: "gravar foto", order: data.order.id, photos: job.photoIds, file: job.name });
       }
     }
+    // Cancelado: o que já entrou no .zip é baixado, como na pasta, onde o já gravado fica
+    zip?.end();
   } finally {
     release();
   }
