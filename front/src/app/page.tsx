@@ -49,7 +49,7 @@ export default async function HomePage() {
           <div className="hidden lg:block" />
           <div className="py-10 lg:py-14 lg:pl-14">
             <h1 className="display max-w-[14ch] text-[2.4rem] sm:text-5xl lg:text-6xl">Revele suas fotos sem sair de casa</h1>
-            <p className="mt-5 text-lg text-ink-2">Entrega em todo o Brasil ou retirada em {site.address.city}.</p>
+            <p className="mt-5 text-lg text-ink-2">Entrega em todo o Brasil ou retire conosco em {site.address.city}.</p>
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
               <Link href="/enviar" className="btn btn-accent btn-lg w-full sm:w-auto">
                 Enviar fotos
