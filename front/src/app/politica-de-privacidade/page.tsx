@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { site } from "@/lib/site";
 import { CART_RETENTION_DAYS, cartCleanupEnabled } from "@/lib/cart-retention";
+import { hasWhatsApp } from "@/lib/whatsapp";
 
 export const metadata: Metadata = { title: "Política de privacidade" };
 
@@ -59,7 +60,7 @@ export default function PrivacidadePage() {
           As fotos ficam em armazenamento privado, acessível só por você e pela equipe que produz o pedido. Fotos
           no carrinho podem ser apagadas por você a qualquer momento
           {cartCleanupEnabled
-            ? ` e são apagadas ${CART_RETENTION_DAYS} dias depois da última enviada, com aviso pelo WhatsApp antes`
+            ? ` e são apagadas ${CART_RETENTION_DAYS} dias depois da última enviada${hasWhatsApp ? ", com aviso pelo WhatsApp antes" : ""}`
             : ""}
           . Fotos de pedidos concluídos são mantidas
           pelo tempo necessário para atender eventuais reimpressões e depois são excluídas.
