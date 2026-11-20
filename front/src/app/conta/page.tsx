@@ -10,7 +10,8 @@ import type { Order } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Minha conta", robots: { index: false } };
 
-export default async function ContaPage() {
+export default async function ContaPage({ searchParams }: { searchParams: Promise<{ senha?: string }> }) {
+  const { senha } = await searchParams;
   const user = await getUser();
   if (!user) redirect("/entrar?proximo=/conta");
 
@@ -46,6 +47,12 @@ export default async function ContaPage() {
           </form>
         </div>
       </div>
+
+      {senha === "alterada" && (
+        <p className="alert alert-success mt-6" role="status">
+          Senha alterada.
+        </p>
+      )}
 
       <div className="mt-8 grid items-start gap-8 lg:grid-cols-[1fr_22rem]">
         <section aria-labelledby="pedidos" className="min-w-0">

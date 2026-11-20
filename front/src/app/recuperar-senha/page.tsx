@@ -5,7 +5,8 @@ import { AuthShell } from "@/components/auth-shell";
 
 export const metadata: Metadata = { title: "Recuperar senha", robots: { index: false } };
 
-export default function RecuperarSenhaPage() {
+export default async function RecuperarSenhaPage({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
+  const { erro } = await searchParams;
   return (
     <AuthShell
       title="Recuperar senha"
@@ -19,6 +20,11 @@ export default function RecuperarSenhaPage() {
         </p>
       }
     >
+      {erro === "link" && (
+        <p className="alert alert-danger mb-4" role="alert">
+          Este link expirou ou já foi usado. Peça outro.
+        </p>
+      )}
       <AuthForm mode="recuperar" />
     </AuthShell>
   );

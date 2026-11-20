@@ -2,7 +2,9 @@
 
 import { CircleNotchIcon, EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { RECOVERY_LINK_HOURS, SIGNUP_NEXT_KEY } from "@/lib/auth-links";
+import { reportError } from "@/lib/report-error";
 import { createClient } from "@/lib/supabase/client";
 
 type Mode = "entrar" | "cadastro" | "recuperar" | "nova-senha";
@@ -19,19 +21,47 @@ type Field = "nome" | "email" | "senha" | "termos";
 /** Aviso de erro e os campos a que ele se refere (o leitor de tela lê o aviso junto do campo). */
 type FormError = { message: string; fields: Field[] };
 
-function translate(message: string): FormError {
-  if (/invalid login credentials/i.test(message)) return { message: "E-mail ou senha incorretos.", fields: ["email", "senha"] };
-  if (/already registered/i.test(message)) {
+/** Erro do Supabase Auth: o código, quando vem, é mais estável que o texto. */
+type AuthFailure = { code?: string; message: string };
+
+function translate({ code, message }: AuthFailure): FormError {
+  if (code === "invalid_credentials" || /invalid login credentials/i.test(message)) {
+    return { message: "E-mail ou senha incorretos.", fields: ["email", "senha"] };
+  }
+  if (code === "user_already_exists" || code === "email_exists" || /already registered/i.test(message)) {
     return { message: "Este e-mail já tem cadastro. Entre ou recupere a senha.", fields: ["email"] };
   }
-  if (/email not confirmed/i.test(message)) return { message: "Confirme seu e-mail pelo link que enviamos.", fields: ["email"] };
-  if (/password should be at least/i.test(message)) {
-    return { message: "A senha precisa ter pelo menos 8 caracteres.", fields: ["senha"] };
+  if (code === "email_not_confirmed" || /email not confirmed/i.test(message)) {
+    return { message: "Confirme seu e-mail pelo link que enviamos.", fields: ["email"] };
+  }
+  if (code === "same_password") return { message: "Use uma senha diferente da atual.", fields: ["senha"] };
+  if (code === "weak_password" || /password should be at least/i.test(message)) {
+    return /at least/i.test(message)
+      ? { message: "A senha precisa ter pelo menos 8 caracteres.", fields: ["senha"] }
+      : { message: "Essa senha é fácil de adivinhar ou já vazou em outro site. Escolha outra.", fields: ["senha"] };
+  }
+  if (code === "session_not_found" || code === "session_expired" || /auth session missing/i.test(message)) {
+    return { message: "Sua sessão expirou. Peça um novo link para criar a senha.", fields: [] };
+  }
+  // "For security purposes, you can only request this after 42 seconds."
+  const wait = /after (\d+) seconds?/i.exec(message);
+  if (wait) return { message: `Aguarde ${wait[1]} segundos para pedir outro link.`, fields: [] };
+  if (code === "over_email_send_rate_limit" || /email rate limit/i.test(message)) {
+    return { message: "Muitos e-mails enviados agora. Tente de novo em alguns minutos.", fields: [] };
   }
   if (/rate limit/i.test(message)) return { message: "Muitas tentativas. Aguarde alguns minutos e tente de novo.", fields: [] };
-  if (/invalid.*email|validate email/i.test(message)) return { message: "E-mail inválido. Confira o endereço.", fields: ["email"] };
+  if (code === "email_address_invalid" || /invalid.*email|validate email/i.test(message)) {
+    return { message: "E-mail inválido. Confira o endereço.", fields: ["email"] };
+  }
   return { message: "Não deu certo. Confira os dados e tente de novo.", fields: [] };
 }
+
+/** Erros que dependem da pessoa (senha errada, limite): não vão para o registro de erros. */
+const EXPECTED = /invalid_credentials|user_already_exists|email_exists|email_not_confirmed|same_password|weak_password|rate_limit|email_address_invalid|validation_failed/;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Espera entre dois pedidos de link para o mesmo e-mail, igual ao do Supabase com SMTP próprio. */
+const RESEND_SECONDS = 60;
 
 /**
  * Depois de entrar, recarrega a página por completo em vez de navegar pelo roteador do Next.
@@ -42,7 +72,65 @@ function enter(path: string) {
   window.location.assign(path);
 }
 
-export function AuthForm({ mode, next = "/conta" }: { mode: Mode; next?: string }) {
+/** Erro do Supabase (AuthError tem `code`) no formato que o translate entende. */
+function asFailure(err: unknown): AuthFailure {
+  const code = err && typeof err === "object" && "code" in err && typeof err.code === "string" ? err.code : undefined;
+  return { code, message: err instanceof Error ? err.message : "" };
+}
+
+/** Confirmação do pedido de link, com reenvio depois de uma espera e troca de e-mail. */
+function RecoverySent({ email, onResend, onChangeEmail }: {
+  email: string;
+  onResend: () => Promise<FormError | null>;
+  onChangeEmail: () => void;
+}) {
+  const [wait, setWait] = useState(RESEND_SECONDS);
+  const [sending, setSending] = useState(false);
+  const [notice, setNotice] = useState<{ ok: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    if (wait <= 0) return;
+    const timer = setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [wait]);
+
+  async function resend() {
+    setSending(true);
+    setNotice(null);
+    const failure = await onResend();
+    setSending(false);
+    setNotice(failure ? { ok: false, message: failure.message } : { ok: true, message: "Enviamos outro link." });
+    setWait(RESEND_SECONDS);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="alert alert-success" role="status">
+        <p>
+          Se houver conta para <strong className="break-all">{email}</strong>, enviamos um link. Ele vale por{" "}
+          {RECOVERY_LINK_HOURS === 1 ? "1 hora" : `${RECOVERY_LINK_HOURS} horas`}.
+        </p>
+      </div>
+      <p className="text-sm text-ink-2">Não chegou? Confira a caixa de spam.</p>
+      {notice && (
+        <p className={`alert ${notice.ok ? "alert-success" : "alert-danger"}`} role={notice.ok ? "status" : "alert"}>
+          {notice.message}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-3">
+        <button type="button" className="btn btn-outline" onClick={resend} disabled={sending || wait > 0}>
+          {sending && <CircleNotchIcon size={18} className="spinner" aria-hidden />}
+          {sending ? "Enviando…" : wait > 0 ? `Reenviar em ${wait} s` : "Reenviar link"}
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={onChangeEmail}>
+          Usar outro e-mail
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function AuthForm({ mode, next = "/conta", account }: { mode: Mode; next?: string; account?: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -51,6 +139,7 @@ export function AuthForm({ mode, next = "/conta" }: { mode: Mode; next?: string 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<FormError | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   const needsEmail = mode !== "nova-senha";
   const needsPassword = mode !== "recuperar";
@@ -65,10 +154,27 @@ export function AuthForm({ mode, next = "/conta" }: { mode: Mode; next?: string 
   const describedBy = (field: Field, hint?: string) =>
     [hint, invalid(field) ? "auth-erro" : undefined].filter(Boolean).join(" ") || undefined;
 
+  const callback = (path: string) => `${window.location.origin}/auth/callback?next=${encodeURIComponent(path)}`;
+
+  /** Pede o link de nova senha. Devolve o erro já traduzido, ou null se o Supabase aceitou. */
+  async function requestRecovery(address: string): Promise<FormError | null> {
+    const { error } = await createClient().auth.resetPasswordForEmail(address, { redirectTo: callback("/nova-senha") });
+    if (!error) return null;
+    const failure = asFailure(error);
+    if (!EXPECTED.test(failure.code ?? "") && !/after \d+ seconds?|rate limit/i.test(failure.message)) {
+      reportError("conta", error, { etapa: "pedir link de nova senha", code: failure.code }, "warning");
+    }
+    return translate(failure);
+  }
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    const address = email.trim();
 
+    if (needsEmail && !EMAIL_RE.test(address)) {
+      return fail({ message: "E-mail inválido. Confira o endereço.", fields: ["email"] });
+    }
     if (needsPassword && password.length < 8) {
       return fail({ message: "A senha precisa ter pelo menos 8 caracteres.", fields: ["senha"] });
     }
@@ -79,21 +185,21 @@ export function AuthForm({ mode, next = "/conta" }: { mode: Mode; next?: string 
 
     setLoading(true);
     const supabase = createClient();
-    const callback = (path: string) => `${window.location.origin}/auth/callback?next=${encodeURIComponent(path)}`;
 
     try {
       if (mode === "entrar") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: address, password });
         if (error) throw error;
         enter(next);
         return;
       }
       if (mode === "cadastro") {
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: address,
           password,
           options: {
-            data: { full_name: name.trim() },
+            // O destino fica na conta: o link do e-mail de confirmação volta para cá em qualquer aparelho
+            data: { full_name: name.trim(), [SIGNUP_NEXT_KEY]: next },
             emailRedirectTo: callback(next),
           },
         });
@@ -102,23 +208,49 @@ export function AuthForm({ mode, next = "/conta" }: { mode: Mode; next?: string 
           enter(next);
           return;
         }
-        setDone(`Enviamos um link para ${email}. Abra o e-mail para ativar a conta.`);
+        setDone(`Enviamos um link para ${address}. Abra o e-mail para ativar a conta.`);
       }
       if (mode === "recuperar") {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: callback("/nova-senha") });
-        if (error) throw error;
-        setDone(`Se houver conta para ${email}, você vai receber um link.`);
+        const failure = await requestRecovery(address);
+        if (failure) {
+          fail(failure);
+        } else {
+          setSentTo(address);
+        }
       }
       if (mode === "nova-senha") {
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
-        enter("/conta");
+        // Quem pediu nova senha pode ter perdido o controle da conta: as outras sessões saem
+        await supabase.auth.signOut({ scope: "others" }).catch(() => {});
+        enter("/conta?senha=alterada");
         return;
       }
     } catch (err) {
-      fail(translate(err instanceof Error ? err.message : ""));
+      const failure = asFailure(err);
+      if (mode === "nova-senha" && /session_not_found|session_expired/.test(failure.code ?? "")) {
+        enter("/recuperar-senha?erro=link");
+        return;
+      }
+      if (mode === "nova-senha" && !EXPECTED.test(failure.code ?? "")) {
+        reportError("conta", err, { etapa: "salvar nova senha", code: failure.code }, "warning");
+      }
+      fail(translate(failure));
     }
     setLoading(false);
+  }
+
+  if (sentTo) {
+    return (
+      <RecoverySent
+        email={sentTo}
+        onResend={() => requestRecovery(sentTo)}
+        onChangeEmail={() => {
+          setSentTo(null);
+          setError(null);
+        }}
+      />
+    );
   }
 
   if (done) {
@@ -171,6 +303,11 @@ export function AuthForm({ mode, next = "/conta" }: { mode: Mode; next?: string 
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
+      )}
+
+      {mode === "nova-senha" && account && (
+        // Para o gerenciador de senhas salvar a nova senha na conta certa
+        <input type="email" name="username" autoComplete="username" value={account} readOnly hidden />
       )}
 
       {needsPassword && (

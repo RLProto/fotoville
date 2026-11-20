@@ -26,12 +26,13 @@ Site de loja é uso comercial: o Vercel exige o plano **Pro**.
 
 1. **Supabase > Authentication > URL Configuration:** *Site URL* com o domínio e, em *Redirect URLs*,
    `https://SEU-DOMINIO/**`. Sem isso, os links de confirmação e de nova senha voltam para o endereço errado.
-   **Emails > Templates:** para os links funcionarem em qualquer aparelho (cadastro no computador, e-mail aberto
-   no celular), troque o `href` do botão:
-   - *Confirm signup*: `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email`
-   - *Reset password*: `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=recovery`
-
-   O padrão `{{ .ConfirmationURL }}` também funciona, mas só no mesmo navegador em que o cliente pediu o link.
+   **Emails > Templates:** cole os modelos de `back/supabase/email-templates/` (*Confirm sign up* e
+   *Reset password*, assunto na primeira linha de cada arquivo). Eles apontam para `/auth/confirmar`, que só
+   confere o link no clique do botão: funciona em qualquer aparelho e não é gasto por leitor de e-mail ou
+   antivírus que abre o link antes do cliente. Links antigos (`{{ .ConfirmationURL }}`) seguem por `/auth/callback`.
+   **Sign In / Providers > Email:** senha mínima de 8 caracteres (a mesma do site) e *Prevent use of leaked
+   passwords* ligado. **Emails > SMTP Settings:** SMTP próprio; o envio padrão do Supabase para em 2 e-mails por
+   hora para o projeto inteiro. Teste do fluxo sem enviar e-mail: `npm run check:senha`.
 2. **Banco:** rode `back/supabase/migrations/2026-10-03_price_tiers.sql` no SQL Editor (pendente no banco atual).
 3. **Mercado Pago > Webhooks:** `https://SEU-DOMINIO/api/webhooks/mercadopago`, evento *Pagamentos*. Copie a
    assinatura para `MP_WEBHOOK_SECRET` no Vercel e faça um novo deploy.

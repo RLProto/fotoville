@@ -10,6 +10,7 @@ const OTP_TYPES = ["email", "signup", "recovery", "invite", "magiclink", "email_
  * - `token_hash` e `type`: link dos modelos de e-mail do projeto, conferido aqui no servidor.
  *   Funciona em qualquer aparelho (o cliente se cadastra no computador e abre o e-mail no celular).
  * - `code`: link padrão do Supabase. Só funciona no mesmo navegador que pediu (PKCE).
+ * Os modelos de e-mail atuais apontam para /auth/confirmar; esta rota continua para os links já enviados.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -26,5 +27,7 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) return NextResponse.redirect(new URL(next, url.origin));
   }
-  return NextResponse.redirect(new URL("/entrar?erro=link", url.origin));
+  // Link de recuperação vencido leva direto a pedir outro; os demais, ao login
+  const recovery = type === "recovery" || next === "/nova-senha";
+  return NextResponse.redirect(new URL(recovery ? "/recuperar-senha?erro=link" : "/entrar?erro=link", url.origin));
 }
