@@ -28,8 +28,20 @@ const nextConfig: NextConfig = {
     ];
   },
   async redirects() {
-    // Endereços do site antigo que podem estar em buscadores e favoritos
     return [
+      // Endereço provisório do Vercel → domínio oficial. Só quando o navegador abre uma página (sec-fetch-mode
+      // navigate): abas antigas continuam chamando /api, /_next e arquivos no endereço provisório sem quebrar.
+      // /auth fica de fora porque o link de e-mail precisa do cookie gravado no endereço onde o login começou.
+      {
+        source: "/:path((?!auth/).*)",
+        has: [
+          { type: "host", value: "fotoville-nu\\.vercel\\.app" },
+          { type: "header", key: "sec-fetch-mode", value: "navigate" },
+        ],
+        destination: "https://fotoville.com.br/:path",
+        permanent: true,
+      },
+      // Endereços do site antigo que podem estar em buscadores e favoritos
       { source: "/catalog", destination: "/precos", permanent: true },
       { source: "/catalog/15", destination: "/precos", permanent: true },
       { source: "/catalog/36", destination: "/promocoes", permanent: true },
