@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth-form";
 import { accessReason, AuthShell, safeNext } from "@/components/auth-shell";
+import { SiteNovoDialog } from "@/components/site-novo-dialog";
 import { getUser } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Entrar", robots: { index: false } };
@@ -38,6 +39,7 @@ export default async function EntrarPage({
         </p>
       )}
       <AuthForm mode="entrar" next={next} />
+      <SiteNovoDialog cadastroHref={`/cadastro?proximo=${encodeURIComponent(next)}`} />
     </AuthShell>
   );
 }
