@@ -42,7 +42,7 @@ export function SiteNovoDialog({ cadastroHref }: { cadastroHref: string }) {
         A Fotoville está de cara nova
       </h2>
       <p id="site-novo-texto" className="mt-3 text-lg text-ink-2">
-        Já comprava com a gente pelo site antigo? Faça seu novo cadastro aqui.{" "}
+        Já era nosso cliente? Faça seu novo cadastro aqui.{" "}
         <strong className="font-bold text-ink">Seu login antigo deixou de funcionar.</strong>
       </p>
       <div className="mt-6 flex flex-col gap-2 sm:flex-row-reverse">
