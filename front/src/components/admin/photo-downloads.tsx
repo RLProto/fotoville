@@ -42,6 +42,8 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
   const stopRef = useRef<AbortController | null>(null);
   const folder = useFolderPicker();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  /** Imagens apagadas agora: as miniaturas somem antes do refresh, senão cada uma tenta o arquivo apagado (404). */
+  const [deleted, setDeleted] = useState(false);
   // No servidor não há window nem localStorage: assume o padrão, e o navegador corrige ao montar.
   const canPickFolder = useSyncExternalStore(subscribeNoop, hasFolderPicker, () => true);
 
@@ -91,6 +93,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
     setBusy(null);
     setConfirmDelete(false);
     if (res?.ok) {
+      setDeleted(true);
       setMessage("Imagens apagadas.");
       router.refresh();
     } else {
@@ -137,7 +140,7 @@ export function PhotoDownloads({ data }: { data: OrderDownload }) {
           const product = productOf(photo);
           return (
             <li key={photo.id} className="card flex flex-col p-3">
-              {product && <PrintPreview src={photo.thumb_url} alt={photo.file_name} photo={photo} product={product} />}
+              {product && <PrintPreview src={deleted ? null : photo.thumb_url} alt={photo.file_name} photo={photo} product={product} />}
               <p className="mt-2 font-bold">
                 {photo.quantity}× {product ? sizeName(product) : photo.product_id}
               </p>
