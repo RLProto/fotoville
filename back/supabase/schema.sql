@@ -492,7 +492,7 @@ begin
       case
         when s.order_id is null then 'carrinho'
         when ord.status = 'pending' then 'aguardando'
-        when ord.status in ('paid', 'in_production', 'ready_for_pickup') then 'producao'
+        when ord.status in ('paid', 'in_production') then 'producao'
         else 'concluido'
       end as grupo,
       count(*) as fotos,
@@ -519,7 +519,7 @@ begin
     'orders_deletable', (
       select count(*) from public.orders o
       where o.photos_deleted_at is null
-        and o.status in ('in_production', 'shipped', 'ready_for_pickup', 'delivered', 'cancelled')
+        and o.status in ('shipped', 'ready_for_pickup', 'delivered', 'cancelled')
         and exists (select 1 from public.photos p where p.order_id = o.id)
     )
   ) into result;

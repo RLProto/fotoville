@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { deleteOrderPhotos } from "@/lib/admin-orders";
 import { fail, reportServerError, requireAdmin, serverFail } from "@/lib/api";
-import { BULK_DELETABLE } from "@/lib/order-rules";
+import { DELETABLE } from "@/lib/order-rules";
 import { hasStorage } from "@/lib/storage";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -12,7 +12,7 @@ const schema = z.strictObject({ ids: z.array(z.guid()).min(1).max(500) });
 const PARALLEL = 4;
 
 /**
- * Apaga as imagens de vários pedidos. Só de quem está entregue, pronto para retirada ou cancelado e ainda
+ * Apaga as imagens de vários pedidos. Só de quem está enviado, pronto para retirada, entregue ou cancelado e ainda
  * tem imagens; os outros ficam como estão. Responde os pedidos apagados e os que falharam.
  */
 export async function POST(request: Request) {
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     .select("id, number")
     .in("id", parsed.data.ids)
     .eq("kind", "prints")
-    .in("status", BULK_DELETABLE)
+    .in("status", DELETABLE)
     .is("photos_deleted_at", null);
   if (error) return serverFail("painel", error.message, error, 500, { etapa: "apagar imagens em massa" });
 

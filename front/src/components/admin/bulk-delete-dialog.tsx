@@ -3,14 +3,14 @@
 import { CircleNotchIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { numberList } from "@/components/admin/bulk-status-dialog";
-import { BULK_DELETABLE } from "@/lib/order-rules";
+import { DELETABLE } from "@/lib/order-rules";
 import type { Order } from "@/lib/types";
 
 const plural = (orders: Order[], singular: string, many: string) => (orders.length === 1 ? singular : many);
 
 /**
  * Confirma e apaga as imagens dos pedidos selecionados que ainda as têm no servidor. Só apaga as de
- * pedidos entregues, prontos para retirada ou cancelados; os outros aparecem no popup e ficam como estão.
+ * pedidos enviados, prontos para retirada, entregues ou cancelados; os outros aparecem no popup e ficam como estão.
  * Se tudo foi apagado, fecha sozinho: a coluna Imagens já mostra.
  */
 export function BulkDeleteDialog({
@@ -26,8 +26,8 @@ export function BulkDeleteDialog({
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const [missed, setMissed] = useState<Order[] | null>(null);
-  const deletable = orders.filter((o) => BULK_DELETABLE.includes(o.status));
-  const kept = orders.filter((o) => !BULK_DELETABLE.includes(o.status));
+  const deletable = orders.filter((o) => DELETABLE.includes(o.status));
+  const kept = orders.filter((o) => !DELETABLE.includes(o.status));
 
   useEffect(() => {
     dialogRef.current?.showModal();
@@ -58,7 +58,7 @@ export function BulkDeleteDialog({
   const keptNote = kept.length > 0 && (
     <p>
       {numberList(kept)}{" "}
-      {plural(kept, "não está entregue, pronto para retirada ou cancelado", "não estão entregues, prontos para retirada ou cancelados")}
+      {plural(kept, "ainda não está pronto", "ainda não estão prontos")}
       . As fotos {plural(kept, "dele", "deles")} ficam no servidor.
     </p>
   );

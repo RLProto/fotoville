@@ -3,11 +3,8 @@ import type { Order, OrderStatus } from "./types";
 /** Situações em que a loja pode baixar as fotos: só depois do pagamento aprovado. */
 export const DOWNLOADABLE: OrderStatus[] = ["paid", "in_production", "shipped", "ready_for_pickup", "delivered"];
 
-/** Situações em que as imagens podem ser apagadas do bucket: já produzido, ou cancelado. */
-export const DELETABLE: OrderStatus[] = ["in_production", "shipped", "ready_for_pickup", "delivered", "cancelled"];
-
-/** Situações em que a lista de pedidos apaga as imagens em massa: pedido já nas mãos do cliente, ou cancelado. */
-export const BULK_DELETABLE: OrderStatus[] = ["ready_for_pickup", "delivered", "cancelled"];
+/** Situações em que as imagens podem ser apagadas do bucket: pedido pronto, enviado, entregue ou cancelado. */
+export const DELETABLE: OrderStatus[] = ["shipped", "ready_for_pickup", "delivered", "cancelled"];
 
 /** Status que a lista de pedidos muda em massa. */
 export const BULK_STATUSES = ["paid", "in_production", "shipped", "ready_for_pickup", "delivered", "cancelled"] as const;

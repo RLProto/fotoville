@@ -21,8 +21,8 @@ export async function GET(_request: Request, { params }: Ctx) {
 }
 
 /**
- * Apaga as imagens do pedido do bucket. Só para pedido já produzido (ou cancelado), para não
- * apagar o que ainda não foi baixado.
+ * Apaga as imagens do pedido do bucket. Só para pedido pronto, enviado, entregue ou cancelado, para não
+ * apagar o que ainda está em produção.
  */
 export async function DELETE(_request: Request, { params }: Ctx) {
   const auth = await requireAdmin();
@@ -35,7 +35,7 @@ export async function DELETE(_request: Request, { params }: Ctx) {
   if (!data) return fail("Pedido não encontrado.", 404);
   const order = data as Order;
   if (order.photos_deleted_at) return NextResponse.json({ ok: true, deleted: 0 });
-  if (!DELETABLE.includes(order.status)) return fail("Só depois de o pedido entrar em produção.", 409);
+  if (!DELETABLE.includes(order.status)) return fail("Só depois de o pedido ficar pronto.", 409);
 
   let deleted: number;
   try {

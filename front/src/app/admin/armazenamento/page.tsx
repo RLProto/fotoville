@@ -15,8 +15,8 @@ type Stats = {
 const GROUPS: { id: Stats["groups"][number]["grupo"]; label: string; note: string }[] = [
   { id: "carrinho", label: "Em carrinhos", note: "fotos enviadas, pedido ainda não fechado" },
   { id: "aguardando", label: "Aguardando pagamento", note: "pedido fechado, sem pagamento" },
-  { id: "producao", label: "Para produzir", note: "pagos, em produção ou prontos para retirada" },
-  { id: "concluido", label: "Concluídos", note: "enviados, entregues ou cancelados: podem ser apagados" },
+  { id: "producao", label: "Para produzir", note: "pagos ou em produção" },
+  { id: "concluido", label: "Concluídos", note: "enviados, prontos para retirada, entregues ou cancelados: podem ser apagados" },
 ];
 
 const MONTH = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
