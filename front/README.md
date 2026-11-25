@@ -189,8 +189,8 @@ Mensagens enviadas ficam em `monitor.messages`. Falha de entrega aparece em `/ad
 ## Pontos para confirmar com a loja
 
 - Prazo de produção (hoje **3 dias úteis**, em `src/lib/site.ts`).
-- Preço da Mini Polaroid (R$ 3,50 provisório). As medidas da Polaroid (8,8 × 10,7 cm) e da Mini Polaroid (5,4 × 8,6 cm)
-  seguem os filmes originais (`INSTANT_FRAMES` em `src/lib/crop.ts`); confirmar se a loja imprime nesses tamanhos.
+- Preço da Mini Polaroid (R$ 3,50 provisório). Polaroid e Polaroid ímã: papel 8,2 × 10,2 cm com janela 7 × 7.
+  A Mini Polaroid (5,4 × 8,6 cm) segue o filme Instax Mini (`INSTANT_FRAMES` em `src/lib/crop.ts`).
   Peso e espessura da foto-placa.
 - Textos de Termos de uso e Política de privacidade (rascunhos; pedem revisão jurídica).
 - Valores da tabela de frete estimado, caso a loja não tenha contrato com os Correios.

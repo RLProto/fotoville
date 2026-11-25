@@ -123,12 +123,12 @@ export const PRODUCTS: Product[] = [
     active: true,
   },
   {
-    // Polaroid com ímã atrás, mesma medida da Polaroid. Peso do ímã estimado: confirmar com a loja.
+    // Polaroid com ímã atrás, mesma medida e janela da Polaroid. Peso do ímã estimado: confirmar com a loja.
     id: "polaroid-ima",
     name: "Polaroid ímã",
     kind: "polaroid",
-    width_cm: 8.8,
-    height_cm: 10.7,
+    width_cm: 8.2,
+    height_cm: 10.2,
     price_cents: 750,
     price_tiers: [],
     finishes: FINISH,
