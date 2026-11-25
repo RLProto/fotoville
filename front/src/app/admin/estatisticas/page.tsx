@@ -171,13 +171,7 @@ export default async function EstatisticasPage({ searchParams }: { searchParams:
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="display-md text-3xl">Estatísticas</h1>
-          <p className="mt-1 text-ink-2">
-            Por dia, em horário de Brasília.
-            {stats.tracking_since && ` Visitas contadas desde ${shortDay(stats.tracking_since)}.`}
-          </p>
-        </div>
+        <h1 className="display-md text-3xl">Estatísticas</h1>
         <nav aria-label="Período" className="flex gap-2">
           {PERIODS.map((p) => (
             <Link
