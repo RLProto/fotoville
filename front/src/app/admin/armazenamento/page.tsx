@@ -129,11 +129,11 @@ export default async function ArmazenamentoPage() {
           </ul>
           {deletable.bytes > 0 && (
             <p className="mt-4 text-sm">
-              Para liberar espaço, abra um pedido concluído em{" "}
-              <Link href="/admin?filtro=shipped" className="link">
-                Pedidos
+              Para liberar espaço, selecione os pedidos{" "}
+              <Link href="/admin?filtro=concluidos" className="link">
+                concluídos
               </Link>{" "}
-              e use &ldquo;Apagar imagens do servidor&rdquo;.
+              e use &ldquo;Apagar fotos&rdquo;.
             </p>
           )}
         </section>

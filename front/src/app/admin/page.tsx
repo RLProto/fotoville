@@ -9,6 +9,7 @@ const FILTERS: { value: string; label: string }[] = [
   { value: "abertos", label: "Para produzir" },
   { value: "pending", label: ORDER_STATUS_LABEL.pending },
   { value: "shipped", label: "Enviados" },
+  { value: "concluidos", label: "Concluídos" },
 ];
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ filtro?: string }> }) {
@@ -25,7 +26,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     .eq("kind", "prints")
     .order("created_at", { ascending: false })
     .limit(500);
-  if (filter === "abertos") query = query.in("status", ["paid", "in_production", "ready_for_pickup"]);
+  if (filter === "abertos") query = query.in("status", ["paid", "in_production"]);
+  else if (filter === "concluidos") query = query.in("status", ["shipped", "ready_for_pickup", "delivered"]);
   else if (filter !== "todos") query = query.eq("status", filter as OrderStatus);
 
   const { data, error } = await query;
