@@ -1,14 +1,22 @@
 "use client";
 
-import { ArrowSquareOutIcon, CircleNotchIcon, FoldersIcon, MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
+import { ArrowSquareOutIcon, CircleNotchIcon, FoldersIcon, MagnifyingGlassIcon, TrashIcon, XIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useSyncExternalStore } from "react";
 import { hasFolderPicker, patchOrder } from "@/lib/admin-download";
+import { BulkDeleteDialog } from "@/components/admin/bulk-delete-dialog";
 import { BulkStatusDialog } from "@/components/admin/bulk-status-dialog";
 import { useOrderDownloads } from "@/components/admin/use-order-downloads";
 import { formatBRL, formatDate } from "@/lib/format";
-import { BULK_STATUSES, canBulkChange, canDownload, canPickStatus, type BulkStatus } from "@/lib/order-rules";
+import {
+  BULK_STATUSES,
+  canBulkChange,
+  canDownload,
+  canPickStatus,
+  hasPhotosOnServer,
+  type BulkStatus,
+} from "@/lib/order-rules";
 import { ORDER_STATUS_LABEL, type Order, type OrderStatus } from "@/lib/types";
 
 const subscribeNoop = () => () => {};
@@ -34,7 +42,8 @@ const STATUSES = Object.keys(ORDER_STATUS_LABEL) as OrderStatus[];
 
 /**
  * Lista de pedidos do painel: situação editável na linha, download em pastas por pedido, ações em massa
- * nos selecionados (download com um seletor de pasta para todos e status), e o estado das imagens no bucket.
+ * nos selecionados (download com um seletor de pasta para todos, status e apagar as imagens), e o estado
+ * das imagens no bucket.
  */
 export function OrdersTable({ orders: all }: { orders: Order[] }) {
   const router = useRouter();
@@ -71,11 +80,13 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
 
   const [bulkTarget, setBulkTarget] = useState<BulkStatus | "">("");
   const [bulk, setBulk] = useState<{ status: BulkStatus; orders: Order[] } | null>(null);
+  const [toErase, setToErase] = useState<Order[] | null>(null);
 
   // Só o que está na tela: a busca não deixa uma ação pegar pedido escondido
   const chosen = orders.filter((o) => selected.has(o.id));
   const allChosen = orders.length > 0 && chosen.length === orders.length;
   const toDownload = chosen.filter(canDownload);
+  const withPhotos = chosen.filter(hasPhotosOnServer);
   const bulkOptions = BULK_STATUSES.map((status) => ({
     status,
     count: chosen.filter((o) => canBulkChange(o, status)).length,
@@ -91,6 +102,11 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
     setSelected(new Set());
     setBulkTarget("");
     setPending((current) => Object.fromEntries(Object.entries(current).filter(([id]) => !ids.includes(id))));
+    router.refresh();
+  }
+
+  function photosDeleted(ids: string[]) {
+    setSelected((current) => new Set([...current].filter((id) => !ids.includes(id))));
     router.refresh();
   }
 
@@ -333,6 +349,15 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
             )}
             Baixar fotos ({toDownload.length})
           </button>
+          <button
+            type="button"
+            className="btn btn-danger-ghost btn-sm"
+            disabled={busy !== null || withPhotos.length === 0}
+            onClick={() => setToErase(withPhotos)}
+          >
+            <TrashIcon size={16} aria-hidden />
+            Apagar fotos ({withPhotos.length})
+          </button>
           <form
             className="flex flex-wrap items-center gap-2"
             onSubmit={(e) => {
@@ -373,6 +398,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
           onClose={() => setBulk(null)}
         />
       )}
+      {toErase && <BulkDeleteDialog orders={toErase} onDeleted={photosDeleted} onClose={() => setToErase(null)} />}
       {downloads.dialogs}
     </div>
   );

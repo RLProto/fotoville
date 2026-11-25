@@ -6,6 +6,9 @@ export const DOWNLOADABLE: OrderStatus[] = ["paid", "in_production", "shipped", 
 /** Situações em que as imagens podem ser apagadas do bucket: já produzido, ou cancelado. */
 export const DELETABLE: OrderStatus[] = ["in_production", "shipped", "ready_for_pickup", "delivered", "cancelled"];
 
+/** Situações em que a lista de pedidos apaga as imagens em massa: pedido já nas mãos do cliente, ou cancelado. */
+export const BULK_DELETABLE: OrderStatus[] = ["ready_for_pickup", "delivered", "cancelled"];
+
 /** Status que a lista de pedidos muda em massa. */
 export const BULK_STATUSES = ["paid", "in_production", "shipped", "ready_for_pickup", "delivered", "cancelled"] as const;
 export type BulkStatus = (typeof BULK_STATUSES)[number];
@@ -14,6 +17,7 @@ type Rule = Pick<Order, "kind" | "status" | "photos_deleted_at">;
 
 export const canDownload = (o: Rule) => o.kind === "prints" && DOWNLOADABLE.includes(o.status) && !o.photos_deleted_at;
 export const canDeletePhotos = (o: Rule) => o.kind === "prints" && DELETABLE.includes(o.status) && !o.photos_deleted_at;
+export const hasPhotosOnServer = (o: Rule) => o.kind === "prints" && !o.photos_deleted_at;
 
 /**
  * Se o pedido pode ir para este status na ação em massa. Só o caminho normal do pedido; correções são

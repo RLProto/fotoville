@@ -6,7 +6,7 @@ import type { BulkStatus } from "@/lib/order-rules";
 import { ORDER_STATUS_LABEL, type Order } from "@/lib/types";
 
 /** "#1045, #1046 e #1047" */
-function numberList(orders: Order[]) {
+export function numberList(orders: Order[]) {
   const numbers = orders.map((o) => `#${o.number}`);
   return numbers.length > 1 ? `${numbers.slice(0, -1).join(", ")} e ${numbers.at(-1)}` : numbers[0];
 }

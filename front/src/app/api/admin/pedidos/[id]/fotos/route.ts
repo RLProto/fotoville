@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { loadOrderDownload } from "@/lib/admin-orders";
+import { deleteOrderPhotos, loadOrderDownload } from "@/lib/admin-orders";
 import { fail, requireAdmin, serverFail } from "@/lib/api";
 import { DELETABLE } from "@/lib/order-rules";
-import { deleteObjects, hasStorage } from "@/lib/storage";
+import { hasStorage } from "@/lib/storage";
 import { createAdminClient } from "@/lib/supabase/server";
 import type { Order } from "@/lib/types";
 
@@ -22,7 +22,7 @@ export async function GET(_request: Request, { params }: Ctx) {
 
 /**
  * Apaga as imagens do pedido do bucket. Só para pedido já produzido (ou cancelado), para não
- * apagar o que ainda não foi baixado. As linhas de `photos` ficam, como histórico.
+ * apagar o que ainda não foi baixado.
  */
 export async function DELETE(_request: Request, { params }: Ctx) {
   const auth = await requireAdmin();
@@ -37,14 +37,11 @@ export async function DELETE(_request: Request, { params }: Ctx) {
   if (order.photos_deleted_at) return NextResponse.json({ ok: true, deleted: 0 });
   if (!DELETABLE.includes(order.status)) return fail("Só depois de o pedido entrar em produção.", 409);
 
-  const { data: photos } = await admin.from("photos").select("storage_key, thumb_key").eq("order_id", id);
-  const keys = (photos ?? []).flatMap((p) => [p.storage_key, p.thumb_key]).filter((k): k is string => Boolean(k));
+  let deleted: number;
   try {
-    await deleteObjects(keys);
+    deleted = await deleteOrderPhotos(admin, id);
   } catch (err) {
     return serverFail("painel", "Não foi possível apagar as imagens. Tente de novo.", err, 500, { order: id });
   }
-  const { error } = await admin.from("orders").update({ photos_deleted_at: new Date().toISOString() }).eq("id", id);
-  if (error) return serverFail("painel", error.message, error, 500, { order: id });
-  return NextResponse.json({ ok: true, deleted: keys.length });
+  return NextResponse.json({ ok: true, deleted });
 }

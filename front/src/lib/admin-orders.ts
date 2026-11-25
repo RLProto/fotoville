@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AdminPhoto, OrderDownload } from "./admin-download";
 import { PRODUCTS } from "./catalog-data";
-import { hasStorage, presignDownload } from "./storage";
+import { deleteObjects, hasStorage, presignDownload } from "./storage";
 import type { Order, Photo, Product } from "./types";
 
 /** Produtos como estão no banco, inclusive desativados (pedidos antigos apontam para eles). */
@@ -36,4 +36,29 @@ export async function loadOrderPhotos(admin: SupabaseClient, order: Order): Prom
 export async function loadOrderDownload(admin: SupabaseClient, order: Order): Promise<OrderDownload> {
   const [photos, products] = await Promise.all([loadOrderPhotos(admin, order), loadAllProducts(admin)]);
   return { order, photos, products };
+}
+
+const PHOTO_PAGE = 1000; // o Supabase devolve no máximo 1.000 linhas por consulta
+
+/**
+ * Apaga do bucket as imagens do pedido e marca `photos_deleted_at`. As linhas de `photos` ficam, como
+ * histórico. Quem chama confere antes se o pedido pode ter as fotos apagadas.
+ */
+export async function deleteOrderPhotos(admin: SupabaseClient, orderId: string): Promise<number> {
+  const keys: string[] = [];
+  for (let from = 0; ; from += PHOTO_PAGE) {
+    const { data, error } = await admin
+      .from("photos")
+      .select("storage_key, thumb_key")
+      .eq("order_id", orderId)
+      .order("id")
+      .range(from, from + PHOTO_PAGE - 1);
+    if (error) throw new Error(error.message);
+    for (const p of data ?? []) keys.push(...[p.storage_key, p.thumb_key].filter((k): k is string => Boolean(k)));
+    if (!data || data.length < PHOTO_PAGE) break;
+  }
+  await deleteObjects(keys);
+  const { error } = await admin.from("orders").update({ photos_deleted_at: new Date().toISOString() }).eq("id", orderId);
+  if (error) throw new Error(error.message);
+  return keys.length;
 }
