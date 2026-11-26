@@ -1,6 +1,15 @@
 "use client";
 
-import { ArrowSquareOutIcon, CircleNotchIcon, FoldersIcon, MagnifyingGlassIcon, TrashIcon, XIcon } from "@phosphor-icons/react";
+import {
+  ArrowSquareOutIcon,
+  CaretLeftIcon,
+  CaretRightIcon,
+  CircleNotchIcon,
+  FoldersIcon,
+  MagnifyingGlassIcon,
+  TrashIcon,
+  XIcon,
+} from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useSyncExternalStore } from "react";
@@ -39,11 +48,12 @@ const ROW_TONE = Object.fromEntries(
   ]),
 ) as Record<OrderStatus, { stripe: string; tint: string }>;
 const STATUSES = Object.keys(ORDER_STATUS_LABEL) as OrderStatus[];
+const PER_PAGE = 30;
 
 /**
  * Lista de pedidos do painel: situação editável na linha, download em pastas por pedido, ações em massa
  * nos selecionados (download com um seletor de pasta para todos, status e apagar as imagens), e o estado
- * das imagens no bucket.
+ * das imagens no bucket. Mostra 30 pedidos por página; a seleção vale entre as páginas.
  */
 export function OrdersTable({ orders: all }: { orders: Order[] }) {
   const router = useRouter();
@@ -60,14 +70,29 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
             ? String(o.number).startsWith(q.replace("#", ""))
             : `${o.customer?.name ?? ""} ${o.customer?.email ?? ""} ${o.note ?? ""}`.toLowerCase().includes(q),
         );
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(orders.length / PER_PAGE));
+  const current = Math.min(page, pageCount);
+  const shown = orders.slice((current - 1) * PER_PAGE, current * PER_PAGE);
+  const tableRef = useRef<HTMLDivElement>(null);
+  function goTo(next: number) {
+    setPage(next);
+    tableRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+  function search(value: string) {
+    setQuery(value);
+    setPage(1);
+  }
   function openSearch(kind: SearchKind) {
     setSearching(kind);
     setQuery("");
+    setPage(1);
     setTimeout(() => searchRef.current?.focus(), 0);
   }
   function closeSearch() {
     setSearching(null);
     setQuery("");
+    setPage(1);
   }
   const canPickFolder = useSyncExternalStore(subscribeNoop, hasFolderPicker, () => true);
 
@@ -82,9 +107,11 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
   const [bulk, setBulk] = useState<{ status: BulkStatus; orders: Order[] } | null>(null);
   const [toErase, setToErase] = useState<Order[] | null>(null);
 
-  // Só o que está na tela: a busca não deixa uma ação pegar pedido escondido
+  // Só o que a busca mostra, em qualquer página: a busca não deixa uma ação pegar pedido escondido
   const chosen = orders.filter((o) => selected.has(o.id));
-  const allChosen = orders.length > 0 && chosen.length === orders.length;
+  // A caixa do cabeçalho marca e desmarca a página
+  const pageChosen = shown.filter((o) => selected.has(o.id)).length;
+  const allChosen = shown.length > 0 && pageChosen === shown.length;
   const toDownload = chosen.filter(canDownload);
   const withPhotos = chosen.filter(hasPhotosOnServer);
   const bulkOptions = BULK_STATUSES.map((status) => ({
@@ -136,7 +163,14 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
   }
 
   function toggleAll() {
-    setSelected(allChosen ? new Set() : new Set(orders.map((o) => o.id)));
+    setSelected((s) => {
+      const next = new Set(s);
+      for (const o of shown) {
+        if (allChosen) next.delete(o.id);
+        else next.add(o.id);
+      }
+      return next;
+    });
   }
 
   return (
@@ -146,7 +180,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
           (canPickFolder ? null : "Para baixar em pastas, abra o painel no Chrome ou no Edge do computador.")}
       </p>
 
-      <div className="card mt-2 overflow-x-auto">
+      <div ref={tableRef} className="card mt-2 scroll-mt-4 overflow-x-auto">
         <table className="w-full min-w-[64rem] text-left text-sm">
           <caption className="sr-only">Pedidos</caption>
           <thead className="border-b border-rule text-sm text-ink-2">
@@ -154,13 +188,13 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
               <th scope="col" className="px-3 py-2">
                 <input
                   type="checkbox"
-                  aria-label="Selecionar todos os pedidos"
+                  aria-label="Selecionar os pedidos da página"
                   className="size-4 accent-action"
                   ref={(el) => {
-                    if (el) el.indeterminate = chosen.length > 0 && !allChosen;
+                    if (el) el.indeterminate = pageChosen > 0 && !allChosen;
                   }}
                   checked={allChosen}
-                  disabled={orders.length === 0 || busy !== null}
+                  disabled={shown.length === 0 || busy !== null}
                   onChange={toggleAll}
                 />
               </th>
@@ -172,7 +206,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                 query={query}
                 inputRef={searchRef}
                 onOpen={openSearch}
-                onChange={setQuery}
+                onChange={search}
                 onClose={closeSearch}
               />
               <th scope="col" className="px-3 py-2 font-bold">
@@ -186,7 +220,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                 query={query}
                 inputRef={searchRef}
                 onOpen={openSearch}
-                onChange={setQuery}
+                onChange={search}
                 onClose={closeSearch}
               />
               {["Entrega", "Total", "Status", "Imagens", ""].map((h, i) => (
@@ -204,7 +238,7 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
                 </td>
               </tr>
             )}
-            {orders.map((order) => {
+            {shown.map((order) => {
               const pick = canDownload(order);
               const value = pending[order.id] ?? order.status;
               const changed = value !== order.status;
@@ -321,7 +355,28 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
         </table>
       </div>
 
-      {/* Fixa no rodapé: a lista pode ter centenas de linhas */}
+      {pageCount > 1 && (
+        <nav aria-label="Páginas de pedidos" className="mt-3 flex flex-wrap items-center justify-center gap-3">
+          <button type="button" className="btn btn-outline btn-sm" disabled={current === 1} onClick={() => goTo(current - 1)}>
+            <CaretLeftIcon size={16} aria-hidden />
+            Anterior
+          </button>
+          <p className="text-sm tabular-nums" aria-live="polite">
+            {(current - 1) * PER_PAGE + 1}–{(current - 1) * PER_PAGE + shown.length} de {orders.length}
+          </p>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            disabled={current === pageCount}
+            onClick={() => goTo(current + 1)}
+          >
+            Próxima
+            <CaretRightIcon size={16} aria-hidden />
+          </button>
+        </nav>
+      )}
+
+      {/* Fixa no rodapé: a seleção pode juntar pedidos de várias páginas */}
       {chosen.length > 0 && (
         <section
           aria-label="Ações nos pedidos selecionados"

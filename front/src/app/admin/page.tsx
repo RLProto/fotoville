@@ -12,26 +12,40 @@ const FILTERS: { value: string; label: string }[] = [
   { value: "concluidos", label: "Concluídos" },
 ];
 
+const PAGE = 1000; // o Supabase devolve no máximo 1.000 linhas por consulta
+
+/**
+ * Todos os pedidos do filtro: a busca por número ou cliente e a paginação são feitas na lista, no navegador.
+ * Pacotes ficam fora enquanto a aba Pacotes do site estiver oculta.
+ */
+async function loadOrders(filter: string) {
+  const admin = createAdminClient();
+  const orders: Order[] = [];
+  for (let from = 0; ; from += PAGE) {
+    let query = admin
+      .from("orders")
+      .select("*")
+      .eq("kind", "prints")
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, from + PAGE - 1);
+    if (filter === "abertos") query = query.in("status", ["paid", "in_production"]);
+    else if (filter === "concluidos") query = query.in("status", ["shipped", "ready_for_pickup", "delivered"]);
+    else if (filter !== "todos") query = query.eq("status", filter as OrderStatus);
+    const { data, error } = await query;
+    if (error) return { orders, error };
+    orders.push(...((data ?? []) as Order[]));
+    if (!data || data.length < PAGE) return { orders, error: null };
+  }
+}
+
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ filtro?: string }> }) {
   // O layout já barra quem não é admin; a checagem se repete porque aqui se usa a service role.
   if (!(await getProfile())?.is_admin) notFound();
 
   const filter = (await searchParams).filtro ?? "todos";
 
-  // Até 500 pedidos: a busca por número ou cliente é feita na lista, no navegador.
-  // Pacotes ficam fora enquanto a aba Pacotes do site estiver oculta.
-  let query = createAdminClient()
-    .from("orders")
-    .select("*")
-    .eq("kind", "prints")
-    .order("created_at", { ascending: false })
-    .limit(500);
-  if (filter === "abertos") query = query.in("status", ["paid", "in_production"]);
-  else if (filter === "concluidos") query = query.in("status", ["shipped", "ready_for_pickup", "delivered"]);
-  else if (filter !== "todos") query = query.eq("status", filter as OrderStatus);
-
-  const { data, error } = await query;
-  const orders = (data ?? []) as Order[];
+  const { orders, error } = await loadOrders(filter);
 
   return (
     <>
@@ -54,7 +68,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       {orders.length === 0 ? (
         <p className="card mt-6 p-8 text-center text-lg text-ink-2">Nenhum pedido neste filtro.</p>
       ) : (
-        <OrdersTable orders={orders} />
+        <OrdersTable key={filter} orders={orders} />
       )}
     </>
   );
