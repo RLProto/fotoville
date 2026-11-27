@@ -13,7 +13,7 @@ export type AdminPhoto = Photo & {
   thumb_url: string | null;
   /** null quando as imagens já foram apagadas do bucket. */
   original_url: string | null;
-  /** Nome base do arquivo: pedido_tamanho_índice */
+  /** Nome do arquivo sem extensão: o nome com que o cliente enviou, ou pedido_tamanho_índice se não der. */
   base_name: string;
 };
 
@@ -32,6 +32,24 @@ export type DirectoryHandle = {
 type PickerWindow = Window & {
   showDirectoryPicker?: (options?: { id?: string; mode?: "read" | "readwrite"; startIn?: string }) => Promise<DirectoryHandle>;
 };
+
+const RESERVED = /^(con|prn|aux|nul|com\d|lpt\d)$/i;
+
+/**
+ * Nome com que o cliente enviou a foto, sem extensão e sem o que o Windows não aceita num nome de arquivo.
+ * null quando não sobra nada aproveitável.
+ */
+export function fileStem(fileName: string) {
+  const stem = fileName
+    .normalize("NFC")
+    .replace(/\.[^.]*$/, "")
+    .replace(/[\u0000-\u001f\u007f<>:"/\\|?*]+/g, "_")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[. ]+$/, "");
+  const cut = Array.from(stem).slice(0, 120).join("").trim();
+  return !cut || RESERVED.test(cut) ? null : cut;
+}
 
 export const hasFolderPicker = () => typeof window !== "undefined" && Boolean((window as PickerWindow).showDirectoryPicker);
 
@@ -274,6 +292,15 @@ export async function writeOrder(
     await stream.close();
   };
 
+  // Duas fotos com o mesmo nome no mesmo tamanho: a segunda ganha " (2)", senão uma grava por cima da outra
+  const used = new Set<string>();
+  const unique = (folder: string, stem: string) => {
+    let name = stem;
+    for (let n = 2; used.has(`${folder}/${name.toLowerCase()}`); n++) name = `${stem} (${n})`;
+    used.add(`${folder}/${name.toLowerCase()}`);
+    return `${name}.jpg`;
+  };
+
   const zip = root instanceof ZipFolder ? root : null;
   zip?.start(`pedido-${data.order.number}`);
   try {
@@ -285,7 +312,7 @@ export async function writeOrder(
         const dir = await orderDir.getDirectoryHandle(job.folder, { create: true });
         for (let copy = 1; copy <= job.copies; copy++) {
           if (options.signal?.aborted) break;
-          await write(dir, `${job.name}_${copy}.jpg`, blob);
+          await write(dir, unique(job.folder, job.copies > 1 ? `${job.name}_${copy}` : job.name), blob);
           done += 1;
           options.onProgress?.(done, total);
         }

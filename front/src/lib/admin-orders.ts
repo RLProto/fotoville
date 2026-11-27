@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AdminPhoto, OrderDownload } from "./admin-download";
+import { fileStem, type AdminPhoto, type OrderDownload } from "./admin-download";
 import { PRODUCTS } from "./catalog-data";
 import { deleteObjects, hasStorage, presignDownload } from "./storage";
 import type { Order, Photo, Product } from "./types";
@@ -21,7 +21,8 @@ export async function loadOrderPhotos(admin: SupabaseClient, order: Order): Prom
   return Promise.all(
     photos.map(async (photo, i) => {
       const ext = photo.storage_key.split(".").pop() ?? "jpg";
-      const base_name = `${order.number}_${photo.product_id}_${String(i + 1).padStart(3, "0")}`;
+      const base_name =
+        fileStem(photo.file_name) ?? `${order.number}_${photo.product_id}_${String(i + 1).padStart(3, "0")}`;
       return {
         ...photo,
         base_name,

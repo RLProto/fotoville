@@ -42,15 +42,20 @@ export function presignUpload(key: string, contentType: string) {
   });
 }
 
+/** Nome só em ASCII para navegador antigo e, em filename*, o nome com acentos (RFC 6266). */
+function contentDisposition(name: string) {
+  const ascii = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w.\- ()]+/g, "_");
+  const utf8 = encodeURIComponent(name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${utf8}`;
+}
+
 export function presignDownload(key: string, opts: { downloadName?: string; expiresIn?: number } = {}) {
   return getSignedUrl(
     s3(),
     new GetObjectCommand({
       Bucket: bucket(),
       Key: key,
-      ResponseContentDisposition: opts.downloadName
-        ? `attachment; filename="${opts.downloadName.replace(/[^\w.\-]+/g, "_")}"`
-        : undefined,
+      ResponseContentDisposition: opts.downloadName ? contentDisposition(opts.downloadName) : undefined,
     }),
     { expiresIn: opts.expiresIn ?? 60 * 60 },
   );
