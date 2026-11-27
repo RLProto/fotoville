@@ -1,9 +1,10 @@
 "use client";
 
-import { CaretLeftIcon, CaretRightIcon, CircleNotchIcon, FoldersIcon, PrinterIcon, TagIcon } from "@phosphor-icons/react";
+import { CircleNotchIcon, FoldersIcon, PrinterIcon, TagIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
+import { Pager } from "@/components/admin/pager";
 import { PrintLabelsDialog, type PrintJob } from "@/components/admin/print-labels-dialog";
 import { useOrderDownloads, type DownloadTarget } from "@/components/admin/use-order-downloads";
 import { hasFolderPicker } from "@/lib/admin-download";
@@ -167,21 +168,16 @@ export function LabelBatches({ batches, waiting, page }: { batches: BatchView[];
         </div>
       )}
 
-      {page.count > 1 && (
-        <nav aria-label="Páginas de lotes" className="mt-4 flex flex-wrap items-center justify-center gap-3">
-          <PageLink to={page.current - 1} disabled={page.current === 1 || locked}>
-            <CaretLeftIcon size={16} aria-hidden />
-            Anterior
-          </PageLink>
-          <p className="text-sm tabular-nums">
-            {page.first}–{page.first + batches.length - 1} de {page.total}
-          </p>
-          <PageLink to={page.current + 1} disabled={page.current === page.count || locked}>
-            Próxima
-            <CaretRightIcon size={16} aria-hidden />
-          </PageLink>
-        </nav>
-      )}
+      <Pager
+        label="Páginas de lotes"
+        current={page.current}
+        count={page.count}
+        first={page.first}
+        last={page.first + batches.length - 1}
+        total={page.total}
+        disabled={locked}
+        href={pageHref}
+      />
 
       {printing && (
         <PrintLabelsDialog
@@ -198,19 +194,6 @@ export function LabelBatches({ batches, waiting, page }: { batches: BatchView[];
       )}
       {downloads.dialogs}
     </div>
-  );
-}
-
-/** Botão de página: link de verdade, ou só aparência quando não há para onde ir. */
-function PageLink({ to, disabled, children }: { to: number; disabled: boolean; children: React.ReactNode }) {
-  return disabled ? (
-    <span className="btn btn-outline btn-sm pointer-events-none opacity-50" aria-disabled="true">
-      {children}
-    </span>
-  ) : (
-    <Link href={pageHref(to)} className="btn btn-outline btn-sm">
-      {children}
-    </Link>
   );
 }
 

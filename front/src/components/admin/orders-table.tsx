@@ -2,8 +2,6 @@
 
 import {
   ArrowSquareOutIcon,
-  CaretLeftIcon,
-  CaretRightIcon,
   CircleNotchIcon,
   FoldersIcon,
   MagnifyingGlassIcon,
@@ -15,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useSyncExternalStore } from "react";
 import { hasFolderPicker, patchOrder } from "@/lib/admin-download";
 import { BulkDeleteDialog } from "@/components/admin/bulk-delete-dialog";
+import { Pager } from "@/components/admin/pager";
 import { BulkStatusDialog } from "@/components/admin/bulk-status-dialog";
 import { useOrderDownloads } from "@/components/admin/use-order-downloads";
 import { formatBRL, formatDate } from "@/lib/format";
@@ -355,26 +354,15 @@ export function OrdersTable({ orders: all }: { orders: Order[] }) {
         </table>
       </div>
 
-      {pageCount > 1 && (
-        <nav aria-label="Páginas de pedidos" className="mt-3 flex flex-wrap items-center justify-center gap-3">
-          <button type="button" className="btn btn-outline btn-sm" disabled={current === 1} onClick={() => goTo(current - 1)}>
-            <CaretLeftIcon size={16} aria-hidden />
-            Anterior
-          </button>
-          <p className="text-sm tabular-nums" aria-live="polite">
-            {(current - 1) * PER_PAGE + 1}–{(current - 1) * PER_PAGE + shown.length} de {orders.length}
-          </p>
-          <button
-            type="button"
-            className="btn btn-outline btn-sm"
-            disabled={current === pageCount}
-            onClick={() => goTo(current + 1)}
-          >
-            Próxima
-            <CaretRightIcon size={16} aria-hidden />
-          </button>
-        </nav>
-      )}
+      <Pager
+        label="Páginas de pedidos"
+        current={current}
+        count={pageCount}
+        first={(current - 1) * PER_PAGE + 1}
+        last={(current - 1) * PER_PAGE + shown.length}
+        total={orders.length}
+        onGo={goTo}
+      />
 
       {/* Fixa no rodapé: a seleção pode juntar pedidos de várias páginas */}
       {chosen.length > 0 && (
