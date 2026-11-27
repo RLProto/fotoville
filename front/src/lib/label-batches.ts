@@ -98,8 +98,14 @@ export async function loadBatches(
       .range(from, from + BATCHES_PER_PAGE - 1),
     admin.rpc("label_batch_candidates"),
   ]);
-  if (list.error) throw new Error(list.error.message);
   if (candidates.error) throw new Error(candidates.error.message);
+  if (list.error?.code === "PGRST103") {
+    // Página além da última: o banco recusa a faixa em vez de devolver vazio; a página leva à última
+    const { count, error } = await admin.from("label_batches").select("id", { count: "exact", head: true });
+    if (error) throw new Error(error.message);
+    return { batches: [], waiting: (candidates.data ?? []).length, total: count ?? 0 };
+  }
+  if (list.error) throw new Error(list.error.message);
 
   const rows = (list.data ?? []) as unknown as {
     id: string;
