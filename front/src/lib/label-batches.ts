@@ -9,8 +9,8 @@ import { labelsFor, type LabelData } from "./order-label";
 import { canDownload } from "./order-rules";
 import type { Order, OrderItem, OrderStatus } from "./types";
 
-/** Lotes que a aba mostra, do mais novo para o mais antigo. */
-const BATCHES_SHOWN = 30;
+/** Lotes por página da aba, do mais novo para o mais antigo. */
+export const BATCHES_PER_PAGE = 30;
 /** Pedidos por consulta de itens: cada consulta entrega no máximo 1000 linhas, e a lista de pedidos vai na URL. */
 const ITEMS_BATCH = 50;
 const ORDER_COLUMNS =
@@ -83,15 +83,19 @@ async function labelsByOrder(admin: SupabaseClient, orders: BatchOrderRow[]) {
 
 const live = (o: { status: OrderStatus }) => o.status !== "cancelled";
 
-/** Lotes recentes e quantos pedidos esperam o próximo. Lança erro se o banco falhar. */
-export async function loadBatches(admin: SupabaseClient): Promise<{ batches: BatchView[]; waiting: number }> {
+/** Uma página de lotes, o total de lotes e quantos pedidos esperam o próximo. Lança erro se o banco falhar. */
+export async function loadBatches(
+  admin: SupabaseClient,
+  page = 1,
+): Promise<{ batches: BatchView[]; waiting: number; total: number }> {
+  const from = (page - 1) * BATCHES_PER_PAGE;
   const [list, candidates] = await Promise.all([
     admin
       .from("label_batches")
-      .select(`id, number, created_at, printed_at, orders (${ORDER_COLUMNS})`)
+      .select(`id, number, created_at, printed_at, orders (${ORDER_COLUMNS})`, { count: "exact" })
       .order("number", { ascending: false })
       .order("number", { referencedTable: "orders", ascending: true })
-      .limit(BATCHES_SHOWN),
+      .range(from, from + BATCHES_PER_PAGE - 1),
     admin.rpc("label_batch_candidates"),
   ]);
   if (list.error) throw new Error(list.error.message);
@@ -123,7 +127,7 @@ export async function loadBatches(admin: SupabaseClient): Promise<{ batches: Bat
       downloadable: canDownload(o),
     })),
   }));
-  return { batches, waiting: (candidates.data ?? []).length };
+  return { batches, waiting: (candidates.data ?? []).length, total: list.count ?? batches.length };
 }
 
 /**

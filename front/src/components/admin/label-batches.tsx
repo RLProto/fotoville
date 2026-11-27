@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleNotchIcon, FoldersIcon, PrinterIcon, TagIcon } from "@phosphor-icons/react";
+import { CaretLeftIcon, CaretRightIcon, CircleNotchIcon, FoldersIcon, PrinterIcon, TagIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
@@ -28,14 +28,19 @@ function when(iso: string) {
   return `em ${formatDateTime(iso)}`;
 }
 
+/** Página de lotes que a tela mostra; `first` é a posição do primeiro lote, para "1–30 de 45". */
+type Page = { current: number; count: number; total: number; first: number };
+
+const pageHref = (n: number) => (n > 1 ? `/admin/etiquetas?pagina=${n}` : "/admin/etiquetas");
+
 /** `quiet`: só para leitor de tela, quando a própria lista já mostra o resultado. */
 type Message = { text: string; error?: boolean; quiet?: boolean };
 
 /**
  * Lotes de etiquetas: "Gerar etiquetas" junta os pedidos aprovados num lote; o lote abre o PDF para imprimir e,
- * impresso, oferece baixar as fotos dos pedidos.
+ * impresso, oferece baixar as fotos dos pedidos. 30 lotes por página.
  */
-export function LabelBatches({ batches, waiting }: { batches: BatchView[]; waiting: number }) {
+export function LabelBatches({ batches, waiting, page }: { batches: BatchView[]; waiting: number; page: Page }) {
   const router = useRouter();
   const downloads = useOrderDownloads();
   const canPickFolder = useSyncExternalStore(subscribeNoop, hasFolderPicker, () => true);
@@ -64,7 +69,9 @@ export function LabelBatches({ batches, waiting }: { batches: BatchView[]; waiti
     }
     setFresh(body.batch.id);
     setMessage({ text: `Lote ${body.batch.number} gerado com ${plural(body.batch.orders, "pedido", "pedidos")}.`, quiet: true });
-    router.refresh();
+    // O lote novo entra no topo da primeira página
+    if (page.current > 1) router.push(pageHref(1));
+    else router.refresh();
   }
 
   async function openPrint(batch: BatchView) {
@@ -160,6 +167,22 @@ export function LabelBatches({ batches, waiting }: { batches: BatchView[]; waiti
         </div>
       )}
 
+      {page.count > 1 && (
+        <nav aria-label="Páginas de lotes" className="mt-4 flex flex-wrap items-center justify-center gap-3">
+          <PageLink to={page.current - 1} disabled={page.current === 1 || locked}>
+            <CaretLeftIcon size={16} aria-hidden />
+            Anterior
+          </PageLink>
+          <p className="text-sm tabular-nums">
+            {page.first}–{page.first + batches.length - 1} de {page.total}
+          </p>
+          <PageLink to={page.current + 1} disabled={page.current === page.count || locked}>
+            Próxima
+            <CaretRightIcon size={16} aria-hidden />
+          </PageLink>
+        </nav>
+      )}
+
       {printing && (
         <PrintLabelsDialog
           job={printing}
@@ -175,6 +198,19 @@ export function LabelBatches({ batches, waiting }: { batches: BatchView[]; waiti
       )}
       {downloads.dialogs}
     </div>
+  );
+}
+
+/** Botão de página: link de verdade, ou só aparência quando não há para onde ir. */
+function PageLink({ to, disabled, children }: { to: number; disabled: boolean; children: React.ReactNode }) {
+  return disabled ? (
+    <span className="btn btn-outline btn-sm pointer-events-none opacity-50" aria-disabled="true">
+      {children}
+    </span>
+  ) : (
+    <Link href={pageHref(to)} className="btn btn-outline btn-sm">
+      {children}
+    </Link>
   );
 }
 
